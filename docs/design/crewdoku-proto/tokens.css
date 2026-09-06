@@ -1,0 +1,171 @@
+/* ============================================================
+   ShiftForge design tokens — single source of truth.
+   Tailwind maps onto these vars (see tailwind.config in HTML).
+   Change here = global change.
+   ============================================================ */
+
+:root {
+  /* --- Typography --- */
+  --font-ui: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+
+  /* --- Density (tweakable at runtime) --- */
+  --row-h: 28px;        /* board row height */
+  --ctl-h: 24px;        /* control height (buttons, inputs) */
+  --cell-fs: 11px;      /* board cell font size */
+
+  /* --- Chrome (neutral, cool gray) --- */
+  --bg: oklch(0.955 0.004 250);          /* app background */
+  --surface: oklch(0.985 0.002 250);     /* panels, cards, board */
+  --surface-2: oklch(0.94 0.005 250);    /* sunken areas, group rows */
+  --raised: oklch(0.97 0.003 250);       /* toolbars, menubar, statusbar */
+  --border: oklch(0.885 0.006 250);
+  --border-strong: oklch(0.80 0.008 250);
+  --grid-line: oklch(0.915 0.005 250);
+  --text: oklch(0.24 0.012 255);
+  --text-dim: oklch(0.46 0.014 255);
+  --text-faint: oklch(0.63 0.012 255);
+  --text-inv: oklch(0.97 0.003 250);
+  --ink-solid: oklch(0.28 0.015 255);    /* primary button fill */
+  --sel: oklch(0.52 0.13 250);           /* selection / focus only */
+  --sel-bg: oklch(0.93 0.028 250);
+  --shadow: 0 2px 8px oklch(0.2 0.01 255 / 0.14);
+
+  /* --- Status (semantic — the ONLY expressive color in chrome) --- */
+  --st-ok: oklch(0.54 0.13 152);   --st-ok-bg: oklch(0.945 0.045 152);
+  --st-warn: oklch(0.58 0.125 75); --st-warn-bg: oklch(0.95 0.055 85);
+  --st-crit: oklch(0.54 0.185 27); --st-crit-bg: oklch(0.95 0.038 27);
+  --st-prop: oklch(0.50 0.14 295); --st-prop-bg: oklch(0.945 0.045 295);
+  --st-pin: oklch(0.24 0.012 255);
+
+  /* --- Shift identity colors (N E M A L) --- */
+  --sh-N-bg: oklch(0.33 0.035 265); --sh-N-fg: oklch(0.92 0.015 265); --sh-N-bd: oklch(0.33 0.035 265);
+  --sh-E-bg: oklch(0.93 0.055 80);  --sh-E-fg: oklch(0.43 0.10 70);   --sh-E-bd: oklch(0.84 0.07 80);
+  --sh-M-bg: oklch(0.93 0.05 150);  --sh-M-fg: oklch(0.40 0.09 150);  --sh-M-bd: oklch(0.84 0.065 150);
+  --sh-A-bg: oklch(0.93 0.045 230); --sh-A-fg: oklch(0.42 0.095 240); --sh-A-bd: oklch(0.84 0.06 230);
+  --sh-L-bg: oklch(0.93 0.05 310);  --sh-L-fg: oklch(0.43 0.10 310);  --sh-L-bd: oklch(0.85 0.065 310);
+
+  --weekend-tint: oklch(0.93 0.006 250);
+  --weekend-hatch: oklch(0.55 0.01 250 / 0.18);
+
+  /* Department accents (chip dots) */
+  --dept-prodA: oklch(0.60 0.16 28);
+  --dept-prodB: oklch(0.58 0.12 150);
+  --dept-qa:    oklch(0.56 0.13 252);
+  --dept-maint: oklch(0.64 0.13 70);
+  --dept-log:   oklch(0.54 0.15 305);
+}
+
+
+
+/* ============================================================
+   Base + component classes
+   ============================================================ */
+
+html, body { height: 100%; }
+/* hide number input spinners globally */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] { -moz-appearance: textfield; }
+
+  font-size: var(--fs-sm);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+*:focus-visible { outline: 2px solid var(--sel); outline-offset: -1px; }
+::selection { background: var(--sel-bg); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+::-webkit-scrollbar-corner { background: var(--bg); }
+
+input, select, textarea, button { font: inherit; color: inherit; }
+input[type="range"] { accent-color: var(--sel); }
+
+/* --- Board cell status overlays (applied to <td> elements) --- */
+
+/* pending request: amber hatch + dashed outline */
+.sf-pending {
+  outline: 1px dashed var(--st-warn);
+  outline-offset: -2px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 4px,
+    color-mix(in oklab, var(--st-warn) 22%, transparent) 4px 7px
+  ) !important;
+}
+
+/* proposed change (diff): dashed violet */
+.sf-proposed {
+  outline: 1.5px dashed var(--st-prop) !important;
+  outline-offset: -2px;
+}
+
+/* manual-override violation: solid red outline */
+.sf-viol {
+  outline: 2px solid var(--st-crit) !important;
+  outline-offset: -2px;
+}
+
+/* --- Tooltip --- */
+.sf-tip {
+  position: fixed; z-index: 90; max-width: 280px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow); padding: 6px 8px;
+  font-size: var(--fs-2xs); line-height: 1.45; color: var(--text);
+  pointer-events: none;
+}
+
+/* --- Solver spinner --- */
+@keyframes sf-spin { to { transform: rotate(360deg); } }
+.sf-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--text);
+  animation: sf-spin 0.7s linear infinite;
+}
+
+@keyframes sf-blink { 50% { opacity: 0.25; } }
+.sf-blink { animation: sf-blink 1.1s step-end infinite; }
+
+/* --- Board scan overlay (shown while solver runs) --- */
+@keyframes sf-scan {
+  from { left: -4px; }
+  to   { left: calc(100% + 4px); }
+}
+@keyframes sf-scan-glow {
+  0%, 100% { opacity: 0; }
+  45%, 55% { opacity: 1; }
+}
+.sf-scan-line {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 3px; pointer-events: none; z-index: 100;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--st-prop) 18%,
+    oklch(0.75 0.20 295) 50%,
+    var(--st-prop) 82%,
+    transparent 100%
+  );
+  box-shadow: 0 0 18px 8px color-mix(in oklch, var(--st-prop) 45%, transparent);
+  animation: sf-scan 1.8s linear infinite;
+}
+.sf-scan-glow {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background: color-mix(in oklch, var(--st-prop) 4%, transparent);
+  animation: sf-scan-glow 1.8s ease-in-out infinite;
+}

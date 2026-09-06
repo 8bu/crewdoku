@@ -1,31 +1,19 @@
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createStore } from './store/store'
-import { IdbStorageAdapter } from './adapters/storage/idbStorageAdapter'
-import { HighsSolverAdapter } from './adapters/highs/highsSolverAdapter'
+import { BrowserRouter } from 'react-router-dom'
 import { App } from './App'
-import './index.css'
+import { bootWorkspace } from './state/workspaceStore'
+import './styles.css'
 
-// Singleton store wired to the real persistence + solver adapters. The HiGHS
-// adapter owns a Web Worker that loads the WASM lazily on first solve, so
-// constructing it here does not block boot.
-const store = createStore({
-  storage: new IdbStorageAdapter(),
-  solver: new HighsSolverAdapter(),
-})
+const host = document.getElementById('root')
+if (!host) throw new Error('#root is missing from index.html')
 
-// Hydrate persisted state; if none exists, seed the demo so the board boots
-// populated (and so the first run is immediately useful).
-void store
-  .getState()
-  .hydrate()
-  .then(() => {
-    if (store.getState().employees.length === 0) store.getState().loadDemo()
-  })
+await bootWorkspace()
 
-// Dev-only test seam: expose the store so end-to-end browser tests can drive
-// and assert domain state directly. Tree-shaken out of production builds.
-if (import.meta.env.DEV) {
-  ;(window as unknown as { __store?: typeof store }).__store = store
-}
-
-createRoot(document.getElementById('root')!).render(<App store={store} />)
+createRoot(host).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
+)

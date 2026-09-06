@@ -1,0 +1,22 @@
+{
+  "name": "@crewdoku/harness",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "perf": "CREWDOKU_PERF=1 vitest run src/perf.e2e.test.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@crewdoku/domain": "workspace:*",
+    "@crewdoku/persistence": "workspace:*",
+    "@crewdoku/solver": "workspace:*"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
+    "highs": "^1.15.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

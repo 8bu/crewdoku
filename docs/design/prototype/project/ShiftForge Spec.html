@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShiftForge — IA, Component Inventory & Interaction Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --text: #1e2230;
+    --dim: #515870;
+    --faint: #8892a8;
+    --border: #d4d9e8;
+    --surface: #f5f6fa;
+    --ink: #0f1320;
+    --accent: #3752b8;
+
+    --sh-N: #3b4a70; --sh-N-bg: #e8eaf5;
+    --sh-E: #7a5a0a; --sh-E-bg: #fef5dc;
+    --sh-M: #1a6640; --sh-M-bg: #dcf5ea;
+    --sh-A: #1a4a7a; --sh-A-bg: #dcebf5;
+    --sh-L: #6a2080; --sh-L-bg: #f5dcf5;
+
+    --ok: #1a7a40;   --ok-bg: #dcf5e8;
+    --warn: #8a5a00; --warn-bg: #fef3dc;
+    --crit: #b82020; --crit-bg: #fde8e8;
+    --prop: #5030a8; --prop-bg: #ede8fc;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text);
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- layout ---- */
+  .page { max-width: 760px; margin: 0 auto; padding: 48px 40px 80px; }
+
+  /* ---- cover ---- */
+  .cover {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 32px; margin-bottom: 48px;
+  }
+  .cover-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); margin-bottom: 10px; }
+  .cover-title { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--ink); }
+  .cover-sub { font-size: 16px; color: var(--dim); margin-top: 8px; }
+  .cover-meta { display: flex; gap: 24px; margin-top: 20px; font-size: 11px; color: var(--faint); }
+  .cover-meta span b { color: var(--text); }
+
+  /* ---- section headers ---- */
+  .sec { margin-top: 48px; }
+  .sec-n { font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .sec-title { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; margin-top: 2px; border-bottom: 1.5px solid var(--border); padding-bottom: 8px; margin-bottom: 20px; }
+
+  h3 { font-size: 14px; font-weight: 600; color: var(--ink); margin: 24px 0 8px; }
+  h4 { font-size: 12px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.06em; margin: 20px 0 6px; }
+  p  { margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  ul, ol { padding-left: 20px; margin-bottom: 10px; }
+  code { font-family: "IBM Plex Mono", monospace; font-size: 11px; background: var(--surface); border: 1px solid var(--border); padding: 1px 4px; border-radius: 2px; }
+  strong { font-weight: 600; }
+  em { color: var(--dim); font-style: italic; }
+
+  /* ---- callout boxes ---- */
+  .callout { border: 1px solid; padding: 10px 14px; border-radius: 2px; margin: 12px 0; font-size: 12px; line-height: 1.55; }
+  .callout-ok   { color: var(--ok);   background: var(--ok-bg);   border-color: color-mix(in oklab, var(--ok) 35%, transparent); }
+  .callout-warn { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in oklab, var(--warn) 35%, transparent); }
+  .callout-crit { color: var(--crit); background: var(--crit-bg); border-color: color-mix(in oklab, var(--crit) 35%, transparent); }
+  .callout-prop { color: var(--prop); background: var(--prop-bg); border-color: color-mix(in oklab, var(--prop) 35%, transparent); }
+  .callout-note { color: var(--dim);  background: var(--surface);  border-color: var(--border); }
+
+  /* ---- tables ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 12px 0 20px; }
+  th { text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 6px 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 10.5px; }
+
+  /* ---- shift chips ---- */
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border: 1px solid; font-size: 11px; font-family: "IBM Plex Mono", monospace; border-radius: 2px; white-space: nowrap; }
+  .chip-N { background: var(--sh-N-bg); color: var(--sh-N); border-color: color-mix(in oklab, var(--sh-N) 45%, transparent); }
+  .chip-E { background: var(--sh-E-bg); color: var(--sh-E); border-color: color-mix(in oklab, var(--sh-E) 45%, transparent); }
+  .chip-M { background: var(--sh-M-bg); color: var(--sh-M); border-color: color-mix(in oklab, var(--sh-M) 45%, transparent); }
+  .chip-A { background: var(--sh-A-bg); color: var(--sh-A); border-color: color-mix(in oklab, var(--sh-A) 45%, transparent); }
+  .chip-L { background: var(--sh-L-bg); color: var(--sh-L); border-color: color-mix(in oklab, var(--sh-L) 45%, transparent); }
+  .st-ok   { display: inline-flex; align-items: center; gap: 4px; color: var(--ok);   font-size: 11px; font-weight: 600; }
+  .st-warn { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-size: 11px; font-weight: 600; }
+  .st-crit { display: inline-flex; align-items: center; gap: 4px; color: var(--crit); font-size: 11px; font-weight: 600; }
+  .st-prop { display: inline-flex; align-items: center; gap: 4px; color: var(--prop); font-size: 11px; font-weight: 600; }
+  .st-pin  { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-size: 11px; font-weight: 600; }
+
+  /* ---- nav tree / IA diagram ---- */
+  .ia-tree { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; line-height: 2; background: var(--surface); border: 1px solid var(--border); padding: 16px 20px; border-radius: 2px; white-space: pre; overflow-x: auto; }
+  .ia-role { font-weight: 700; color: var(--ink); }
+  .ia-surface { color: var(--accent); }
+  .ia-view { color: var(--dim); }
+
+  /* ---- flow diagrams ---- */
+  .flow { display: flex; align-items: flex-start; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+  .flow-step { display: flex; flex-direction: column; align-items: center; min-width: 110px; max-width: 130px; }
+  .flow-box { background: var(--surface); border: 1.5px solid var(--border); padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 500; line-height: 1.35; width: 100%; border-radius: 2px; }
+  .flow-box.active { background: #e8edfb; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .flow-box.terminal { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .flow-box.error { background: var(--crit-bg); border-color: var(--crit); color: var(--crit); }
+  .flow-arrow { font-size: 16px; color: var(--faint); align-self: center; flex-shrink: 0; padding: 0 4px; line-height: 1; }
+  .flow-note { font-size: 10px; color: var(--faint); margin-top: 4px; text-align: center; max-width: 120px; line-height: 1.3; }
+
+  /* ---- component cards ---- */
+  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 20px; }
+  .comp-card { border: 1px solid var(--border); padding: 12px 14px; font-size: 12px; }
+  .comp-name { font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .comp-type { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); margin-left: 6px; }
+  .comp-desc { margin-top: 4px; color: var(--dim); line-height: 1.45; }
+  .comp-props { margin-top: 6px; font-family: "IBM Plex Mono", monospace; font-size: 10px; color: var(--faint); line-height: 1.6; }
+
+  /* ---- page break helpers ---- */
+  .pb { page-break-before: always; margin-top: 0 !important; }
+
+  /* ---- print ---- */
+  @media print {
+    body { font-size: 11px; }
+    .page { padding: 20px 24px 40px; max-width: none; }
+    .cover-title { font-size: 24px; }
+    .sec { margin-top: 32px; }
+    .comp-grid { grid-template-columns: 1fr 1fr; }
+    a { color: inherit; text-decoration: none; }
+    .flow-box { font-size: 10px; padding: 6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- COVER -->
+<div class="cover">
+  <p class="cover-eyebrow">Design specification · v 0.4</p>
+  <h1 class="cover-title">ShiftForge</h1>
+  <p class="cover-sub">Information architecture, component inventory<br>and interaction specification</p>
+  <div class="cover-meta">
+    <span><b>Date</b> Jun 12, 2026</span>
+    <span><b>Product</b> Constraint-based team scheduling · 10–1000 staff</span>
+    <span><b>Status</b> Prototype v0.4</span>
+  </div>
+</div>
+
+<!-- 1. OVERVIEW -->
+<div class="sec">
+  <p class="sec-n">Section 01</p>
+  <h2 class="sec-title">Product overview</h2>
+  <p>ShiftForge uses a <strong>CP-SAT constraint solver</strong> to generate schedules from hard and soft constraints. Users do not draw schedules by hand. They <em>define constraints, seed (pin) known assignments, trigger generation, and negotiate with the proposed result</em> through a structured diff/approval flow.</p>
+  <p>This document covers the information architecture, component system, and detailed interaction specs for the four core surfaces.</p>
+  <div class="callout callout-note">
+    <strong>Key mental model:</strong> the schedule is a <em>generated artifact</em>, not a spreadsheet. Every manual override and every approved request is recorded and reflected in subsequent solver runs. The solver always explains its decisions through constraint violation feedback and fairness scoring.
+  </div>
+
+  <h4>Shift definitions (demo)</h4>
+  <table>
+    <thead><tr><th>Code</th><th>Name</th><th>Window</th><th>Hours</th><th>Required/day</th><th>Capacity</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip chip-N">N · Night</span></td><td>Night</td><td>01:00–06:00</td><td>5h</td><td>10</td><td>12</td></tr>
+      <tr><td><span class="chip chip-E">E · Early</span></td><td>Early</td><td>05:00–11:00</td><td>6h</td><td>14</td><td>16</td></tr>
+      <tr><td><span class="chip chip-M">M · Mid</span></td><td>Mid</td><td>10:00–16:00</td><td>6h</td><td>16</td><td>18</td></tr>
+      <tr><td><span class="chip chip-A">A · Swing</span></td><td>Swing</td><td>15:00–21:00</td><td>6h</td><td>16</td><td>18</td></tr>
+      <tr><td><span class="chip chip-L">L · Late</span></td><td>Late</td><td>20:00–02:00</td><td>6h</td><td>14</td><td>16</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:11px;color:var(--faint)">1h overlaps between adjacent shifts (Early↔Mid 10–11, Mid↔Swing 15–16, Swing↔Late 20–21, Night↔Early 05–06) are intentional handover windows.</p>
+</div>
+
+<!-- 2. IA -->
+<div class="sec pb">
+  <p class="sec-n">Section 02</p>
+  <h2 class="sec-title">Information architecture</h2>
+
+  <h3>Navigation tree</h3>
+  <div class="ia-tree"><span class="ia-role">ShiftForge</span>
+├── <span class="ia-role">Team Leader</span>
+│   ├── <span class="ia-surface">Schedule board</span>          ← week / 4-week matrix
+│   │   ├── <span class="ia-view">Seed mode</span>              ← pin cells before generation
+│   │   ├── <span class="ia-view">Diff review overlay</span>    ← after solver returns
+│   │   └── <span class="ia-view">Manual override</span>        ← drag or click-assign
+│   ├── <span class="ia-surface">Approval inbox</span>          ← request queue
+│   │   ├── <span class="ia-view">Request list</span>           ← pending + resolved
+│   │   └── <span class="ia-view">Request detail</span>         ← ripple + actions
+│   └── <span class="ia-surface">Solver / Generate</span>       ← run + result
+│       ├── <span class="ia-view">Pre-flight</span>
+│       ├── <span class="ia-view">Run state</span>              ← queued → solving → done
+│       ├── <span class="ia-view">Result panel</span>           ← feasible outcome
+│       └── <span class="ia-view">Infeasible panel</span>       ← conflict core + relax
+│
+├── <span class="ia-role">Team Member</span>
+│   ├── <span class="ia-surface">My schedule</span>             ← personal row, 2-week list
+│   ├── <span class="ia-surface">Requests</span>               ← submit + status tracker
+│   │   ├── <span class="ia-view">Day off</span>
+│   │   ├── <span class="ia-view">Sick day</span>              ← immediate notify
+│   │   ├── <span class="ia-view">Shift swap</span>            ← colleague consent flow
+│   │   └── <span class="ia-view">Preference change</span>
+│   └── <span class="ia-surface">Preferences</span>            ← recurring soft constraints
+│
+└── <span class="ia-role">Sysadmin</span>
+    ├── <span class="ia-surface">Shift definitions</span>       ← name, hours, headcount, capacity
+    ├── <span class="ia-surface">Scheduling rules</span>        ← max hours, min rest, max consec
+    ├── <span class="ia-surface">Teams &amp; structure</span>       ← departments, leaders, qualifications
+    ├── <span class="ia-surface">Role permissions</span>        ← capability matrix
+    └── <span class="ia-surface">Solver weights</span>          ← soft-term penalty sliders</div>
+
+  <h3>Role capabilities matrix</h3>
+  <table>
+    <thead><tr><th>Capability</th><th>Member</th><th>Leader</th><th>Sysadmin</th></tr></thead>
+    <tbody>
+      <tr><td>View their own schedule</td><td>✓</td><td>✓</td><td>✓</td></tr>
+      <tr><td>View all schedules</td><td>—</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Submit requests</td><td>✓</td><td>—</td><td>—</td></tr>
+      <tr><td>Approve / reject requests</td><td>—</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Pin / seed cells</td><td>—</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Trigger solver generation</td><td>—</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Manual override (drag/click-assign)</td><td>—</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Edit shift definitions</td><td>—</td><td>—</td><td>✓</td></tr>
+      <tr><td>Tune solver weights</td><td>—</td><td>—</td><td>✓</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Data hierarchy</h3>
+  <table>
+    <thead><tr><th>Entity</th><th>Key properties</th><th>Mutated by</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Organisation</strong></td><td>name, departments</td><td>Sysadmin</td></tr>
+      <tr><td><strong>Department</strong></td><td>name, headcount, leader, night-qualified count</td><td>Sysadmin</td></tr>
+      <tr><td><strong>Employee</strong></td><td>id, name, dept, home shift, preferences</td><td>Sysadmin / Member</td></tr>
+      <tr><td><strong>Shift definition</strong></td><td>code, name, start, end, req, capacity</td><td>Sysadmin</td></tr>
+      <tr><td><strong>Schedule horizon</strong></td><td>ISO week range, generated/draft/published state</td><td>Leader / Solver</td></tr>
+      <tr><td><strong>Assignment</strong></td><td>employee × day × shift code; pinned flag; override flag</td><td>Solver / Leader</td></tr>
+      <tr><td><strong>Request</strong></td><td>type, employee, date, status, ripple pre-check, decision+reason</td><td>Member / Leader</td></tr>
+      <tr><td><strong>Solver run</strong></td><td>horizon, pins, proposal ID, fairness, penalty, changes[]</td><td>Solver engine</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 3. STATUS COLOR SYSTEM -->
+<div class="sec">
+  <p class="sec-n">Section 03</p>
+  <h2 class="sec-title">Status color system</h2>
+  <p>Color encodes <strong>meaning only</strong>. Chrome is neutral gray. The five status states below are consistent across every surface and every role.</p>
+  <table>
+    <thead><tr><th>State</th><th>Visual treatment</th><th>Cell class</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="chip chip-M">Assigned (example)</span></td>
+        <td>Solid shift-color background, shift-color foreground</td>
+        <td><code>—</code></td>
+        <td>Any scheduled assignment. Each shift has its own hue (N/E/M/A/L).</td>
+      </tr>
+      <tr>
+        <td><span class="st-pin">◢ Pinned</span></td>
+        <td>Black corner wedge (CSS clip-path), no fill change</td>
+        <td><code>.sf-pin</code></td>
+        <td>Assignment locked before generation. Solver respects these.</td>
+      </tr>
+      <tr>
+        <td><span class="st-warn">⋯ Pending</span></td>
+        <td>Amber dashed outline + 45° amber hatch background</td>
+        <td><code>.sf-pending</code></td>
+        <td>An open member request touches this cell (day off, swap, sick).</td>
+      </tr>
+      <tr>
+        <td><span class="st-prop">◆ Proposed</span></td>
+        <td>Violet dashed outline + violet-tinted fill</td>
+        <td><code>.sf-proposed</code></td>
+        <td>Solver proposes a change here (diff mode). Click to decide.</td>
+      </tr>
+      <tr>
+        <td><span class="st-crit">⚠ Violated</span></td>
+        <td>Solid red outline (2px) + ⚠ glyph in cell</td>
+        <td><code>.sf-viol</code></td>
+        <td>Manual override broke a hard rule (H1 coverage, H3 rest, H2 hours).</td>
+      </tr>
+      <tr>
+        <td style="color:var(--faint)">— Off / empty</td>
+        <td>White/surface background, faint em-dash</td>
+        <td><code>—</code></td>
+        <td>Day off, not scheduled, or outside generated horizon.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Semantic status tones (non-board)</h3>
+  <table>
+    <thead><tr><th>Tone</th><th>Color var</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="st-ok">✓ ok</span></td><td><code>--st-ok</code></td><td>Approved, feasible, no impact</td></tr>
+      <tr><td><span class="st-warn">⚠ warn</span></td><td><code>--st-warn</code></td><td>Tight but approvable; soft constraint conflict</td></tr>
+      <tr><td><span class="st-crit">✕ crit</span></td><td><code>--st-crit</code></td><td>Hard constraint broken; infeasible; rejected</td></tr>
+      <tr><td><span class="st-prop">◆ prop</span></td><td><code>--st-prop</code></td><td>Solver proposal; pending counter-proposal</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 4. SURFACE SPECS -->
+<div class="sec pb">
+  <p class="sec-n">Section 04</p>
+  <h2 class="sec-title">Surface specifications</h2>
+
+  <h3>4.1 Schedule board (Leader)</h3>
+  <p>The primary leader surface. A <strong>grid matrix</strong> — employees as sticky rows, days as columns, assignments as colored cells. The solver result appears as an overlay diff on this same surface.</p>
+  <table>
+    <thead><tr><th>UI region</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Toolbar</strong></td><td>Week navigation (◀ ▶ Today), zoom toggle (Week / 4-week), department filter, Seed mode toggle, Legend popover</td></tr>
+      <tr><td><strong>Legend strip</strong></td><td>Always-visible bar: shift chips (code + name + hours) + status key (pinned / pending / proposed / violation)</td></tr>
+      <tr><td><strong>Seed-mode hint</strong></td><td>Appears when seed mode is on. Blue banner: click to pin/unpin; Esc to exit</td></tr>
+      <tr><td><strong>Diff banner</strong></td><td>Appears after solver returns a proposal: change count, fairness delta, accept-all / reject-all / apply / discard actions</td></tr>
+      <tr><td><strong>Grid header row</strong></td><td>Sticky. Each column: DOW label + large date number + coverage chips (N/E/M/A/L counts; red if below required)</td></tr>
+      <tr><td><strong>Department group rows</strong></td><td>Collapsible. Sticky label shows dept name + headcount. Click to collapse/expand.</td></tr>
+      <tr><td><strong>Employee rows</strong></td><td>Sticky name column (name + weekly hours). Day cells: shift assignment or empty.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Board interactions</h4>
+  <ul>
+    <li><strong>Click cell</strong> (normal mode) → Assign popover: pick shift or clear. Shows real-time violation badges next to each option.</li>
+    <li><strong>Click cell</strong> (seed mode) → Toggle pin on that cell. Only works on assigned cells.</li>
+    <li><strong>Click cell</strong> (diff mode, proposed) → Diff popover: accept / reject this change.</li>
+    <li><strong>Drag cell → target cell</strong> → Move assignment. Instant violation feedback on source + target.</li>
+    <li><strong>Hover any cell</strong> → Tooltip: name, date, shift, pin status, pending request, violations, proposed change.</li>
+  </ul>
+
+  <h3>4.2 Approval inbox (Leader)</h3>
+  <p>Two-column layout: request list left (330px), detail panel right (flex). Requests are <em>pre-checked by the solver before the leader sees them</em>, producing a ripple warning.</p>
+  <table>
+    <thead><tr><th>Element</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Request list row</td><td>Type badge (DAY OFF / SWAP / SICK / PREF), employee name, detail preview, ripple indicator dot (ok / warn / crit)</td></tr>
+      <tr><td>Request detail: employee card</td><td>Avatar initials, name, dept, weekly hours</td></tr>
+      <tr><td>Ripple pre-check panel</td><td>Constraint-tone panel showing solver's assessment. "Show on board" link navigates to the affected week.</td></tr>
+      <tr><td>Swap consent state</td><td>Swap requests show colleague consent status (AWAITING / ACCEPTED). Approve button is disabled until colleague accepts.</td></tr>
+      <tr><td>Reject with reason</td><td>Dropdown of common reasons (coverage risk, rest rule, excess absences, Other). Reason text is shown to the member.</td></tr>
+      <tr><td>Counter-propose</td><td>Modal with free-text field. Sets request status to "countered". Member can accept or decline.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.3 Generation screen (Leader + Sysadmin)</h3>
+  <p>Two-column layout: pre-flight summary left (300px), live run state / results right (flex).</p>
+  <table>
+    <thead><tr><th>Run phase</th><th>What the user sees</th></tr></thead>
+    <tbody>
+      <tr><td>Idle</td><td>Pre-flight checklist + demo control (optimal / infeasible toggle). "Run solver" button.</td></tr>
+      <tr><td>Queued</td><td>Spinner + "Queued — position 1". Cancel button.</td></tr>
+      <tr><td>Solving</td><td>Spinner + elapsed time + live solver log (monospace, scrolls). Cancel button.</td></tr>
+      <tr><td>Done (feasible)</td><td>Fairness score, total penalty, penalty breakdown bar chart, workload histogram. "Review changes on board →" CTA.</td></tr>
+      <tr><td>Infeasible</td><td>Conflict core panel (which constraints clash) + relaxation picker (radio). "Re-run with relaxation" button.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.4 Member self-service</h3>
+  <table>
+    <thead><tr><th>View</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>My schedule</td><td>14-day list (Jun 12–25). Each row: date + shift chip or "Day off". Pinned cells flagged. Pending requests badged.</td></tr>
+      <tr><td>Requests — form</td><td>Type seg (Day off / Swap / Sick / Preference). Date picker. Colleague selector for swaps. Note field. Submit.</td></tr>
+      <tr><td>Requests — tracker</td><td>List of all submitted requests with status badges. Rejected items show the leader's reason.</td></tr>
+      <tr><td>Preferences</td><td>Avoid / Prefer a shift on a scope (Any day / Mon / Tue … / Weekends). Each pref has an S2 badge and a remove button. Warning banner: "These are soft constraints — not guarantees."</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.5 Sysadmin configuration</h3>
+  <table>
+    <thead><tr><th>Section</th><th>Key fields &amp; validation</th></tr></thead>
+    <tbody>
+      <tr><td>Shift definitions</td><td>Name, start, end (read-only), required headcount, capacity. Live feasibility: <code>∑(req × 7) vs staff × 5 workdays</code>. Shows ok / warn (≥90%) / crit (over-capacity) banner.</td></tr>
+      <tr><td>Scheduling rules</td><td>Max hours/week (H2), min rest between shifts (H3), max consecutive workdays (H6). Live infeasibility warnings when values are extreme.</td></tr>
+      <tr><td>Teams &amp; structure</td><td>Per-department: headcount, assigned team leader, night-qualified count.</td></tr>
+      <tr><td>Role permissions</td><td>Checkbox matrix. Sysadmin row is locked (all ✓). Members always retain request submission.</td></tr>
+      <tr><td>Solver weights</td><td>Sliders 0–10 for S1–S5. Preset buttons (Balanced / Fairness-first / Stability-first). Tooltip explains trade-off for the current values.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 5. INTERACTION FLOWS -->
+<div class="sec pb">
+  <p class="sec-n">Section 05</p>
+  <h2 class="sec-title">Interaction flows</h2>
+
+  <h3>5.1 Generate → Diff → Apply</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-box">Leader opens<br>Solver screen</div>
+      <div class="flow-note">Pre-flight shows constraints + pinned count</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box active">Click "Run solver"</div>
+      <div class="flow-note">Queued → Solving (live log)</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">Result panel</div>
+      <div class="flow-note">Fairness, penalty, histogram</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box active">Review on board</div>
+      <div class="flow-note">Dashed-violet proposed cells</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">Accept / reject<br>per-cell</div>
+      <div class="flow-note">Click cell → diff popover</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box terminal">Apply accepted<br>changes</div>
+      <div class="flow-note">Board updates; diff cleared</div>
+    </div>
+  </div>
+
+  <h4>Infeasible branch</h4>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-box error">Infeasible result</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">Conflict core<br>shown (3 constraints)</div>
+      <div class="flow-note">Which rules clash</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box active">Pick a relaxation</div>
+      <div class="flow-note">Radio: one of 3 options</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">Re-run with<br>relaxation</div>
+      <div class="flow-note">Logged in audit trail</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step"><div class="flow-box terminal">Feasible result</div></div>
+  </div>
+
+  <h3>5.2 Member request → approval</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-box">Member submits<br>request</div></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">[Swap only]<br>Colleague consent</div>
+      <div class="flow-note">Awaiting → Accepted before leader sees it</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box active">Solver pre-check<br>runs</div>
+      <div class="flow-note">Ripple analysis; ok / warn / crit</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box">Appears in<br>leader inbox</div>
+      <div class="flow-note">With ripple dot + status badge</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box active">Leader decides</div>
+      <div class="flow-note">Approve / Reject (+ reason) / Counter-propose</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="flow-box terminal">Member sees<br>decision + reason</div>
+      <div class="flow-note">Rejection shows leader's reason text</div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <strong>On approve:</strong> the assignment override is immediately applied to the board. If the ripple pre-check was "warn" or "crit", the leader can still approve — but the system shows the warning. No hard blocks on approval; the leader is always in control.
+  </div>
+
+  <h3>5.3 Manual override with live violation feedback</h3>
+  <ol>
+    <li>Leader clicks an assigned cell on the board → Assign popover opens.</li>
+    <li>Each shift option shows a <span class="st-crit">⚠</span> badge if assigning it would break H3 (rest), H2 (hours), or H1 (coverage). Badge is a tooltip with the exact rule ID and reason.</li>
+    <li>Leader picks a shift (may choose a violating one). Cell immediately shows <code>.sf-viol</code> style (red outline + ⚠).</li>
+    <li>Status bar at the bottom increments violation count.</li>
+    <li>The violation is carried into the next generation run as context; the solver may or may not be able to fix it depending on other constraints.</li>
+  </ol>
+  <div class="callout callout-note">Manual overrides are <strong>advisory violations only</strong> — the app never blocks an action. This is intentional: leaders must be able to handle emergency situations that the solver cannot anticipate.</div>
+
+  <h3>5.4 Swap consent flow</h3>
+  <ol>
+    <li>Member A submits a swap request with Member B.</li>
+    <li>Member B sees a consent prompt in their Requests view.</li>
+    <li>Until B accepts: request shows <strong>CONSENT AWAITING</strong> badge; Approve button is disabled in leader inbox.</li>
+    <li>Once B accepts: request becomes actionable. Leader sees it with consent ✓.</li>
+    <li>If leader approves: both cells update simultaneously (A gets B's shift, B gets A's shift).</li>
+  </ol>
+</div>
+
+<!-- 6. COMPONENT INVENTORY -->
+<div class="sec pb">
+  <p class="sec-n">Section 06</p>
+  <h2 class="sec-title">Component inventory</h2>
+  <p>All components live in <code>ui.jsx</code> and are exported to <code>window</code> for cross-script access. Design tokens are in <code>tokens.css</code> as CSS custom properties.</p>
+
+  <h3>Primitives</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">Badge</span><span class="comp-type">atom</span>
+      <p class="comp-desc">Inline status tag. Tones: ok / warn / crit / prop / sel / neutral.</p>
+      <p class="comp-props">props: tone, children, className, title</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Dot</span><span class="comp-type">atom</span>
+      <p class="comp-desc">1.5×1.5 status dot. Supports blink animation for live states.</p>
+      <p class="comp-props">props: tone, blink</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">ShiftChip</span><span class="comp-type">atom</span>
+      <p class="comp-desc">Colored inline chip showing shift code + optional name + time.</p>
+      <p class="comp-props">props: code, time (bool), name</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">KeyHint</span><span class="comp-type">atom</span>
+      <p class="comp-desc">Monospace key cap (e.g. ⌘Z) for keyboard shortcut labels.</p>
+      <p class="comp-props">props: children</p>
+    </div>
+  </div>
+
+  <h3>Controls</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">Btn</span><span class="comp-type">control</span>
+      <p class="comp-desc">Button. Variants: default / primary / ghost / danger. Supports pressed state and kbd hint.</p>
+      <p class="comp-props">props: variant, pressed, disabled, onClick, kbd, size</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Seg</span><span class="comp-type">control</span>
+      <p class="comp-desc">Segmented control (tab bar of 2–4 options, no underline tab style).</p>
+      <p class="comp-props">props: value, options [{v, label, kbd}], onChange</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">TextInput / NumInput</span><span class="comp-type">control</span>
+      <p class="comp-desc">Single-line text and number inputs at ctl-h height.</p>
+      <p class="comp-props">props: value, onChange, placeholder, mono, min, max</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">SelectBox</span><span class="comp-type">control</span>
+      <p class="comp-desc">Native select styled to design system. Options as {v, label, disabled}.</p>
+      <p class="comp-props">props: value, onChange, options[]</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Check</span><span class="comp-type">control</span>
+      <p class="comp-desc">Checkbox with label. Ink-filled when checked, bordered when unchecked.</p>
+      <p class="comp-props">props: checked, onChange, label, disabled</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Field</span><span class="comp-type">layout</span>
+      <p class="comp-desc">Label + hint wrapper. Row mode puts label and control in a horizontal row.</p>
+      <p class="comp-props">props: label, hint, row (bool)</p>
+    </div>
+  </div>
+
+  <h3>Containers</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">Panel</span><span class="comp-type">container</span>
+      <p class="comp-desc">Bordered card with optional title bar + action slot. Tone prop colours the border.</p>
+      <p class="comp-props">props: title, actions, pad, tone, className</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Banner</span><span class="comp-type">container</span>
+      <p class="comp-desc">Full-width tinted alert bar. Levels: ok / warn / crit / prop.</p>
+      <p class="comp-props">props: level, title, children, actions</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">EmptyState</span><span class="comp-type">container</span>
+      <p class="comp-desc">Centered empty/error state with glyph, title, body, and optional CTA slot.</p>
+      <p class="comp-props">props: glyph, title, body, className</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">PageHeader</span><span class="comp-type">container</span>
+      <p class="comp-desc">40px top bar showing surface title + subtitle + optional right-side actions.</p>
+      <p class="comp-props">props: title, subtitle, actions, tone</p>
+    </div>
+  </div>
+
+  <h3>Overlays</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">Popover</span><span class="comp-type">overlay</span>
+      <p class="comp-desc">Fixed-position panel anchored to a click target. Closes on outside click or Esc.</p>
+      <p class="comp-props">props: anchor {x, y, y2}, onClose, width</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Modal</span><span class="comp-type">overlay</span>
+      <p class="comp-desc">Centered dialog with title bar, scrollable body, and footer action slot.</p>
+      <p class="comp-props">props: title, onClose, footer, width</p>
+    </div>
+  </div>
+
+  <h3>Chrome</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">MenuBar</span><span class="comp-type">chrome</span>
+      <p class="comp-desc">32px app menubar with brand, dropdown menus (with check/kbd items, separators), and right slot.</p>
+      <p class="comp-props">props: brand, menus[], right</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">StatusBar</span><span class="comp-type">chrome</span>
+      <p class="comp-desc">24px bottom bar. Left and right slot for monospace status items.</p>
+      <p class="comp-props">props: left, right</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">TabStrip</span><span class="comp-type">chrome</span>
+      <p class="comp-desc">Desktop-style squared tabs with bottom-border active state and badge support.</p>
+      <p class="comp-props">props: tabs [{v, label, badge, badgeTone, kbd}], value, onChange</p>
+    </div>
+  </div>
+
+  <h3>Charts</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">Bars</span><span class="comp-type">chart</span>
+      <p class="comp-desc">Horizontal bar chart rows with optional "before" ghost bars (for penalty diffs).</p>
+      <p class="comp-props">props: rows [{label, value, prev?, color?}], max</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Hist</span><span class="comp-type">chart</span>
+      <p class="comp-desc">Vertical histogram. Used for workload distribution (hours buckets).</p>
+      <p class="comp-props">props: buckets [{label, n}], height</p>
+    </div>
+  </div>
+
+  <h3>Board-specific (board.jsx)</h3>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-name">ScheduleBoard</span><span class="comp-type">surface</span>
+      <p class="comp-desc">The main grid matrix. Manages all cell state, popovers, drag, and tooltip layer.</p>
+      <p class="comp-props">props: app, dispatch, zebra, onGenerate</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">Row (memo)</span><span class="comp-type">internal</span>
+      <p class="comp-desc">One employee row. Memo'd to avoid re-rendering 100 rows on unrelated state changes.</p>
+      <p class="comp-props">props: emp, days, zoom, seedMode, getShift, pins, pendingMap, diffMap, decided, …</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">TooltipLayer (forwardRef)</span><span class="comp-type">internal</span>
+      <p class="comp-desc">Imperative tooltip via ref.show(x,y,node) / ref.hide(). Avoids 2,800-cell re-render on hover.</p>
+      <p class="comp-props">ref: { show(x,y,node), hide() }</p>
+    </div>
+    <div class="comp-card">
+      <span class="comp-name">AssignPopover</span><span class="comp-type">internal</span>
+      <p class="comp-desc">Click-to-assign context menu. Shows all 5 shifts with real-time violation badges + pin/unpin.</p>
+      <p class="comp-props">props: i, absDay, getShift, pins, onAssign, onPin</p>
+    </div>
+  </div>
+</div>
+
+<!-- 7. TOKEN REFERENCE -->
+<div class="sec">
+  <p class="sec-n">Section 07</p>
+  <h2 class="sec-title">Design token reference</h2>
+  <p>All tokens are CSS custom properties in <code>tokens.css</code>. Tailwind's config maps them so utility classes like <code>text-dim</code>, <code>bg-surface</code>, <code>border-bd</code> all reference vars. Changing a token globally reflows the entire UI.</p>
+
+  <h4>Spacing + density</h4>
+  <table>
+    <thead><tr><th>Token</th><th>Default</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>--row-h</code></td><td>28px</td><td>Board row height. Tweakable 18–30px.</td></tr>
+      <tr><td><code>--ctl-h</code></td><td>24px</td><td>Control height (buttons, inputs, select).</td></tr>
+      <tr><td><code>--cell-fs</code></td><td>11px</td><td>Board cell font size. Scales with row height.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Shift color variables (×5)</h4>
+  <table>
+    <thead><tr><th>Pattern</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>--sh-{CODE}-bg</code></td><td>Cell background</td></tr>
+      <tr><td><code>--sh-{CODE}-fg</code></td><td>Cell text / icon</td></tr>
+      <tr><td><code>--sh-{CODE}-bd</code></td><td>Cell border</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:11px;color:var(--faint)">CODE ∈ {N, E, M, A, L}. All three vars are overridden in <code>[data-theme="dark"]</code>.</p>
+
+  <h4>Key chrome tokens</h4>
+  <table>
+    <thead><tr><th>Token</th><th>Light</th><th>Dark (approx)</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code>--bg</code></td><td>near-white cool</td><td>deep slate</td><td>App background</td></tr>
+      <tr><td><code>--surface</code></td><td>white</td><td>dark slate</td><td>Cards, panels, grid</td></tr>
+      <tr><td><code>--raised</code></td><td>light gray</td><td>mid slate</td><td>Toolbars, menubar, statusbar</td></tr>
+      <tr><td><code>--border</code></td><td>cool gray 15%</td><td>cool gray 36%</td><td>Panel borders</td></tr>
+      <tr><td><code>--grid-line</code></td><td>lighter than border</td><td>same</td><td>Board cell separators</td></tr>
+      <tr><td><code>--ink-solid</code></td><td>near-black</td><td>near-white</td><td>Primary button fill</td></tr>
+      <tr><td><code>--sel</code></td><td>medium blue</td><td>light blue</td><td>Selection, focus, active nav</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 8. KEYBOARD SHORTCUTS -->
+<div class="sec">
+  <p class="sec-n">Section 08</p>
+  <h2 class="sec-title">Keyboard shortcuts</h2>
+  <p>Shortcuts are leader-mode only (not active when an input is focused). All are single-key, no modifier required.</p>
+  <table>
+    <thead><tr><th>Key</th><th>Action</th><th>Context</th></tr></thead>
+    <tbody>
+      <tr><td><code>W</code></td><td>Switch to week view</td><td>Leader · board</td></tr>
+      <tr><td><code>M</code></td><td>Switch to 4-week view</td><td>Leader · board</td></tr>
+      <tr><td><code>← →</code></td><td>Previous / next week</td><td>Leader · board</td></tr>
+      <tr><td><code>T</code></td><td>Jump to current week</td><td>Leader · board</td></tr>
+      <tr><td><code>S</code></td><td>Toggle seed (pin) mode</td><td>Leader · board</td></tr>
+      <tr><td><code>G</code></td><td>Open solver screen</td><td>Leader</td></tr>
+      <tr><td><code>Esc</code></td><td>Exit seed mode / close overlay</td><td>Global</td></tr>
+      <tr><td><code>?</code></td><td>Open keyboard shortcuts modal</td><td>Global</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 9. TECHNICAL NOTES -->
+<div class="sec">
+  <p class="sec-n">Section 09</p>
+  <h2 class="sec-title">Technical architecture notes</h2>
+
+  <h3>State management</h3>
+  <p>Single <code>useReducer</code> at the root <code>App</code> component. All surfaces receive <code>app</code> (state) and <code>dispatch</code> as props. No context, no external state library. The state shape is flat and serializable (except <code>Set</code> and <code>Map</code> for pins/overrides/decided).</p>
+
+  <h3>Solver simulation</h3>
+  <p>The prototype simulates the solver deterministically using a seeded pseudo-random function. Key behaviors that are <em>computed for real</em> (not faked): rest-window violations (H3), weekly hours cap (H2), coverage drop from overrides (H1). These give genuine red cells and violation tooltips when you drag assignments.</p>
+
+  <h3>Performance</h3>
+  <p>The board renders 100 rows × 7–28 columns = 700–2,800 cells. Each <code>Row</code> is wrapped in <code>React.memo</code>. Hover tooltips use an imperative ref layer (<code>TooltipLayer</code>) so mouse events never trigger React re-renders. Coverage chips are memoized separately.</p>
+
+  <h3>File structure</h3>
+  <table>
+    <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>tokens.css</code></td><td>All CSS custom properties (light + dark, shifts, status, density)</td></tr>
+      <tr><td><code>data.js</code></td><td>100-employee demo data, shift definitions, requests, solver simulation, violation checks. Exposed as <code>window.SF</code>.</td></tr>
+      <tr><td><code>ui.jsx</code></td><td>Shared component kit. All components exported to <code>window</code>.</td></tr>
+      <tr><td><code>board.jsx</code></td><td>Schedule matrix, row memo, tooltip layer, assign/diff/legend popovers.</td></tr>
+      <tr><td><code>leader.jsx</code></td><td>LeaderSurface (routes leaderView), InboxView, RequestDetail, InboxRow.</td></tr>
+      <tr><td><code>member.jsx</code></td><td>MemberSurface, MySchedule, MyRequests, MyPrefs.</td></tr>
+      <tr><td><code>admin.jsx</code></td><td>AdminSurface, ShiftConfig, RulesConfig, TeamsConfig, PermsConfig, WeightsConfig.</td></tr>
+      <tr><td><code>generate.jsx</code></td><td>GenerateSurface, ResultPanel, InfeasiblePanel.</td></tr>
+      <tr><td><code>app.jsx</code></td><td>Root App, Sidebar, NavItem, PageHeader, reducer, keyboard handler, Tweaks.</td></tr>
+      <tr><td><code>tweaks-panel.jsx</code></td><td>Tweaks host protocol + panel controls (starter component).</td></tr>
+      <tr><td><code>ShiftForge.html</code></td><td>Entry point — loads all scripts in dependency order.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:60px;padding-top:20px;border-top:1.5px solid var(--border);color:var(--faint);font-size:11px;display:flex;justify-content:space-between;">
+  <span>ShiftForge · Design specification v0.4</span>
+  <span>Jun 12, 2026 · Prototype phase</span>
+</div>
+
+</div>
+</body>
+</html>

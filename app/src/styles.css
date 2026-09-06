@@ -1,0 +1,669 @@
+@import "tailwindcss";
+@theme {
+  /*
+   * Single font-size source of truth (fixes "each view has a different
+   * font size" — plain `text-xs`/`text-sm`/`text-base`/`text-lg`/`text-xl`
+   * used to fall back to Tailwind's own default rem scale, which doesn't
+   * match the hand-authored --fs-* tokens a few components opted into via
+   * `text-[length:var(--fs-x)]`. Overriding Tailwind's own scale here means
+   * every plain utility class *is* the design system, everywhere, with no
+   * opt-in required.
+   */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.4;
+  --text-xs: 12px;
+  --text-xs--line-height: 1.4;
+  --text-sm: 13px;
+  --text-sm--line-height: 1.45;
+  --text-base: 14px;
+  --text-base--line-height: 1.45;
+  --text-lg: 17px;
+  --text-lg--line-height: 1.35;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.3;
+}
+
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  /*
+    "console" — UI revamp (2026-08-27), direction inspired by shadcn/ui,
+    beautifui.dev, beui.dev, rareui.com, transitions.dev: a neutral zinc
+    surface, one indigo interactive/brand accent, soft shadows on floating
+    surfaces, larger rounded-md/rounded-lg corners. Replaces "whiteboard"
+    (the dry-erase-board direction) — same working mechanics underneath
+    (CSS-Grid board, sticky panes, muted per-shift color washes, dim-and-
+    light coverage drill-down), a different, more contemporary material
+    world on top. Board grid geometry and per-cell layout are unchanged;
+    only color, radius, shadow, type, and motion move.
+  */
+  name: "console";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(97.5% 0.0015 286);
+  --color-base-300: oklch(91% 0.004 286);
+  --color-base-content: oklch(20% 0.01 285);
+  --color-primary: oklch(56% 0.2 276);
+  --color-primary-content: oklch(98% 0.005 276);
+  --color-secondary: oklch(46% 0.015 285);
+  --color-secondary-content: oklch(98% 0 0);
+  --color-accent: oklch(20% 0.01 285);
+  --color-accent-content: oklch(99% 0 0);
+  --color-neutral: oklch(38% 0.01 285);
+  --color-neutral-content: oklch(96% 0.003 286);
+  --color-info: oklch(62% 0.16 245);
+  --color-info-content: oklch(98% 0.01 245);
+  --color-success: oklch(64% 0.15 152);
+  --color-success-content: oklch(98% 0.02 152);
+  --color-warning: oklch(76% 0.15 70);
+  --color-warning-content: oklch(24% 0.05 70);
+  /* Saturated reds expose a WCAG luminance quirk: black contrasted better
+     than white at the old L=0.62 even though it read wrong perceptually.
+     This darker red paired explicitly with `--color-error-content` reaches
+     5.0:1 and avoids unsupported `contrast-color()` behavior entirely. */
+  --color-error: oklch(55% 0.21 25);
+  --color-error-content: oklch(98% 0.02 25);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/*
+  Design tokens — UI revamp (2026-08-27). Same token architecture as before
+  (wayfinder ticket 02, then board-overhaul) so every `var(--x)` consumer
+  downstream re-themes for free; only the values move to the new "console"
+  direction.
+*/
+
+:root {
+  /* --- Type --- */
+  --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  /* Sizes live in the @theme block above (--text-2xs..--text-xl) — this
+     block is Tailwind-facing only. Raw CSS below reads var(--text-x) directly. */
+
+  /* --- Board cell geometry (two-line cell: code over time) — unchanged --- */
+  --row-h: 40px;
+  --col-w: 64px;
+  --name-col-w: 176px;
+  --fair-col-w: 60px;
+  --cell-pad-y: 3px;
+  --cell-pad-x: 4px;
+
+  /* --- Person side panel (ticket 09) --- */
+  --panel-w: 360px;
+  --row-select-glow: oklch(0.56 0.2 276 / 0.1);
+
+  /* --- Proposal overlay (ticket 12) --- */
+  --proposal-panel-w: 400px;
+
+  /* --- Chrome ---
+     Aliased onto the daisyUI "console" theme's own vars (defined above) so
+     every surface still using the old --bg/--surface/--text token names
+     re-themes for free; components converting to Tailwind utilities reach
+     for bg-base-100/text-base-content/etc directly instead of these aliases. */
+  --bg: var(--color-base-200);
+  --surface: var(--color-base-100);
+  --surface-2: var(--color-base-200);
+  --border: var(--color-base-300);
+  --border-strong: oklch(from var(--color-base-300) calc(l - 0.14) c h);
+  --grid-line: var(--color-base-300);
+  --text: var(--color-base-content);
+  --text-dim: oklch(from var(--color-base-content) calc(l + 0.28) c h);
+  --text-faint: oklch(from var(--color-base-content) calc(l + 0.45) c h);
+  --text-inv: var(--color-base-100);
+  --shadow-pane: 0 10px 30px -10px oklch(0.15 0.02 285 / 0.18), 0 2px 8px -2px oklch(0.15 0.02 285 / 0.1);
+  --shadow-edge: oklch(0.15 0.02 285 / 0.16);
+
+  /* --- Cell state accents ---
+     Product-specific meanings (violation, ok, over, proposal, selection)
+     have no daisyUI theme equivalent that preserves the hue-collision
+     tuning from tickets 02/06/07/08/12, so these stay hand-authored oklch,
+     reanchored to the "console" theme's semantic colours only where the
+     meaning genuinely matches. */
+  --sel: var(--color-info);
+  /* Darkened, hue-matched --color-primary — for text on a light `primary/N`
+     tint (e.g. a toggled filter button, matching NavRail's own active-route
+     wash). Plain --color-primary is too light to clear WCAG AA as text on
+     its own tint; this reaches it. */
+  --sel-active: oklch(0.5 0.2 276);
+  --sel-bg: oklch(from var(--color-info) calc(l + 0.18) calc(c * 0.35) h);
+  --pin: var(--color-base-content);
+  --viol: var(--color-error);
+  --prop: oklch(0.55 0.19 305);
+  /* Same hue, much lighter — for the changed-cell outline (below), which on
+     a first Generate can cover nearly every one of 4200 cells at once. Full
+     `--prop` stays for deliberate accents (Apply button, delta numbers). */
+  --prop-outline: oklch(0.8 0.1 305);
+  --ok: var(--color-success);
+  --over: var(--color-warning);
+
+  /* --- Coverage grid geometry (shift x day, ticket 04 follow-up) --- */
+  --cov-col-w: 72px;
+  --cov-row-label-w: 148px;
+  --cov-row-h: 48px;
+
+  /* --- Shift identity (ticket "shift colour configurable") ---
+     A shift's colour is an explicit choice from this closed 8-id palette
+     (`board/shiftColors.ts` owns the id list), stored on the shift itself —
+     not derived from catalog position, so a reorder or a 5th+ shift never
+     reassigns or collides someone else's colour. Full-strength *-bg swatch
+     (cell menu, coverage panel, Settings' shift table — small, need to stay
+     recognisable) plus a muted *-bg-muted wash (the board cell's own fill —
+     a pale tint reads as "which family" without painting every one of 4200
+     cells at full saturation). No authored *-fg for either: text colour is
+     computed at render time via `contrast-color()` (see the
+     `[data-shift-color]` rules below). */
+  --sh-amber-bg: oklch(0.9 0.09 80);
+  --sh-amber-bg-muted: oklch(0.96 0.03 80);
+  --sh-orange-bg: oklch(0.87 0.11 40);
+  --sh-orange-bg-muted: oklch(0.96 0.03 40);
+  --sh-lime-bg: oklch(0.86 0.12 125);
+  --sh-lime-bg-muted: oklch(0.96 0.03 125);
+  --sh-teal-bg: oklch(0.88 0.09 165);
+  --sh-teal-bg-muted: oklch(0.96 0.03 165);
+  --sh-sky-bg: oklch(0.85 0.08 225);
+  --sh-sky-bg-muted: oklch(0.96 0.025 225);
+  --sh-navy-bg: oklch(0.32 0.06 265);
+  --sh-navy-bg-muted: oklch(0.95 0.028 235);
+  --sh-rose-bg: oklch(0.86 0.1 350);
+  --sh-rose-bg-muted: oklch(0.96 0.03 350);
+  --sh-slate-bg: oklch(0.82 0.02 250);
+  --sh-slate-bg-muted: oklch(0.95 0.008 250);
+  --sh-off-bg: transparent;
+  --sh-off-fg: var(--text-faint);
+  --sh-off-bd: var(--border);
+
+  /* --- Tints --- */
+  --weekend-tint: oklch(0.965 0.004 286);
+  --holiday-tint: oklch(0.93 0.06 85);
+  --holiday-mark: oklch(0.72 0.14 85);
+  /* Holiday tooltip stays light and neutral: warm yellow surface, black ink,
+     and the same borderless geometry as the other semantic tooltips. */
+  --holiday-tip-bg: oklch(0.88 0.11 90);
+  --holiday-tip-fg: oklch(0.16 0.005 90);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/*
+  Trims the font's built-in leading above cap-height / below the alphabetic
+  baseline, so padding alone controls a badge's vertical space — line-height
+  can't do this precisely because it reserves space for ascenders/descenders
+  the text may not use (e.g. all-caps shift codes have no descenders).
+*/
+.cd-text-trim {
+  text-box-trim: trim-both;
+  text-box-edge: cap alphabetic;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Board grid (ticket 04) ---
+   One CSS Grid, all cells mounted (no windowing), frozen header row and name
+   column via `position: sticky`. See .scratch/crewdoku-ui/research/03-grid-rendering.md.
+*/
+
+/*
+  The scroll container used to be `main` itself. Ticket 09's docked side
+  panel needs a lane of its own that never scrolls with the grid, so the
+  board now scrolls inside `.cd-board-scroll`, a flex sibling of the panel —
+  see `useScrollEdges` in BoardGrid.tsx for the other half of this.
+*/
+.cd-board {
+  position: relative;
+  display: grid;
+  /*
+    A grid container's inline size defaults to filling its containing block,
+    not its tracks' total — same as any block box. Left uncorrected, `.cd-board`
+    renders no wider than `main`'s viewport while its columns overflow it, and
+    since a grid item's sticky containing block is its *parent's* box (not the
+    scrolling ancestor), both the name column and the fairness columns lose
+    their pin once that too-narrow box scrolls past the viewport edge — visible
+    only in the last screenful of horizontal scroll. `max-content` sizes the
+    box to the real column total so the constraint never clips early.
+  */
+  width: max-content;
+  align-content: start;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  Hidden focus target for keyboard + native clipboard events (ticket 05,
+  research §"Rules that keep it fast" #10). Kept off-screen, not display:none
+  — an unfocusable element can't receive keydown/paste at all.
+*/
+/*
+  Selection range — one absolutely positioned div (research §"Rules that
+  keep it fast" #5), not a class on every selected cell. No z-index of its
+  own, so it paints above plain cd-cells but under the sticky header/name
+  column/corner, and disappears under frozen panes correctly for free.
+*/
+.cd-board__selection {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  border: 2px solid var(--sel);
+  background: color-mix(in oklch, var(--sel-bg) 55%, transparent);
+  box-sizing: border-box;
+}
+
+/*
+  Mouse-only edit path (ticket 05 follow-up): double-click a cell opens this
+  instead of requiring a keystroke. z-index above the corner/header/name
+  panes (4) so it's never clipped by a frozen pane.
+*/
+/*
+  Problem list (ticket 07) — floats fixed to the viewport, not the board, so
+  it stays put while the 4200-cell grid scrolls under it. z-index above the
+  cell menu (5): a rule break should always be reachable even mid-edit.
+*/
+/*
+  Hover tooltip for a rule break (ticket 07 follow-up). One shared node, not
+  one per cell — 4200 cells means 4200 tooltips would flood the DOM, so this
+  is a single absolutely-positioned div that BoardGrid repositions on
+  mouseover, the same move SelectionOverlay and the cell menu already made.
+  It never unmounts, only fades and slides, so hovering cell to cell reads as
+  the pill flying between them instead of popping in fresh each time.
+*/
+/*
+  Geometry/lifecycle stays in ViolationTip.tsx utilities; this small unlayered
+  rule owns the semantic background/foreground pairs, placement transforms,
+  and preserved line breaks. Foregrounds are explicit tokens rather than
+  CSS `contrast-color()` so the tooltip does not inherit unreadable text in
+  browsers that lack that function.
+*/
+.cd-violation-tip {
+  transform: translate(-50%, calc(-100% - 8px));
+  background: var(--viol);
+  /* Explicit semantic pairing: stable across browsers that do not support
+     CSS `contrast-color()` and 5.0:1 against `--color-error`. */
+  color: var(--color-error-content);
+  /* Preserves the `\n`-joined per-message lines the fairness column's
+     potentially long violation list needs; other callers join with ' · '
+     on one line, so this is a no-op for them. */
+  white-space: pre-line;
+}
+
+/* Holiday headers use this shared tip below the target because an above-header
+   tip would leave the viewport. Their dedicated high-contrast amber/ink pair
+   is defined by `[data-kind='holiday']` below. */
+.cd-violation-tip[data-below='true'] {
+  transform: translate(-50%, 8px);
+}
+/* The wide per-person list is anchored four pixels inside the pinned cell's
+   right edge. Translating by its full width spends the tooltip over the
+   grid, not beneath the docked side panel, without coupling placement to the
+   fairness column's width. */
+.cd-violation-tip[data-align-end='true'] {
+  transform: translate(-100%, calc(-100% - 8px));
+}
+.cd-violation-tip[data-align-end='true'][data-below='true'] {
+  transform: translate(-100%, 8px);
+}
+.cd-violation-tip[data-kind='holiday'] {
+  background: var(--holiday-tip-bg);
+  color: var(--holiday-tip-fg);
+}
+
+/* A proposal's "was: X" hint (ticket 12) shares this same pill but isn't a
+   rule break — it's a secondary, informational note on a changed cell, so
+   it borrows the violet already marking `data-proposal-changed` cells
+   instead of the error red, which read as a false alarm. */
+.cd-violation-tip[data-kind='proposal'] {
+  background: var(--prop);
+  /* Near-white proposal ink measures 5.0:1 against the violet surface. */
+  color: var(--color-primary-content);
+}
+
+/*
+  Scroll shadow — directional, not the omnidirectional `--shadow-pane` glow
+  the floating panels use below. That glow, put on every one of 40+ contiguous
+  header/name cells, blurs outward on all four sides — the top/bottom (or
+  left/right) component of one cell's glow overlaps its neighbour's, reading
+  as a bleeding strip rather than one shadow along the pinned edge. A shadow
+  that only falls *away* from the pinned edge, toward the content still
+  scrolled under it, has no such component between neighbours, so every cell
+  in a pinned row or column can carry it and still read as one continuous
+  edge. `.cd-board__corner` is pinned on both axes at once, so it needs both
+  shadows combined when both `data-scrolled-*` flags are set — the two single-
+  axis rules below would otherwise just override each other.
+*/
+.cd-board[data-scrolled-y] .cd-header-cell,
+.cd-board[data-scrolled-y] .cd-fair-header,
+.cd-board[data-scrolled-y] .cd-board__corner {
+  box-shadow: 0 6px 6px -4px var(--shadow-edge);
+}
+.cd-board[data-scrolled-x] .cd-board__name,
+.cd-board[data-scrolled-x] .cd-board__corner {
+  box-shadow: 4px 0 6px -4px var(--shadow-edge);
+}
+.cd-board[data-scrolled-x][data-scrolled-y] .cd-board__corner {
+  box-shadow: 0 6px 6px -4px var(--shadow-edge), 4px 0 6px -4px var(--shadow-edge);
+}
+
+/* Header row — frozen, one row, two-line (weekday/week label over date). */
+
+.cd-header-cell[data-weekend] {
+  background: var(--weekend-tint);
+}
+
+/* DRAFT (board-overhaul): was a full-column tint (header + every cell down
+   the column) — 8bu's call: a small dot + the header's existing `title`
+   tooltip is enough. Same "mark, don't paint" move as the violation dot. */
+.cd-header-cell[data-holiday]::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--holiday-mark);
+}
+
+.cd-header-cell[data-monday] {
+  border-left: 1px solid var(--border-strong);
+}
+
+/*
+  Coverage bar (ticket 06) — a thin strip along the header's bottom edge,
+  green/red/amber for ok/short/over. Clicking opens `CoveragePanel` for that
+  date. Sticky's own positioning context is reused, no extra `position:
+  relative` needed on `.cd-header-cell`.
+*/
+/*
+  Coverage breakdown panel — floats below the clicked header bar, same
+  shared-node move as `CellMenu`. A short shift is the only clickable row: it
+  starts the dim-and-light drill-down on the board. An over-staffed row is
+  informational — there's no cell to light for "too many people".
+*/
+.cd-cov-panel {
+  position: absolute;
+  z-index: 5;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-pane);
+  padding: 8px;
+}
+
+/* Team group row — spans every column, folds its people rows out of the DOM. */
+
+/* Name column — frozen, one line, ellipsis over-length names. */
+
+/* Day cell — two-line, always: shift code over its times. */
+
+.cd-cell {
+  position: relative;
+  height: var(--row-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: var(--cell-pad-y) var(--cell-pad-x);
+  border-left: 1px solid var(--grid-line);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  contain: layout style paint;
+}
+
+/* Hand-edit pin — small dot, top-right (settled ticket 02). `U` releases it. */
+.cd-cell[data-pinned]::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--pin);
+}
+
+.cd-cell[data-weekend] {
+  background: var(--weekend-tint);
+}
+
+/* DRAFT (board-overhaul): the per-cell holiday tint is gone — the header's
+   dot + tooltip is the marker now (8bu's call). A holiday's actual effect
+   (everyone OFF) is already visible in every cell's own value; painting
+   the whole column too was redundant. */
+
+/* DRAFT (board-overhaul): the week boundary used to repeat this border down
+   every one of 100 rows — against the now-muted cell colours it read as a
+   loud, oddly-tinted line (simultaneous contrast against the pale hues on
+   either side), not the quiet marker it was on the old, more saturated
+   palette. The header's "WK N" label plus its own thin line is signal
+   enough; a per-row repeat added nothing but noise. */
+
+.cd-cell__code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sh-off-fg);
+}
+
+.cd-cell__time {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  /* Code answers "what shift" at a glance; time is detail, not pattern —
+     reserve the line's space (no layout jump) but only draw it on request. */
+  visibility: hidden;
+}
+
+.cd-cell:hover .cd-cell__time {
+  visibility: visible;
+}
+
+/* Keyed by the shift's stored `color` id (ticket "shift colour
+   configurable"), not catalog position — a rename or reorder never moves
+   the hue. Each id sets one shared `--shift-bg-muted` var; the fill and
+   text-contrast rules below read it once, so adding a 9th colour later is
+   a single line here instead of three. */
+.cd-cell[data-shift-color='amber'] { --shift-bg-muted: var(--sh-amber-bg-muted); }
+.cd-cell[data-shift-color='orange'] { --shift-bg-muted: var(--sh-orange-bg-muted); }
+.cd-cell[data-shift-color='lime'] { --shift-bg-muted: var(--sh-lime-bg-muted); }
+.cd-cell[data-shift-color='teal'] { --shift-bg-muted: var(--sh-teal-bg-muted); }
+.cd-cell[data-shift-color='sky'] { --shift-bg-muted: var(--sh-sky-bg-muted); }
+.cd-cell[data-shift-color='navy'] { --shift-bg-muted: var(--sh-navy-bg-muted); }
+.cd-cell[data-shift-color='rose'] { --shift-bg-muted: var(--sh-rose-bg-muted); }
+.cd-cell[data-shift-color='slate'] { --shift-bg-muted: var(--sh-slate-bg-muted); }
+
+.cd-cell[data-shift-color] {
+  background: var(--shift-bg-muted);
+}
+.cd-cell[data-shift-color] .cd-cell__code,
+.cd-cell[data-shift-color] .cd-cell__time {
+  color: contrast-color(var(--shift-bg-muted));
+}
+
+/*
+  Rule break — accepted, not blocked, and flagged red (ticket 05, generalized
+  and strengthened ticket 07: a thin outline over a shift colour read as a
+  border-radius glitch, not a warning — 8bu's call was to override the whole
+  cell, fill and text both, so it can't be missed or mistaken for anything
+  else. Placed after the shift-colour rules so it wins at equal specificity.
+*/
+.cd-cell[data-violation]::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--viol);
+  z-index: 2;
+}
+
+/*
+  Coverage drill-down (ticket 06) — dim every cell, then light the few that
+  could fill the short shift. Written straight to the DOM by `BoardGrid`
+  (ticket 03's benchmarked move: dim-all-and-light-a-few over 4200 cells),
+  never through per-cell React props.
+*/
+.cd-board[data-coverage-dim] .cd-cell {
+  opacity: 0.32;
+  filter: saturate(0.4);
+  transition: opacity 120ms ease, filter 120ms ease;
+}
+.cd-board[data-coverage-dim] .cd-cell[data-coverage-lit] {
+  opacity: 1;
+  filter: none;
+  outline: 2px solid var(--ok);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/*
+  Fairness columns — hours (against an illustrative 40h/week cap), nights,
+  weekends — pinned right of the grid (ticket 08, settled while charting).
+  Order left-to-right matches the question's own list, so `weekends` sits
+  closest to the right edge; each column's `right` offset stacks by that
+  order, the same dual-sticky idea `.cd-board__corner` uses for the opposite
+  corner. Always visible regardless of horizontal scroll, mirroring the name
+  column on the left.
+*/
+/*
+  z-index:3, matching `.cd-board__name` (BoardGrid.tsx) — same pinned-column
+  tier, same reason: a same-row day cell with `data-proposal-changed` or a
+  coverage-dim "lit" state also sits at z-index:1, and `.cd-fair-cell` was
+  only safe from the same overlap bug by DOM-order luck (it renders last in
+  a row, so it already painted on top). Explicit tier now instead of relying
+  on that.
+*/
+.cd-fair-header,
+.cd-fair-cell {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: var(--surface);
+  border-left: 1px solid var(--border-strong);
+}
+
+.cd-fair-header {
+  top: 0;
+  z-index: 4;
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border-strong);
+  font-size: var(--text-2xs);
+  color: var(--text-dim);
+}
+
+.cd-fair-cell {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+  transition: background-color 150ms ease;
+}
+
+/*
+  Directional now (see the `--shadow-edge` note above the name column's
+  scroll shadow), so unlike the first attempt at this — an omnidirectional
+  glow that had to be scoped to the header alone to avoid bleeding across
+  every row — this one can safely run down the whole column, the same way
+  the name column's does.
+*/
+.cd-board[data-scrolled-x] .cd-fair-header,
+.cd-board[data-scrolled-x] .cd-fair-cell {
+  box-shadow: -4px 0 6px -4px var(--shadow-edge);
+}
+
+/*
+  Person side panel (ticket 09) — the row stays visible while the panel is
+  open, so it needs marking. An inset box-shadow overlay, not a background
+  swap: a plain background would sit in the same cascade layer as the
+  shift-colour rules below (`.cd-cell[data-shift=...]`) and, depending on
+  source order, could blot out the shift colour the planner is trying to
+  check. The glow always paints on top instead, regardless of order.
+*/
+.cd-board__name[data-selected-person],
+.cd-cell[data-selected-person],
+.cd-fair-cell[data-selected-person] {
+  box-shadow: inset 0 0 0 999px var(--row-select-glow);
+}
+
+/*
+  Generate (ticket 11): a top banner plus a bottom-right FAB, floating chrome
+  over the board rather than reshaping its layout — same move as the problem
+  list and coverage panel above. `.cd-board-shell` is already
+  `position: relative`, so the banner is `position: absolute` within it
+  (stays put through vertical scroll without fighting the grid's own sticky
+  header/name stack, whose highest z-index is 7); the FAB is `position: fixed`
+  to the viewport like every other floating control in this file. Editing
+  stays live through a solve — no lock, no dimming.
+*/
+/* A solve is running, but nothing is locked — this is the only cue. */
+.cd-board[data-generating] {
+  box-shadow: inset 0 2px 0 0 var(--sel);
+}
+
+/*
+  The proposal overlay (ticket 12) — reserved token `--prop` (ticket 02) put
+  to use for the first time. A changed cell keeps its new shift colour (the
+  map's "show the new value only") and gets an inset outline on top, the
+  same outline-offset trick coverage's drill-down lighting uses so it never
+  clips against neighbouring cells.
+
+  DRAFT (board-overhaul): was 2px solid `--prop` (full-strength purple) —
+  fine for a small Regenerate diff, but a first Generate marks nearly every
+  one of 4200 cells "changed", and a thick saturated outline on almost the
+  whole grid was exactly the "purple and messy" complaint. 1px and a much
+  lighter shade of the same hue; still reads as "this one's new" without
+  competing with the cell colours it's meant to be a thin note over.
+*/
+.cd-cell[data-proposal-changed] {
+  outline: 1px solid var(--prop-outline);
+  outline-offset: -1px;
+  z-index: 1;
+}
+
+/*
+  One toggle for every diagnostic layer at once — violation marks, the
+  fairness column, and the coverage bar all come on together instead of
+  being ambient. Board-overhaul revamp: folded into ProblemList.tsx's own
+  fixed cluster (one shared border, no second free-floating control) —
+  see the "Coverage & fairness" row there.
+*/
+
+/*
+  The infeasible panel (ticket 13) — same docked-right shell as the proposal
+  panel above (reuses its `__header`/`__title`/`__subtitle`/`__actions`/
+  `__body` classes), just a red accent instead of `--prop`, since this is a
+  failure to solve, not something pending review.
+*/
+/*
+  Admin surfaces (Roster ticket 16, Teams ticket 19) and the delete-team
+  popover are dead here — all converted to Tailwind + daisyUI directly in
+  proto/src/routes/Roster.tsx, Teams.tsx, routes/teams/DeleteTeamPopover.tsx.
+  The literal class `cd-teams-delete-popover` still lives on that
+  component's root element in JSX (a `closest('.cd-teams-delete-popover')`
+  outside-click hook), it just no longer needs a CSS rule.
+*/

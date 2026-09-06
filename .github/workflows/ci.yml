@@ -1,15 +1,48 @@
+# Single-dev private repo: Actions minutes are billed, and the whole pipeline
+# is ~6s after install — so this file optimizes for *not running* and for
+# failing fast, in that order.
+#
+# - push only: `pull_request` would double-run the same SHA (no forks here).
+# - paths-ignore: wayfinder scratch, docs, and local agent tooling can't break
+#   the build. NOTE: if branch protection with a required CI check is ever
+#   enabled, remove paths-ignore (a skipped run posts no status and would
+#   leave the required check pending forever).
+# - one job: setup+install (~40s) dominates and is paid per job; splitting
+#   lint/test/build would 3x the fixed cost to parallelize ~6s of work.
+# - no turbo/actions cache beyond the pnpm store: a cache round-trip costs
+#   more than the tasks it would save at this scale.
+# - pnpm version comes from package.json `packageManager` — the single pin.
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - '.scratch/**'
+      - 'docs/**'
+      - '**/*.md'
+      - '.claude/**'
+      - '.codex/**'
+      - '.github/hooks/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: pnpm }
+        with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -w build
-      - run: pnpm -w test
+      # Cheapest, highest-signal first: tsc catches most real breakage;
+      # vite build (esbuild, type-blind) almost never fails independently.
       - run: pnpm -w lint
+      - run: pnpm -w test
+      - run: pnpm -w build

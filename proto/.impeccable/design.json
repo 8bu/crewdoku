@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-27T14:00:00Z",
+  "title": "Design System: Crewdoku",
+  "extensions": {
+    "colorMeta": {
+      "base-white": { "role": "neutral", "displayName": "Base White", "canonical": "oklch(100% 0 0)" },
+      "zinc-page": { "role": "neutral", "displayName": "Zinc Page", "canonical": "oklch(97.5% 0.0015 286)" },
+      "zinc-border": { "role": "neutral", "displayName": "Zinc Border", "canonical": "oklch(91% 0.004 286)" },
+      "zinc-ink": { "role": "neutral", "displayName": "Zinc Ink", "canonical": "oklch(20% 0.01 285)" },
+      "indigo-primary": { "role": "primary", "displayName": "Indigo", "canonical": "oklch(56% 0.2 276)" },
+      "slate-secondary": { "role": "secondary", "displayName": "Slate", "canonical": "oklch(46% 0.015 285)" },
+      "selection-blue": { "role": "info", "displayName": "Selection Blue", "canonical": "oklch(62% 0.16 245)" },
+      "marker-green": { "role": "success", "displayName": "Marker Green", "canonical": "oklch(64% 0.15 152)" },
+      "caution-amber": { "role": "warning", "displayName": "Caution Amber", "canonical": "oklch(76% 0.15 70)" },
+      "marker-red": { "role": "error", "displayName": "Marker Red", "canonical": "oklch(62% 0.21 25)" },
+      "proposal-violet": { "role": "state", "displayName": "Proposal Violet", "canonical": "oklch(0.55 0.19 305)" },
+      "holiday-gold": { "role": "state", "displayName": "Holiday Gold", "canonical": "oklch(0.72 0.14 85)" },
+      "dawn-wash": { "role": "shift", "displayName": "Dawn Wash (EARLY)", "canonical": "oklch(0.96 0.03 80)" },
+      "midday-wash": { "role": "shift", "displayName": "Midday Wash (MID)", "canonical": "oklch(0.96 0.03 165)" },
+      "dusk-wash": { "role": "shift", "displayName": "Dusk Wash (LATE)", "canonical": "oklch(0.96 0.03 40)" },
+      "night-wash": { "role": "shift", "displayName": "Night Wash (NIGHT)", "canonical": "oklch(0.95 0.028 235)" }
+    },
+    "typographyMeta": {
+      "ui-2xs": { "displayName": "UI 2XS (Inter)", "purpose": "Smallest labels — fairness header, faint captions." },
+      "ui-xs": { "displayName": "UI XS (Inter)", "purpose": "Small controls — problem pill, toggle rows, fairness numbers." },
+      "ui-sm": { "displayName": "UI SM (Inter)", "purpose": "Default body text — labels, names, panel copy." },
+      "ui-md": { "displayName": "UI MD (Inter)", "purpose": "Emphasized body text." },
+      "ui-lg": { "displayName": "UI LG (Inter)", "purpose": "Largest UI text — panel titles, page headers." },
+      "cell-code": { "displayName": "Cell Code (system mono)", "purpose": "The shift code inside a board cell — ~4200 instances, bold enough to read at a glance." },
+      "cell-time": { "displayName": "Cell Time (system mono)", "purpose": "A cell's start–end time, hidden until hover — detail, not pattern." }
+    },
+    "shadows": [
+      { "name": "edge-shadow", "value": "0 6px 6px -4px oklch(0.15 0.02 285 / 0.16)", "purpose": "Directional shadow on a pinned header row/name column's scrolled edge." },
+      { "name": "pane-shadow", "value": "0 10px 30px -10px oklch(0.15 0.02 285 / 0.18), 0 2px 8px -2px oklch(0.15 0.02 285 / 0.1)", "purpose": "Floating/docked panels and popovers (cell menu, coverage panel, proposal ledger, person panel, delete popovers)." }
+    ],
+    "motion": [
+      { "name": "state-ease", "value": "150ms ease", "purpose": "Coverage bar, fairness-cell, board-cell, chip, and nav-item background/color/outline changes ease in rather than snap." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Generate / Apply and other primary actions.",
+      "html": "<button class=\"ds-btn-primary\">Generate</button>",
+      "css": ".ds-btn-primary { background: oklch(56% 0.2 276); color: oklch(98% 0.005 276); padding: 6px 14px; border-radius: 0.5rem; border: none; font-family: \"Inter\", sans-serif; font-size: 13px; font-weight: 500; transition: filter 0.15s ease; } .ds-btn-primary:hover { filter: brightness(1.08); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(62% 0.16 245); outline-offset: 2px; }"
+    },
+    {
+      "name": "Board Cell",
+      "kind": "custom",
+      "refersTo": "board-cell",
+      "description": "The signature component — a two-line shift cell (code over time), muted shift-family wash, pin/violation/proposal marks. Unrounded by design — a dense table cell, not a card.",
+      "html": "<div class=\"ds-cell\" data-shift-color=\"teal\"><span class=\"ds-cell-code\">MID</span><span class=\"ds-cell-time\">10:00–18:00</span></div>",
+      "css": ".ds-cell { position: relative; height: 40px; width: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 3px 4px; border-left: 1px solid oklch(91% 0.004 286); border-bottom: 1px solid oklch(91% 0.004 286); background: oklch(0.96 0.03 165); transition: background-color 150ms ease; } .ds-cell-code { font-family: ui-monospace, monospace; font-size: 10px; font-weight: 700; color: oklch(20% 0.01 285); } .ds-cell-time { font-family: ui-monospace, monospace; font-size: 9px; color: oklch(58% 0.008 285); visibility: hidden; } .ds-cell:hover .ds-cell-time { visibility: visible; }"
+    },
+    {
+      "name": "Coverage Bar",
+      "kind": "custom",
+      "refersTo": "coverage-bar",
+      "description": "4px strip along a header cell's bottom edge — ok/short/over coverage state.",
+      "html": "<button class=\"ds-cov-bar\" data-coverage=\"ok\" aria-label=\"Coverage: ok\"></button>",
+      "css": ".ds-cov-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border: 0; padding: 0; cursor: pointer; background: oklch(64% 0.15 152); transition: height 100ms ease-out, filter 100ms ease-out, background-color 150ms ease-out; } .ds-cov-bar:hover { filter: brightness(1.1); } .ds-cov-bar[data-coverage=\"short\"] { background: oklch(62% 0.21 25); } .ds-cov-bar[data-coverage=\"over\"] { background: oklch(76% 0.15 70); }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Docked or floating surface — cell menu, coverage breakdown, proposal ledger, infeasible panel, person panel, delete popovers.",
+      "html": "<div class=\"ds-panel\">Panel content</div>",
+      "css": ".ds-panel { background: oklch(100% 0 0); border: 1px solid oklch(from oklch(91% 0.004 286) calc(l - 0.14) c h); border-radius: 0.75rem; box-shadow: 0 10px 30px -10px oklch(0.15 0.02 285 / 0.18), 0 2px 8px -2px oklch(0.15 0.02 285 / 0.1); padding: 8px; font-family: \"Inter\", sans-serif; }"
+    },
+    {
+      "name": "Status Cluster",
+      "kind": "custom",
+      "refersTo": "status-cluster",
+      "description": "The fixed top-right problem count plus the coverage/fairness diagnostic-layer toggle, one rounded-lg row pinned inside the Shell toolbar's 48px band so it never overlaps the board's own sticky header.",
+      "html": "<div class=\"ds-status-cluster\"><button class=\"ds-status-row\" data-flagged=\"true\">950 problems</button><button class=\"ds-status-row ds-status-row--divider ds-status-row--on\">▾ Coverage &amp; fairness</button></div>",
+      "css": ".ds-status-cluster { display: flex; align-items: stretch; overflow: hidden; border-radius: 0.75rem; border: 1px solid oklch(from oklch(91% 0.004 286) calc(l - 0.14) c h); background: oklch(100% 0 0); box-shadow: 0 10px 30px -10px oklch(0.15 0.02 285 / 0.18), 0 2px 8px -2px oklch(0.15 0.02 285 / 0.1); } .ds-status-row { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; font-family: \"Inter\", sans-serif; font-size: 12px; white-space: nowrap; border: 0; background: transparent; color: oklch(58% 0.008 285); cursor: pointer; transition: background-color 150ms ease, color 150ms ease; } .ds-status-row[data-flagged=\"true\"] { color: oklch(62% 0.21 25); font-weight: 600; } .ds-status-row--divider { border-left: 1px solid oklch(from oklch(91% 0.004 286) calc(l - 0.14) c h); } .ds-status-row--on { background: oklch(from oklch(62% 0.16 245) calc(l + 0.18) calc(c * 0.35) h); color: oklch(62% 0.16 245); }"
+    },
+    {
+      "name": "Status Banner",
+      "kind": "custom",
+      "refersTo": "status-banner",
+      "description": "Persistent top-of-board banner (Generate empty-state/solving, settings-dirty) — real flow row, pushes the grid down, never floats over the sticky header.",
+      "html": "<div class=\"ds-banner ds-banner--warning\">⚠ Rules changed since the last Generate — this schedule may be out of date.</div>",
+      "css": ".ds-banner { display: flex; align-items: center; gap: 10px; padding: 7px 14px; font-family: \"Inter\", sans-serif; font-size: 12px; border-bottom: 1px solid; } .ds-banner { background: oklch(97.5% 0.0015 286); border-color: oklch(91% 0.004 286); color: oklch(20% 0.01 285); } .ds-banner--warning { background: oklch(from oklch(76% 0.15 70) l c h / 0.15); border-color: oklch(from oklch(76% 0.15 70) l c h / 0.4); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Console",
+    "overview": "UI revamp (2026-08-27), direction inspired by shadcn/ui, beautifui.dev, beui.dev, rareui.com, and transitions.dev: a neutral zinc surface, one indigo interactive accent, soft shadows on floating surfaces only, larger rounded-md/rounded-lg corners, and Inter type. This replaces \"The Nursing-Station Whiteboard\" (the dry-erase-board direction) — same working mechanics underneath (CSS-Grid board, sticky panes, muted per-shift color washes, dim-and-light coverage drill-down), a different, more contemporary material world on top. Board grid geometry (row/column pixel sizes, sticky pane structure, per-cell layout) is unchanged; only color, radius, shadow, type, and motion move.\n\nDensity is still the whole point: up to 100 people times 42 days, one continuous grid, every cell always showing its shift code over its time. The grid itself stays flat and square-cornered — a dense data table, not a card — while everything that floats over it (menus, popovers, docked panels) or frames it (nav rail, route pages, form cards) picks up the new rounded, softly-shadowed console language.",
+    "keyCharacteristics": [
+      "Neutral zinc ground, one indigo accent spent on primary actions, selection, and active nav/tab state",
+      "Soft shadows on floating/docked surfaces only — the board grid stays flat and unshadowed at rest",
+      "Rounded-md (0.5rem) controls, rounded-lg (0.75rem) cards/panels/popovers — the board grid stays unrounded",
+      "Inter throughout for UI text; a system monospace stack for shift codes, times, and tabular numbers",
+      "Subtle 150ms color/background transitions on interactive elements — motion reads as a state change"
+    ],
+    "rules": [
+      { "name": "The Functional Color Rule", "body": "No color appears unless it means something specific (a shift family, ok/over/violation, pending review, a holiday, the selected range) plus the one indigo accent for primary actions. Chrome — nav rail, resting-state buttons, panel borders — stays neutral.", "section": "colors" },
+      { "name": "The Two-Line Cell Rule", "body": "Every board cell always shows code over time, never one or the other — density is achieved by making both lines small, not by dropping one.", "section": "typography" },
+      { "name": "The Flat-Board Rule", "body": "The board grid itself never lifts, rounds, glows, or gains depth at rest. Only something genuinely floating over it or the page earns radius and a shadow.", "section": "elevation" },
+      { "name": "The Real Flow Rule", "body": "A persistent top banner is a real flex row that pushes the grid down, never position: absolute/fixed floating over it. An absolutely-positioned top:0 banner inside the board shell lands at the exact same pixel row as the board's own sticky date-header and covers it instead of displacing it. Transient, click-triggered popovers (cell menu, coverage breakdown, proposal ledger, infeasible panel) are the deliberate exception — they float because they open and close on interaction.", "section": "components" },
+      { "name": "The Pinned-Column Tier Rule", "body": "Pinned-column content (the name cell, fairness cell/header, a team row's sticky label) sits at z-index:3, strictly above every per-cell state marker (data-proposal-changed and coverage-dim's lit cell: z-index:1; the violation dot: z-index:2). Any new per-cell decoration must stay below z-index:3; any new pinned-column element must sit at z-index:3. Never rely on DOM order to break a z-index tie.", "section": "components" }
+    ],
+    "dos": [
+      "Do spend color only on function — a shift family, ok/over/violation, pending-review, or holiday — plus the one indigo accent for primary actions and selection.",
+      "Do keep the board grid flat and unrounded at rest; add radius and depth only to something genuinely floating over it or framing a page.",
+      "Do ease state-changing color/background/outline transitions (150ms) rather than let them snap.",
+      "Do give every mark on the board (pin dot, violation dot, holiday dot) a hover or focus label — nothing stays anonymous.",
+      "Do use rounded-md for controls and rounded-lg for cards/panels, consistently.",
+      "Do put a persistent top banner in real flow so it pushes the grid down. Only a transient, click-triggered popover gets to float over the board."
+    ],
+    "donts": [
+      "Don't round or shadow the board grid itself — it stays a dense, flat table.",
+      "Don't introduce a second brand accent alongside Indigo; the system has one interactive color, not a palette of them.",
+      "Don't paint a shift's cell at full saturation across the whole grid — the muted wash is the point at ~4200 mounted cells.",
+      "Don't float a second fixed-position status chip next to an existing one — join the Status Cluster instead of stacking separate boxes with a gap between them.",
+      "Don't let a fixed top-right control grow past the Shell header's 48px band — it will overlap the board's own sticky header, which starts at that exact line. Grow it sideways (one row), not down.",
+      "Don't use position: absolute/fixed for a persistent banner at the top of the board. It will sit exactly where the sticky date-header sits and cover it. Real flow only — see The Real Flow Rule."
+    ]
+  }
+}

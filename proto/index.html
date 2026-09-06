@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Crewdoku — prototype</title>
+  </head>
+  <body>
+    <!--
+      THESIS: The board is a planner's live, editable truth surface — a dense operating
+        console, not a decorated productivity dashboard.
+      OWN-WORLD: Neutral zinc surface, one indigo interactive accent, soft shadows on
+        floating panels only, Inter type; color spent only on functional marks — indigo
+        selection, violet proposal, red violation, green legal/ok, amber stale/overloaded —
+        never on chrome. UI revamp (2026-08-27), direction inspired by shadcn/ui,
+        beautifui.dev, beui.dev, rareui.com, transitions.dev — replaces the prior
+        "Nursing-Station Whiteboard" direction; board mechanics (CSS Grid, sticky panes,
+        dim-and-light drill-down) are unchanged, only the material world on top.
+      STORY: A planner sees today's board, generates a fair schedule, and edits it inline —
+        no cell is ever refused, only flagged.
+      FIRST VIEWPORT: Sticky date header with coverage bar, sticky name column left, dense
+        marker-grid of shift slots center, pinned fairness columns right, nav rail far left.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish
+        review, the verdict, and DESIGN.md updated to match.
+    -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
