@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crewdoku — Logo</title>
+<style>
+  :root{ --paper:#f7f7f8; --ink:#15151a; --indigo:#5a60e6; --line:#e3e3e8; }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0; background:#ececef; }
+  .page{ max-width:900px; margin:24px auto; background:var(--paper);
+         box-shadow:0 1px 3px rgba(0,0,0,.12),0 10px 40px rgba(0,0,0,.08); padding:0 0 8px; }
+
+  /* full-width ground bands for the lockup */
+  .band{ height:150px; display:flex; align-items:center; justify-content:center; }
+  .band img{ width:300px; height:auto; }
+  .g-paper{ background:var(--paper); }
+  .g-grey{ background:#e6e6ea; }
+  .g-ink{ background:var(--ink); }
+  .g-indigo{ background:var(--indigo); }
+  .g-busy{ background:linear-gradient(135deg,#3a6ea5 0%,#c0577b 55%,#e0a34e 100%); }
+  .hero{ height:210px; }
+  .hero img{ width:380px; }
+
+  .strip{ padding:34px 40px; }
+  .row{ display:flex; align-items:flex-end; justify-content:center; gap:34px; flex-wrap:wrap; }
+  .row.mid{ align-items:center; }
+
+  /* square tiles for the symbol */
+  .tiles{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+  .tile{ width:120px; height:120px; border-radius:14px; display:flex;
+         align-items:center; justify-content:center; border:1px solid var(--line); }
+  .tile.g-ink,.tile.g-indigo,.tile.g-busy{ border-color:transparent; }
+  .tile img{ width:62px; height:62px; }
+
+  hr{ border:0; border-top:1px solid var(--line); margin:0; }
+
+  @media print{
+    body{ background:#fff; }
+    .page{ box-shadow:none; margin:0; max-width:none; }
+    .strip{ page-break-inside:avoid; }
+    @page{ size:A4; margin:10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- hero -->
+  <div class="band hero g-paper"><img src="lockup-light.svg" alt="Crewdoku" /></div>
+
+  <!-- lockup on grounds -->
+  <div class="band g-grey"><img src="lockup-light.svg" alt="" /></div>
+  <div class="band g-ink"><img src="lockup-reversed.svg" alt="" /></div>
+  <div class="band g-indigo"><img src="lockup-mono-white.svg" alt="" /></div>
+  <div class="band g-busy"><img src="lockup-reversed.svg" alt="" /></div>
+
+  <hr />
+
+  <!-- lockup sizes -->
+  <div class="strip">
+    <div class="row">
+      <img src="lockup-light.svg" style="width:300px;height:auto" alt="" />
+      <img src="lockup-light.svg" style="width:200px;height:auto" alt="" />
+      <img src="lockup-light.svg" style="width:130px;height:auto" alt="" />
+      <img src="lockup-light.svg" style="width:86px;height:auto" alt="" />
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- wordmark on grounds -->
+  <div class="strip">
+    <div class="tiles">
+      <div class="tile g-paper" style="width:230px"><img src="wordmark-light.svg" style="width:170px;height:auto" alt="" /></div>
+      <div class="tile g-ink" style="width:230px"><img src="wordmark-dark.svg" style="width:170px;height:auto" alt="" /></div>
+      <div class="tile g-busy" style="width:230px"><img src="wordmark-dark.svg" style="width:170px;height:auto" alt="" /></div>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- symbol on grounds -->
+  <div class="strip">
+    <div class="tiles">
+      <div class="tile g-paper"><img src="symbol-accent.svg" alt="" /></div>
+      <div class="tile g-grey"><img src="symbol-accent.svg" alt="" /></div>
+      <div class="tile g-ink"><img src="symbol-mono-light.svg" alt="" /></div>
+      <div class="tile g-indigo"><img src="symbol-mono-light.svg" alt="" /></div>
+      <div class="tile g-busy"><img src="symbol-mono-light.svg" alt="" /></div>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- symbol sizes + app icon / favicon -->
+  <div class="strip">
+    <div class="row">
+      <img src="app-icon.svg" style="width:96px;height:96px" alt="" />
+      <img src="symbol-accent.svg" style="width:64px;height:64px" alt="" />
+      <img src="symbol-accent.svg" style="width:48px;height:48px" alt="" />
+      <img src="symbol-accent.svg" style="width:32px;height:32px" alt="" />
+      <img src="symbol-accent.svg" style="width:24px;height:24px" alt="" />
+      <img src="favicon.svg" style="width:16px;height:16px" alt="" />
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

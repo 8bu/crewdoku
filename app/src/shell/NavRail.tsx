@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LocaleSwitcher } from './LocaleSwitcher'
+import { Logo } from './Logo'
 import { useT } from '../i18n/useT'
 
 const SURFACES = [
@@ -18,8 +19,8 @@ export function NavRail() {
       aria-label={t('nav.aria')}
       className="flex w-56 shrink-0 flex-col border-r border-base-300 bg-base-200"
     >
-      <div className="flex h-12 items-center px-4 text-sm font-semibold tracking-tight text-base-content">
-        Crewdoku
+      <div className="flex h-12 items-center px-4">
+        <Logo className="h-6 w-auto" />
       </div>
       <ul className="flex flex-nowrap flex-col gap-0.5 px-2 py-2">
         {SURFACES.map((s) => (

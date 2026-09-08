@@ -1,7 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="7" fill="#5a60e6" />
-  <rect x="6" y="6" width="8.5" height="8.5" rx="2" fill="#ffffff" />
-  <rect x="17.5" y="6" width="8.5" height="8.5" rx="2" fill="#ffffff" />
-  <rect x="6" y="17.5" width="8.5" height="8.5" rx="2" fill="#ffffff" />
-  <rect x="17.5" y="17.5" width="8.5" height="8.5" rx="2" fill="#ffffff" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<style>
+.c{fill:#5a60e6}
+.e{fill:#c9c9d0}
+@media (prefers-color-scheme:dark){.e{fill:#43434d}}
+</style>
+<rect class="c" x="12" y="12" width="22" height="22" rx="5"/>
+<rect class="c" x="39" y="12" width="22" height="22" rx="5"/>
+<rect class="c" x="66" y="12" width="22" height="22" rx="5"/>
+<rect class="c" x="12" y="39" width="22" height="22" rx="5"/>
+<rect class="e" x="39" y="39" width="22" height="22" rx="5"/>
+<rect class="e" x="66" y="39" width="22" height="22" rx="5"/>
+<rect class="c" x="12" y="66" width="22" height="22" rx="5"/>
+<rect class="c" x="39" y="66" width="22" height="22" rx="5"/>
+<rect class="c" x="66" y="66" width="22" height="22" rx="5"/>
 </svg>
