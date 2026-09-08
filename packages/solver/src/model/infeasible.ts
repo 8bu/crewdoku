@@ -14,7 +14,7 @@ import {
   eachDate,
   getAssignment,
   restHoursBetween,
-  shiftDurationHours,
+  paidHours,
   weekdayOf,
   weekIndexOf,
 } from '@crewdoku/domain'
@@ -411,7 +411,7 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
         for (const shift of shifts) {
           const band = coverageBandFor(input.coverage, shift.code, d, dow)
           if (band.min > 0) {
-            const dur = shiftDurationHours(shifts, shift.code)
+            const dur = paidHours(shifts, shift.code)
             demandedHours += band.min * dur
           }
         }

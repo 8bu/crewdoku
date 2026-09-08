@@ -46,6 +46,11 @@ export function setShiftTimes(shifts: ShiftDef[], code: string, start: string, e
   return shifts.map((s) => (s.code === code ? { ...s, start, end } : s))
 }
 
+export function setShiftBreak(shifts: ShiftDef[], code: string, minutes: number): ShiftDef[] {
+  const clamped = Math.max(0, Math.round(minutes) || 0)
+  return shifts.map((s) => (s.code === code ? { ...s, unpaidBreakMinutes: clamped } : s))
+}
+
 function renameCodeInList(list: string[], from: string, to: string): string[] {
   if (!list.includes(from)) return list
   return list.map((c) => (c === from ? to : c))

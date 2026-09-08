@@ -16,7 +16,7 @@ import {
   isWeekend,
   OFF_CODE,
   restHoursBetween,
-  shiftDurationHours,
+  paidHours,
   weekdayOf,
   weekIndexOf,
 } from '@crewdoku/domain'
@@ -283,12 +283,12 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
 
         const pinnedCode = pinnedCells.get(assignmentKey(p.id, d))
         if (pinnedCode && pinnedCode !== OFF_CODE) {
-          entry.pinnedHours += shiftDurationHours(shifts, pinnedCode)
+          entry.pinnedHours += paidHours(shifts, pinnedCode)
         }
 
         for (const shift of shifts) {
           if (has(empI, dateI, shift.code)) {
-            const h = shiftDurationHours(shifts, shift.code)
+            const h = paidHours(shifts, shift.code)
             entry.terms.push(`+ ${h} ${varOf(empI, dateI, shift.code)}`)
           }
         }

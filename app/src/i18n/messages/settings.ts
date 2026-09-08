@@ -24,6 +24,10 @@ export const settings = {
     'settings.shifts.col.label': 'Label',
     'settings.shifts.col.start': 'Start',
     'settings.shifts.col.end': 'End',
+    'settings.shifts.col.break': 'Break',
+    'settings.shifts.col.breakTitle': 'Unpaid break minutes (reduces paid hours)',
+    'settings.shifts.col.paid': 'Paid',
+    'settings.shifts.col.paidTitle': 'Paid duration (clock span minus unpaid break)',
     'settings.shifts.col.night': 'Night',
     'settings.shifts.col.nightTitle': 'Counts toward the Nights fairness column',
     'settings.shifts.newCode': 'New code',
@@ -37,6 +41,8 @@ export const settings = {
     'settings.shifts.startTime': '{code} start time',
     'settings.shifts.endTime': '{code} end time',
     'settings.shifts.deleteShift': 'Delete {code}',
+    'settings.shifts.breakTime': '{code} break minutes',
+    'settings.shifts.generate': 'Generate shifts…',
     'settings.shifts.cantDeleteLast': "Can't delete the last shift",
 
     // Color popover
@@ -54,6 +60,25 @@ export const settings = {
     'settings.deleteShift.desc': 'Every reference — eligibility, wants/avoids, coverage — moves to:',
     'settings.deleteShift.cancel': 'Cancel',
     'settings.deleteShift.confirm': 'Move & delete',
+
+    // Shift generator wizard
+    'settings.wizard.title': 'Shift Generator',
+    'settings.wizard.desc': 'Tile an operating window into equal shifts with break and overlap.',
+    'settings.wizard.window': 'Operating window',
+    'settings.wizard.aroundTheClock': '24 hours (around the clock)',
+    'settings.wizard.start': 'Start',
+    'settings.wizard.end': 'End',
+    'settings.wizard.shiftCount': 'Number of shifts',
+    'settings.wizard.breakMinutes': 'Unpaid break (minutes)',
+    'settings.wizard.overlapMinutes': 'Shift overlap (minutes)',
+    'settings.wizard.preview': 'Preview',
+    'settings.wizard.preview.code': 'Shift',
+    'settings.wizard.preview.hours': 'Clock',
+    'settings.wizard.preview.paid': 'Paid',
+    'settings.wizard.preview.night': 'Night',
+    'settings.wizard.confirmReplace': 'This will replace your {count} existing shift(s) and reset coverage requirements.',
+    'settings.wizard.apply': 'Apply shifts',
+    'settings.wizard.cancel': 'Cancel',
 
     // Coverage section
     'settings.coverage.title': 'Coverage',
@@ -134,6 +159,10 @@ export const settings = {
     'settings.shifts.col.label': 'Tên ca',
     'settings.shifts.col.start': 'Bắt đầu',
     'settings.shifts.col.end': 'Kết thúc',
+    'settings.shifts.col.break': 'Nghỉ',
+    'settings.shifts.col.breakTitle': 'Phút nghỉ không lương (giảm giờ tính công)',
+    'settings.shifts.col.paid': 'Công',
+    'settings.shifts.col.paidTitle': 'Thời lượng tính công (thời lượng ca trừ phút nghỉ)',
     'settings.shifts.col.night': 'Ca đêm',
     'settings.shifts.col.nightTitle': 'Tính vào cột công bằng ca đêm',
     'settings.shifts.newCode': 'Mã mới',
@@ -147,6 +176,8 @@ export const settings = {
     'settings.shifts.startTime': 'Giờ bắt đầu ca {code}',
     'settings.shifts.endTime': 'Giờ kết thúc ca {code}',
     'settings.shifts.deleteShift': 'Xóa ca {code}',
+    'settings.shifts.breakTime': 'Số phút nghỉ ca {code}',
+    'settings.shifts.generate': 'Tạo ca tự động…',
     'settings.shifts.cantDeleteLast': 'Không thể xóa ca làm việc cuối cùng',
 
     // Color popover
@@ -164,6 +195,25 @@ export const settings = {
     'settings.deleteShift.desc': 'Mọi liên kết — độ hợp lệ, nguyện vọng/tránh, độ phủ — sẽ chuyển sang:',
     'settings.deleteShift.cancel': 'Hủy',
     'settings.deleteShift.confirm': 'Chuyển & xóa',
+
+    // Shift generator wizard
+    'settings.wizard.title': 'Trình tạo ca làm',
+    'settings.wizard.desc': 'Chia khung giờ hoạt động thành các ca đều nhau kèm giờ nghỉ và gối ca.',
+    'settings.wizard.window': 'Khung giờ hoạt động',
+    'settings.wizard.aroundTheClock': '24 giờ (cả ngày lẫn đêm)',
+    'settings.wizard.start': 'Bắt đầu',
+    'settings.wizard.end': 'Kết thúc',
+    'settings.wizard.shiftCount': 'Số lượng ca',
+    'settings.wizard.breakMinutes': 'Nghỉ không lương (phút)',
+    'settings.wizard.overlapMinutes': 'Thời gian gối ca (phút)',
+    'settings.wizard.preview': 'Xem trước',
+    'settings.wizard.preview.code': 'Ca',
+    'settings.wizard.preview.hours': 'Giờ ca',
+    'settings.wizard.preview.paid': 'Tính công',
+    'settings.wizard.preview.night': 'Ca đêm',
+    'settings.wizard.confirmReplace': 'Thao tác này sẽ thay thế {count} ca hiện tại và đặt lại yêu cầu độ phủ.',
+    'settings.wizard.apply': 'Áp dụng ca',
+    'settings.wizard.cancel': 'Hủy',
 
     // Coverage section
     'settings.coverage.title': 'Độ phủ',

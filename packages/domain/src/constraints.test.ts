@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Assignment, Schedule, ShiftCode, SolveSettings, Violation } from './index'
+import type { Assignment, Schedule, ShiftCode, ShiftDef, SolveSettings, Violation } from './index'
 import {
   checkEligibility,
   checkH1Coverage,
@@ -12,6 +12,7 @@ import {
   defaultCoverageTable,
   H4_STRUCTURAL_NOTE,
   makePerson,
+  paidHours,
   restHoursBetween,
   shiftDurationHours,
   shiftSpan,
@@ -81,6 +82,32 @@ describe('shiftDurationHours and shiftSpan', () => {
   it('returns 0 hours for OFF', () => {
     expect(shiftDurationHours(DEFAULT_SHIFTS, 'OFF')).toBe(0)
     expect(shiftSpan(DEFAULT_SHIFTS, 'OFF')).toBeNull()
+  })
+})
+
+describe('paidHours', () => {
+  it('equals clock duration when there is no unpaid break', () => {
+    expect(paidHours(DEFAULT_SHIFTS, 'EARLY')).toBe(shiftDurationHours(DEFAULT_SHIFTS, 'EARLY'))
+    expect(paidHours(DEFAULT_SHIFTS, 'EARLY')).toBe(8)
+  })
+
+  it('subtracts the unpaid break from the clock span', () => {
+    const shifts: ShiftDef[] = [{ code: 'D', label: 'Day', start: '0900', end: '1730', unpaidBreakMinutes: 30 }]
+    // clock span 8.5h minus a 30m break = 8.0h paid
+    expect(shiftDurationHours(shifts, 'D')).toBe(8.5)
+    expect(paidHours(shifts, 'D')).toBe(8)
+  })
+
+  it('subtracts across a midnight-crossing shift', () => {
+    const shifts: ShiftDef[] = [{ code: 'N', label: 'Night', start: '2200', end: '0600', unpaidBreakMinutes: 60 }]
+    // clock span 8h minus a 60m break = 7h paid
+    expect(paidHours(shifts, 'N')).toBe(7)
+  })
+
+  it('never goes below zero, and is zero for OFF', () => {
+    const shifts: ShiftDef[] = [{ code: 'X', label: 'Tiny', start: '0900', end: '0930', unpaidBreakMinutes: 60 }]
+    expect(paidHours(shifts, 'X')).toBe(0)
+    expect(paidHours(DEFAULT_SHIFTS, 'OFF')).toBe(0)
   })
 })
 

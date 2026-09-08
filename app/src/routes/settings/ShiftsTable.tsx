@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import type { ShiftDef } from '@crewdoku/domain'
+import { formatHours, paidHours, type ShiftDef } from '@crewdoku/domain'
 import { isCodeTaken } from '../../board/roster/shiftOps'
 import { swatchBg, type ShiftColorId } from '../../board/shiftColors'
 import { DeleteShiftPopover } from './DeleteShiftPopover'
 import { ShiftColorPopover } from './ShiftColorPopover'
 import { useT } from '../../i18n/useT'
-
 function toClock(hhmm: string): string {
   return `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`
 }
@@ -54,6 +53,43 @@ function TimeInput({ value, ariaLabel, onCommit }: { value: string; ariaLabel: s
   )
 }
 
+function BreakInput({
+  value,
+  ariaLabel,
+  onCommit,
+}: {
+  value: number | undefined
+  ariaLabel: string
+  onCommit: (minutes: number) => void
+}) {
+  const [draft, setDraft] = useState(value != null && value > 0 ? String(value) : '0')
+
+  function commit() {
+    const parsed = parseInt(draft.trim(), 10)
+    const minutes = Number.isNaN(parsed) || parsed < 0 ? 0 : parsed
+    setDraft(String(minutes))
+    onCommit(minutes)
+  }
+
+  return (
+    <div className="flex items-center gap-1 font-mono text-sm">
+      <input
+        type="text"
+        inputMode="numeric"
+        value={draft}
+        aria-label={ariaLabel}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur()
+        }}
+        className="w-[44px] rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right tabular-nums outline-none transition-colors duration-150 hover:border-base-300 focus:border-base-content/40"
+      />
+      <span className="text-2xs text-base-content/40">m</span>
+    </div>
+  )
+}
+
 /**
  * The shift catalog table (ticket 15, Q1) — code is a real key, editable
  * like everything else, but committed on blur/Enter rather than every
@@ -67,18 +103,22 @@ export function ShiftsTable({
   onRename,
   onSetLabel,
   onSetTimes,
+  onSetBreak,
   onSetColor,
   onToggleNight,
   onDelete,
+  onOpenWizard,
 }: {
   shifts: ShiftDef[]
   onAdd: (code: string, label: string) => void
   onRename: (oldCode: string, newCode: string) => void
   onSetLabel: (code: string, label: string) => void
   onSetTimes: (code: string, start: string, end: string) => void
+  onSetBreak: (code: string, minutes: number) => void
   onSetColor: (code: string, color: ShiftColorId) => void
   onToggleNight: (code: string) => void
   onDelete: (code: string, reassignToCode: string) => void
+  onOpenWizard?: () => void
 }) {
   const t = useT()
   const [newCode, setNewCode] = useState('')
@@ -118,11 +158,22 @@ export function ShiftsTable({
 
   return (
     <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.shifts.title')}</h2>
-        <p className="m-0 mt-0.5 text-xs text-base-content/60">
-          {t('settings.shifts.desc')}
-        </p>
+      <div className="flex max-w-[880px] items-center justify-between">
+        <div>
+          <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.shifts.title')}</h2>
+          <p className="m-0 mt-0.5 text-xs text-base-content/60">
+            {t('settings.shifts.desc')}
+          </p>
+        </div>
+        {onOpenWizard && (
+          <button
+            type="button"
+            onClick={onOpenWizard}
+            className="btn btn-ghost btn-sm text-xs font-medium text-primary hover:bg-primary/10"
+          >
+            {t('settings.shifts.generate')}
+          </button>
+        )}
       </div>
 
       <table className="w-max border-collapse text-sm">
@@ -142,6 +193,18 @@ export function ShiftsTable({
               {t('settings.shifts.col.end')}
             </th>
             <th
+              className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+              title={t('settings.shifts.col.breakTitle')}
+            >
+              {t('settings.shifts.col.break')}
+            </th>
+            <th
+              className="border-b border-base-300 px-2 py-1.5 text-right text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+              title={t('settings.shifts.col.paidTitle')}
+            >
+              {t('settings.shifts.col.paid')}
+            </th>
+            <th
               className="border-b border-base-300 px-2 py-1.5 text-center text-2xs font-semibold uppercase tracking-wide text-base-content/40"
               title={t('settings.shifts.col.nightTitle')}
             >
@@ -155,10 +218,12 @@ export function ShiftsTable({
             <ShiftRow
               key={shift.code}
               shift={shift}
+              shifts={shifts}
               otherCodes={codes.filter((c) => c !== shift.code)}
               onRename={(next) => onRename(shift.code, next)}
               onSetLabel={(label) => onSetLabel(shift.code, label)}
               onSetTimes={(start, end) => onSetTimes(shift.code, start, end)}
+              onSetBreak={(minutes) => onSetBreak(shift.code, minutes)}
               onColorSwatchClick={(e) => startColorPick(shift.code, e.currentTarget)}
               onToggleNight={() => onToggleNight(shift.code)}
               onDeleteClick={(e) => startDelete(shift.code, e.currentTarget)}
@@ -227,20 +292,24 @@ export function ShiftsTable({
 
 function ShiftRow({
   shift,
+  shifts,
   otherCodes,
   onRename,
   onSetLabel,
   onSetTimes,
+  onSetBreak,
   onColorSwatchClick,
   onToggleNight,
   onDeleteClick,
   deleteDisabled,
 }: {
   shift: ShiftDef
+  shifts: ShiftDef[]
   otherCodes: string[]
   onRename: (next: string) => void
   onSetLabel: (label: string) => void
   onSetTimes: (start: string, end: string) => void
+  onSetBreak: (minutes: number) => void
   onColorSwatchClick: (e: React.MouseEvent<HTMLButtonElement>) => void
   onToggleNight: () => void
   onDeleteClick: (e: React.MouseEvent<HTMLButtonElement>) => void
@@ -315,6 +384,17 @@ function ShiftRow({
           ariaLabel={t('settings.shifts.endTime', { code: shift.code })}
           onCommit={(hhmm) => onSetTimes(shift.start, hhmm)}
         />
+      </td>
+      <td className="px-2 py-1">
+        <BreakInput
+          key={`break-${shift.code}-${shift.unpaidBreakMinutes ?? 0}`}
+          value={shift.unpaidBreakMinutes}
+          ariaLabel={t('settings.shifts.breakTime', { code: shift.code })}
+          onCommit={onSetBreak}
+        />
+      </td>
+      <td className="px-2 py-1 text-right font-mono text-sm tabular-nums text-base-content/70">
+        {formatHours(paidHours(shifts, shift.code))}
       </td>
       <td className="px-2 py-1 text-center">
         <input type="checkbox" className="checkbox checkbox-sm" checked={!!shift.isNight} onChange={onToggleNight} />

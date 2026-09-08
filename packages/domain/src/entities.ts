@@ -27,6 +27,12 @@ export type ShiftDef = {
   /** `HHMM`, 24h clock. `end <= start` means the shift crosses midnight. */
   start: string
   end: string
+  /**
+   * Unpaid break minutes inside the shift. Reduces paid hours (the H2 weekly
+   * cap, the solver, and hour displays); the clock span is unchanged.
+   * Absent or 0 means no break.
+   */
+  unpaidBreakMinutes?: number
   /** Counts as a night shift (S1 fairness; the board's "Nights" column). */
   isNight?: boolean
   /**

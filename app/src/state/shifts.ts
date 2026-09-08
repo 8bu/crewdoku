@@ -29,3 +29,8 @@ export function useRosterShifts(
 
   return [shifts, setShifts]
 }
+
+export function setShiftBreak(shifts: ShiftDef[], code: string, minutes: number): ShiftDef[] {
+  const clamped = Math.max(0, Math.round(minutes) || 0)
+  return shifts.map((s) => (s.code === code ? { ...s, unpaidBreakMinutes: clamped } : s))
+}

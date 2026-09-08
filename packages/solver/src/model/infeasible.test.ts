@@ -25,12 +25,13 @@ function makeModelInput(params: {
   coverage: CoverageTable
   period: { start: ISODate; end: ISODate }
   settings?: SolveSettings
+  shifts?: ShiftDef[]
 }): ModelInput {
   const settings = params.settings ?? DEFAULT_SOLVE_SETTINGS
   const current = emptySchedule(params.people, params.period.start, params.period.end)
   return {
     people: params.people,
-    shifts: SHIFTS,
+    shifts: params.shifts ?? SHIFTS,
     coverage: params.coverage,
     settings,
     period: params.period,
@@ -215,6 +216,52 @@ describe('deriveConflictCore static screening', () => {
         const relaxedInput = relax.apply(input)
         expect(relaxedInput.settings.hardRules.maxHoursPerWeek).toBe(24)
         expect(input.settings.hardRules.maxHoursPerWeek).toBe(20) // original unchanged
+      }
+    })
+
+    it('accounts for unpaidBreakMinutes when computing demanded hours', () => {
+      const people = [
+        makePerson({ id: 'p1', name: 'Alice' }),
+      ]
+      // EARLY is 8h clock span with 60min unpaid break -> 7 paid hours per shift.
+      // 3 days: Mon, Tue, Wed -> 3 * 7 = 21 demanded hours.
+      // Cap is 20 hours per week -> capacity = 20 < 21 -> infeasible.
+      const shifts: ShiftDef[] = [
+        { code: 'EARLY', label: 'Early', start: '0600', end: '1400', isNight: false, unpaidBreakMinutes: 60 },
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-19' }
+      const coverage: CoverageTable = {
+        byDow: {
+          1: { EARLY: { min: 1, max: 1 } },
+          2: { EARLY: { min: 1, max: 1 } },
+          3: { EARLY: { min: 1, max: 1 } },
+        },
+        dateOverrides: {},
+      }
+      const settings: SolveSettings = {
+        ...DEFAULT_SOLVE_SETTINGS,
+        hardRules: {
+          ...DEFAULT_SOLVE_SETTINGS.hardRules,
+          maxHoursPerWeek: 20,
+        },
+      }
+
+      const input = makeModelInput({ people, shifts, coverage, period, settings })
+      const { conflictCore, relaxations } = deriveConflictCore(input)
+
+      const item = conflictCore.find((c) => c.id === 'weekly-hours-week-0')
+      expect(item).toBeDefined()
+      if (item !== undefined) {
+        expect(item.ruleIds).toEqual(['H1', 'H2'])
+        expect(item.message).toBe(
+          'Week 1 demands 21 hours of coverage, but 1 person at 20 hours per week can only supply 20 hours.',
+        )
+      }
+
+      const relax = relaxations.find((r) => r.id === 'relax-weekly-hours-week-0')
+      expect(relax).toBeDefined()
+      if (relax !== undefined) {
+        expect(relax.label).toBe('Raise weekly hours cap to 21 hours')
       }
     })
   })

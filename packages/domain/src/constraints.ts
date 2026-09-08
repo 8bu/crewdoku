@@ -70,6 +70,20 @@ export function shiftDurationHours(shifts: readonly ShiftDef[], code: ShiftCode)
 }
 
 /**
+ * Paid duration of a shift in decimal hours: clock span minus its unpaid
+ * break. Clock span (shiftDurationHours) still drives the timeline and H3
+ * rest; paid hours drive the H2 weekly cap, hour displays, and the solver.
+ */
+export function paidHours(shifts: readonly ShiftDef[], code: ShiftCode): number {
+  const span = shiftSpan(shifts, code)
+  if (!span) return 0
+  const def = shifts.find((s) => s.code === code)
+  const breakMin = def?.unpaidBreakMinutes ?? 0
+  const paidMin = span.end - span.start - breakMin
+  return paidMin > 0 ? paidMin / 60 : 0
+}
+
+/**
  * Hours between one day's shift ending and the next day's shift starting.
  * Returns null if either day is OFF or shift code unknown.
  * Ported from proto/src/board/violations.ts:68-73.
@@ -213,9 +227,9 @@ export function checkH1Coverage(slice: WorkspaceSlice): Violation[] {
 /**
  * H2 Weekly Hours Check.
  *
- * Sums shift hours per person per period-relative week (using weekIndexOf).
- * Flags weeks exceeding maxHoursPerWeek. Cross-midnight shifts are handled
- * using shiftDurationHours.
+ * Sums paid shift hours per person per period-relative week (using
+ * weekIndexOf). Flags weeks exceeding maxHoursPerWeek. Cross-midnight shifts
+ * and unpaid breaks are handled using paidHours.
  *
  * Anchors violation to the first scheduled working date of the offending week.
  * Semantics: proto/src/board/violations.ts:148-181.
@@ -255,7 +269,7 @@ export function checkH2WeeklyHours(slice: WorkspaceSlice): Violation[] {
       }
 
       if (assignment.code !== OFF_CODE) {
-        weekHours += shiftDurationHours(slice.shifts, assignment.code)
+        weekHours += paidHours(slice.shifts, assignment.code)
         weekAnchorIso = weekAnchorIso ?? iso
       }
     }

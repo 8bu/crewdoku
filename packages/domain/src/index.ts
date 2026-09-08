@@ -23,6 +23,7 @@ export {
   formatHours,
   formatIsoDate,
   H4_STRUCTURAL_NOTE,
+  paidHours,
   restHoursBetween,
   shiftDurationHours,
   shiftSpan,

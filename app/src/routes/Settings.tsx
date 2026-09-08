@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { periodsAtom, selectedPeriodAtom } from '../state/shell'
 import { updatePeriodAtom } from '../state/periodOps'
@@ -6,7 +6,7 @@ import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
 import { useCoverageRules } from '../state/coverageRules'
-import { defaultCoverageTable, type CoverageBand } from '@crewdoku/domain'
+import { defaultCoverageTable, type CoverageBand, type CoverageTable as DomainCoverageTable } from '@crewdoku/domain'
 import { useSolveSettings, type DisplayHardRuleId } from '../state/solveSettings'
 import type { SoftGoalId } from '@crewdoku/domain'
 import { useSettingsDirty, useMarkAllSettingsDirty } from '../state/settingsDirty'
@@ -23,6 +23,7 @@ import {
   setShiftColor,
   setShiftLabel,
   setShiftTimes,
+  setShiftBreak,
 } from '../board/roster/shiftOps'
 import type { ShiftColorId } from '../board/shiftColors'
 import { Stub } from './Stub'
@@ -30,6 +31,7 @@ import { ShiftsTable } from './settings/ShiftsTable'
 import { CoverageTable } from './settings/CoverageTable'
 import { AdvancedRules } from './settings/AdvancedRules'
 import { useT } from '../i18n/useT'
+import { GenerateShiftsWizard } from './settings/GenerateShiftsWizard'
 
 /**
  * Shifts, coverage, the period, and the Advanced door (wayfinder ticket 15)
@@ -71,6 +73,8 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
   const updatePeriod = useSetAtom(updatePeriodAtom)
   const [, setScheduleByPeriod] = useAtom(scheduleByPeriodAtom)
   const [, setOverridesByPeriod] = useAtom(overridesByPeriodAtom)
+
+  const [wizardOpen, setWizardOpen] = useState(false)
 
   // The shared board schedule and any hand-edit overrides are themselves a
   // reference to a shift code (ticket 15) — a rename/delete rewrites them
@@ -129,6 +133,16 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
   function handleSetShiftTimes(code: string, start: string, end: string) {
     setShifts((prev) => setShiftTimes(prev, code, start, end))
     markAllDirty()
+  }
+  function handleSetShiftBreak(code: string, minutes: number) {
+    setShifts((prev) => setShiftBreak(prev, code, minutes))
+    markAllDirty()
+  }
+  function handleApplyGeneratedShifts(nextShifts: ShiftDef[], nextCoverage: DomainCoverageTable) {
+    setShifts(() => nextShifts)
+    setCoverage(() => nextCoverage)
+    markAllDirty()
+    setWizardOpen(false)
   }
   // Cosmetic only — a colour swap doesn't feed fairness/coverage/eligibility,
   // so unlike every other shift edit here it does *not* mark the board
@@ -290,11 +304,12 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onRename={handleRenameShift}
             onSetLabel={handleSetShiftLabel}
             onSetTimes={handleSetShiftTimes}
+            onSetBreak={handleSetShiftBreak}
             onSetColor={handleSetShiftColor}
             onToggleNight={handleToggleNight}
             onDelete={handleDeleteShift}
+            onOpenWizard={() => setWizardOpen(true)}
           />
-
           <CoverageTable
             shifts={shifts}
             table={coverage}
@@ -315,6 +330,14 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onToggleSoftGoal={handleToggleSoftGoal}
           />
         </div>
+
+          {wizardOpen && (
+            <GenerateShiftsWizard
+              currentShiftsCount={shifts.length}
+              onApply={handleApplyGeneratedShifts}
+              onCancel={() => setWizardOpen(false)}
+            />
+          )}
       </div>
     </section>
   )

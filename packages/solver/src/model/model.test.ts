@@ -268,6 +268,59 @@ describe('buildModel unit tests', () => {
     expect(h2RowOver).toMatch(/<= 0$/)
   })
 
+  it('accounts for unpaidBreakMinutes via paidHours in H2 constraints and pinned hours', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Alice' })
+    const start = '2026-08-17'
+    const end = '2026-08-23'
+    const current = emptySchedule([p1], start, end)
+
+    // Shift with 8h clock span (0600-1400) and 30min unpaid break -> 7.5 paid hours
+    const shiftsWithBreak: ShiftDef[] = [
+      { code: 'EARLY', label: 'Early', start: '0600', end: '1400', isNight: false, unpaidBreakMinutes: 30 },
+    ]
+
+    // Pin 2 days of EARLY (2 * 7.5 = 15h)
+    current.set(assignmentKey(p1.id, '2026-08-17'), {
+      code: 'EARLY',
+      start: '0600',
+      end: '1400',
+      pinned: true,
+      ineligible: false,
+    })
+    current.set(assignmentKey(p1.id, '2026-08-18'), {
+      code: 'EARLY',
+      start: '0600',
+      end: '1400',
+      pinned: true,
+      ineligible: false,
+    })
+
+    const settings: SolveSettings = {
+      ...DEFAULT_SOLVE_SETTINGS,
+      hardRules: {
+        ...DEFAULT_SOLVE_SETTINGS.hardRules,
+        maxHoursPerWeek: 40,
+      },
+    }
+
+    const input = basicInput({
+      people: [p1],
+      shifts: shiftsWithBreak,
+      start,
+      end,
+      current,
+      settings,
+    })
+
+    const { lp } = buildModel(input)
+    // Pinned = 15h, Remaining RHS = 40 - 15 = 25h
+    const h2Row = lp.split('\n').find((l) => l.includes('h2_0_0:'))
+    expect(h2Row).toBeDefined()
+    expect(h2Row).toMatch(/<= 25$/)
+    // Coefficient for unpinned variables should be 7.5 (not 8)
+    expect(h2Row).toContain('+ 7.5 x_0_')
+  })
+
   it('drops H3 row when both consecutive days are pinned, constrains free side when one is pinned (Decision 2)', () => {
     // NIGHT (2200-0600) -> EARLY (0600-1400) has 0h rest (< 11h min rest)
     const p1 = makePerson({ id: 'p1', name: 'Alice' })
