@@ -4,6 +4,7 @@ import { isCodeTaken } from '../../board/roster/shiftOps'
 import { swatchBg, type ShiftColorId } from '../../board/shiftColors'
 import { DeleteShiftPopover } from './DeleteShiftPopover'
 import { ShiftColorPopover } from './ShiftColorPopover'
+import { ShiftTimelineBar } from './ShiftTimelineBar'
 import { useT } from '../../i18n/useT'
 function toClock(hhmm: string): string {
   return `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`
@@ -103,6 +104,7 @@ export function ShiftsTable({
   onRename,
   onSetLabel,
   onSetTimes,
+  onEditShifts,
   onSetBreak,
   onSetColor,
   onToggleNight,
@@ -114,6 +116,7 @@ export function ShiftsTable({
   onRename: (oldCode: string, newCode: string) => void
   onSetLabel: (code: string, label: string) => void
   onSetTimes: (code: string, start: string, end: string) => void
+  onEditShifts: (next: ShiftDef[]) => void
   onSetBreak: (code: string, minutes: number) => void
   onSetColor: (code: string, color: ShiftColorId) => void
   onToggleNight: (code: string) => void
@@ -174,6 +177,14 @@ export function ShiftsTable({
             {t('settings.shifts.generate')}
           </button>
         )}
+      </div>
+
+      <div className="max-w-[880px]">
+        <ShiftTimelineBar
+          shifts={shifts}
+          onChange={onEditShifts}
+          overlapLabel={t('settings.wizard.preview.overlap')}
+        />
       </div>
 
       <table className="w-max border-collapse text-sm">

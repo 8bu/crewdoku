@@ -134,6 +134,10 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
     setShifts((prev) => setShiftTimes(prev, code, start, end))
     markAllDirty()
   }
+  function handleSetShifts(next: ShiftDef[]) {
+    setShifts(() => next)
+    markAllDirty()
+  }
   function handleSetShiftBreak(code: string, minutes: number) {
     setShifts((prev) => setShiftBreak(prev, code, minutes))
     markAllDirty()
@@ -304,6 +308,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onRename={handleRenameShift}
             onSetLabel={handleSetShiftLabel}
             onSetTimes={handleSetShiftTimes}
+            onEditShifts={handleSetShifts}
             onSetBreak={handleSetShiftBreak}
             onSetColor={handleSetShiftColor}
             onToggleNight={handleToggleNight}

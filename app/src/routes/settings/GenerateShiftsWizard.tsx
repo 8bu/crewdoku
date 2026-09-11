@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { formatHours, paidHours, shiftSpan, type CoverageTable, type ShiftDef } from '@crewdoku/domain'
+import { formatHours, paidHours, type CoverageTable, type ShiftDef } from '@crewdoku/domain'
 import { swatchBg } from '../../board/shiftColors'
 import { useT } from '../../i18n/useT'
+import { durationMinutes, setDurationOne } from './shiftEditing'
 import { generateShifts } from './shiftGenerator'
+import { ShiftTimelineBar } from './ShiftTimelineBar'
 
 function toClock(hhmm: string): string {
   return `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`
@@ -70,7 +72,7 @@ export function GenerateShiftsWizard({
 
   const [aroundTheClock, setAroundTheClock] = useState(true)
   const [windowStart, setWindowStart] = useState('0600')
-  const [windowEnd, setWindowEnd] = useState('2200')
+  const [shiftDurationMin, setShiftDurationMin] = useState(480)
   const [shiftCount, setShiftCount] = useState(3)
   const [breakMinutes, setBreakMinutes] = useState(30)
   const [overlapMinutes, setOverlapMinutes] = useState(0)
@@ -84,20 +86,53 @@ export function GenerateShiftsWizard({
   }, [onCancel])
 
   const effectiveStart = aroundTheClock ? '0000' : windowStart
-  const effectiveEnd = aroundTheClock ? '0000' : windowEnd
 
-  const preview = useMemo(() => {
+  const [shifts, setShifts] = useState<ShiftDef[]>(() => {
     return generateShifts({
       windowStart: effectiveStart,
-      windowEnd: effectiveEnd,
       shiftCount,
+      shiftDurationMinutes: shiftDurationMin,
+      breakMinutes,
+      overlapMinutes,
+    }).shifts
+  })
+
+  const [coverage, setCoverage] = useState<CoverageTable>(() => {
+    return generateShifts({
+      windowStart: effectiveStart,
+      shiftCount,
+      shiftDurationMinutes: shiftDurationMin,
+      breakMinutes,
+      overlapMinutes,
+    }).coverage
+  })
+
+  const isInitialMount = useRef(true)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+    const next = generateShifts({
+      windowStart: effectiveStart,
+      shiftCount,
+      shiftDurationMinutes: shiftDurationMin,
       breakMinutes,
       overlapMinutes,
     })
-  }, [effectiveStart, effectiveEnd, shiftCount, breakMinutes, overlapMinutes])
+    setShifts(next.shifts)
+    setCoverage(next.coverage)
+  }, [effectiveStart, shiftCount, shiftDurationMin, breakMinutes, overlapMinutes])
+
+  const uniformDurationHours = useMemo(() => {
+    if (shifts.length === 0) return ''
+    const first = durationMinutes(shifts[0]!)
+    const allSame = shifts.every((s) => durationMinutes(s) === first)
+    return allSame ? first / 60 : ''
+  }, [shifts])
 
   function handleApply() {
-    onApply(preview.shifts, preview.coverage)
+    onApply(shifts, coverage)
   }
 
   return (
@@ -161,23 +196,14 @@ export function GenerateShiftsWizard({
                   onCommit={setWindowStart}
                 />
               </div>
-              <span className="text-xs text-base-content/30">→</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-base-content/60">{t('settings.wizard.end')}</span>
-                <WizardTimeInput
-                  value={windowEnd}
-                  ariaLabel={t('settings.wizard.end')}
-                  onCommit={setWindowEnd}
-                />
-              </div>
             </div>
           )}
         </div>
 
-        {/* Shift count, Break, Overlap */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/50">
+        {/* Shift count, Duration, Break, Overlap */}
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4">
+          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+            <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.shiftCount')}
             </label>
             <input
@@ -193,8 +219,31 @@ export function GenerateShiftsWizard({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/50">
+          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+            <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
+              {t('settings.wizard.duration')}
+            </label>
+            <input
+              type="number"
+              min={0.25}
+              step={0.25}
+              value={uniformDurationHours}
+              placeholder="—"
+              onChange={(e) => {
+                const hours = parseFloat(e.target.value)
+                if (!Number.isNaN(hours) && hours >= 0.25) {
+                  const nextDuration = Math.round(hours * 60)
+                  setShiftDurationMin(nextDuration)
+                  // Overlap can never reach the shift length; keep it < duration.
+                  setOverlapMinutes((prev) => Math.max(0, Math.min(prev, nextDuration - 15)))
+                }
+              }}
+              className="input input-sm border-base-300 bg-base-200/50"
+            />
+          </div>
+
+          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+            <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.breakMinutes')}
             </label>
             <input
@@ -210,18 +259,21 @@ export function GenerateShiftsWizard({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/50">
+          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+            <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.overlapMinutes')}
             </label>
             <input
               type="number"
               min={0}
+              max={Math.max(0, shiftDurationMin - 15)}
               step={5}
               value={overlapMinutes}
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10)
-                if (!Number.isNaN(val) && val >= 0) setOverlapMinutes(val)
+                if (!Number.isNaN(val) && val >= 0) {
+                  setOverlapMinutes(Math.max(0, Math.min(val, shiftDurationMin - 15)))
+                }
               }}
               className="input input-sm border-base-300 bg-base-200/50"
             />
@@ -236,76 +288,12 @@ export function GenerateShiftsWizard({
             </span>
           </div>
 
-          {/* 24-hour horizontal timeline bar */}
-          <div className="flex flex-col gap-1">
-            <div className="relative h-6 w-full overflow-hidden rounded bg-base-300/60">
-              {preview.shifts.map((shift) => {
-                const span = shiftSpan(preview.shifts, shift.code)
-                if (!span) return null
-                const startMin = span.start
-                const endMin = span.end
-                const duration = endMin - startMin
-
-                // If within a single 24h cycle
-                if (endMin <= 1440) {
-                  const leftPct = (startMin / 1440) * 100
-                  const widthPct = (duration / 1440) * 100
-                  return (
-                    <div
-                      key={shift.code}
-                      className="absolute inset-y-0 flex items-center justify-center overflow-hidden border-r border-base-100/40 text-[10px] font-bold text-white shadow-sm"
-                      style={{
-                        left: `${leftPct}%`,
-                        width: `${widthPct}%`,
-                        backgroundColor: swatchBg(shift.color),
-                      }}
-                      title={`${shift.code}: ${toClock(shift.start)}–${toClock(shift.end)}`}
-                    >
-                      <span className="truncate px-1 drop-shadow-sm">{shift.code}</span>
-                    </div>
-                  )
-                }
-
-                // Crosses midnight: split into two parts for day 0 and day 1
-                const part1Left = (startMin / 1440) * 100
-                const part1Width = ((1440 - startMin) / 1440) * 100
-                const part2Width = ((endMin - 1440) / 1440) * 100
-
-                return (
-                  <div key={shift.code}>
-                    <div
-                      className="absolute inset-y-0 flex items-center justify-center overflow-hidden border-r border-base-100/40 text-[10px] font-bold text-white shadow-sm"
-                      style={{
-                        left: `${part1Left}%`,
-                        width: `${part1Width}%`,
-                        backgroundColor: swatchBg(shift.color),
-                      }}
-                      title={`${shift.code}: ${toClock(shift.start)}–${toClock(shift.end)}`}
-                    >
-                      <span className="truncate px-1 drop-shadow-sm">{shift.code}</span>
-                    </div>
-                    <div
-                      className="absolute inset-y-0 left-0 flex items-center justify-center overflow-hidden border-r border-base-100/40 text-[10px] font-bold text-white shadow-sm"
-                      style={{
-                        width: `${part2Width}%`,
-                        backgroundColor: swatchBg(shift.color),
-                      }}
-                      title={`${shift.code}: ${toClock(shift.start)}–${toClock(shift.end)}`}
-                    >
-                      <span className="truncate px-1 drop-shadow-sm">{shift.code}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="flex justify-between px-0.5 text-[10px] font-mono tabular-nums text-base-content/40">
-              <span>00:00</span>
-              <span>06:00</span>
-              <span>12:00</span>
-              <span>18:00</span>
-              <span>24:00</span>
-            </div>
-          </div>
+          {/* Editable 24-hour timeline bar */}
+          <ShiftTimelineBar
+            shifts={shifts}
+            onChange={setShifts}
+            overlapLabel={t('settings.wizard.preview.overlap')}
+          />
 
           {/* Resulting rows preview list */}
           <table className="w-full text-xs">
@@ -313,12 +301,13 @@ export function GenerateShiftsWizard({
               <tr className="border-b border-base-300 text-2xs uppercase text-base-content/40">
                 <th className="w-5 py-1"></th>
                 <th className="py-1 text-left">{t('settings.wizard.preview.code')}</th>
+                <th className="py-1 text-left">{t('settings.wizard.preview.duration')}</th>
                 <th className="py-1 text-left">{t('settings.wizard.preview.hours')}</th>
                 <th className="py-1 text-right">{t('settings.wizard.preview.paid')}</th>
               </tr>
             </thead>
             <tbody>
-              {preview.shifts.map((shift) => (
+              {shifts.map((shift, idx) => (
                 <tr key={shift.code} className="border-b border-base-300/40">
                   <td className="py-1">
                     <span
@@ -334,11 +323,30 @@ export function GenerateShiftsWizard({
                       </span>
                     )}
                   </td>
+                  <td className="py-1">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0.25}
+                        step={0.25}
+                        value={durationMinutes(shift) / 60}
+                        aria-label={`${shift.code} ${t('settings.wizard.preview.duration')}`}
+                        onChange={(e) => {
+                          const hours = parseFloat(e.target.value)
+                          if (!Number.isNaN(hours) && hours >= 0.25) {
+                            setShifts(setDurationOne(shifts, idx, Math.round(hours * 60)))
+                          }
+                        }}
+                        className="w-14 rounded border border-base-300 bg-base-200/50 px-1.5 py-0.5 font-mono text-xs tabular-nums outline-none focus:border-primary"
+                      />
+                      <span className="text-2xs text-base-content/40">h</span>
+                    </div>
+                  </td>
                   <td className="py-1 font-mono tabular-nums text-base-content/80">
                     {toClock(shift.start)} – {toClock(shift.end)}
                   </td>
                   <td className="py-1 text-right font-mono font-medium tabular-nums text-base-content">
-                    {formatHours(paidHours(preview.shifts, shift.code))}
+                    {formatHours(paidHours(shifts, shift.code))}
                   </td>
                 </tr>
               ))}

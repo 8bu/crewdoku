@@ -2,9 +2,9 @@ import type { CoverageRow, CoverageTable, ShiftCode, ShiftDef } from '@crewdoku/
 import { SHIFT_COLORS, type ShiftColorId } from '../../board/shiftColors'
 
 export type GenerateShiftsParams = {
-  windowStart: string // 'HHMM'
-  windowEnd: string // 'HHMM'
+  windowStart: string // 'HHMM' — anchor for the first shift
   shiftCount: number
+  shiftDurationMinutes: number
   breakMinutes: number
   overlapMinutes: number
 }
@@ -58,29 +58,27 @@ export function generateShifts(params: GenerateShiftsParams): {
   shifts: ShiftDef[]
   coverage: CoverageTable
 } {
-  const { windowStart, windowEnd, shiftCount, breakMinutes, overlapMinutes } = params
+  const { windowStart, shiftCount, shiftDurationMinutes, breakMinutes, overlapMinutes } = params
 
   const count = Math.max(1, Math.round(shiftCount) || 1)
+  const duration = Math.max(1, Math.round(shiftDurationMinutes) || 1)
+  const overlap = Math.max(0, Math.round(overlapMinutes) || 0)
   const startMin = parseHhmmToMinutes(windowStart)
-  const endMin = parseHhmmToMinutes(windowEnd)
 
-  const totalWindowMinutes =
-    windowStart === windowEnd
-      ? 1440
-      : endMin <= startMin
-        ? endMin + 1440 - startMin
-        : endMin - startMin
+  // Literal model: each shift is exactly `duration` long and consecutive shifts
+  // overlap by `overlap`, so the start step is duration − overlap. Placement is
+  // anchored at windowStart and may leave a gap (or overshoot) any nominal day.
+  // The step is floored at 15 min so an overlap ≥ duration can never make shifts
+  // coincide or run backwards; the wizard also keeps overlap < duration.
+  const step = Math.max(15, duration - overlap)
 
-  const baseSegment = totalWindowMinutes / count
   const defaultCodes = DEFAULT_CODES_BY_COUNT[count]
 
   const shifts: ShiftDef[] = []
 
   for (let i = 0; i < count; i++) {
-    const baseStart = startMin + i * baseSegment
-    const baseEnd = baseStart + baseSegment
-    const shiftStartMin = Math.round(baseStart)
-    const shiftEndMin = Math.round(baseEnd + overlapMinutes)
+    const shiftStartMin = Math.round(startMin + i * step)
+    const shiftEndMin = shiftStartMin + duration
 
     const startHhmm = formatMinutesToHhmm(shiftStartMin, false, shiftStartMin)
     const endHhmm = formatMinutesToHhmm(shiftEndMin, true, shiftStartMin)
