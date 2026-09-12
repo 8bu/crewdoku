@@ -14,6 +14,7 @@ import {
 } from '../state/shell'
 import { deletePeriodAtom, updatePeriodAtom } from '../state/periodOps'
 import { Select } from '../ui/Select'
+import { Input } from '../ui/Input'
 
 const POPOVER_WIDTH = 340
 
@@ -247,26 +248,26 @@ function EditPeriodForm({
         if (e.key === 'Enter' && valid) onSave(trimmedLabel, start, end)
       }}
     >
-      <input
+      <Input
         type="text"
         autoFocus
         value={label}
         onChange={(e) => setLabel(e.target.value)}
-        className="min-w-0 rounded-md border border-base-300 bg-transparent px-2 py-1 text-sm outline-none transition-colors duration-150 focus:border-primary/50"
+        className="min-w-0"
       />
       <div className="flex items-center gap-1.5">
-        <input
+        <Input
           type="date"
           value={start}
           onChange={(e) => setStart(e.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-base-300 bg-transparent px-2 py-1 text-xs tabular-nums outline-none transition-colors duration-150 focus:border-primary/50"
+          className="min-w-0 flex-1 tabular-nums"
         />
         <span className="shrink-0 text-xs text-base-content/40">→</span>
-        <input
+        <Input
           type="date"
           value={end}
           onChange={(e) => setEnd(e.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-base-300 bg-transparent px-2 py-1 text-xs tabular-nums outline-none transition-colors duration-150 focus:border-primary/50"
+          className="min-w-0 flex-1 tabular-nums"
         />
       </div>
       <div className="flex justify-end gap-2">
@@ -356,23 +357,21 @@ function CreatePeriodForm({
 
       <div className="flex flex-col gap-1">
         <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.labelField')}</label>
-        <input
+        <Input
           type="text"
           autoFocus
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder={t('chrome.periodManager.labelPlaceholder')}
-          className="rounded-md border border-base-300 bg-transparent px-2 py-1.5 text-sm outline-none transition-colors duration-150 focus:border-primary/50"
         />
       </div>
 
       <div className="flex flex-col gap-1">
         <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.startsField')}</label>
-        <input
+        <Input
           type="date"
           value={start}
           onChange={(e) => setStart(e.target.value)}
-          className="rounded-md border border-base-300 bg-transparent px-2 py-1.5 text-sm outline-none transition-colors duration-150 focus:border-primary/50"
         />
       </div>
 

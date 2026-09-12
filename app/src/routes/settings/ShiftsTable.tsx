@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Input } from '../../ui/Input'
 import { formatHours, paidHours, type ShiftDef } from '@crewdoku/domain'
 import { isCodeTaken } from '../../board/roster/shiftOps'
 import { swatchBg, type ShiftColorId } from '../../board/shiftColors'
@@ -39,7 +40,7 @@ function TimeInput({ value, ariaLabel, onCommit }: { value: string; ariaLabel: s
   }
 
   return (
-    <input
+    <Input
       type="text"
       inputMode="numeric"
       value={draft}
@@ -49,7 +50,7 @@ function TimeInput({ value, ariaLabel, onCommit }: { value: string; ariaLabel: s
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur()
       }}
-      className="w-[56px] rounded-md border border-transparent bg-transparent px-1.5 py-1 font-mono text-sm tabular-nums outline-none transition-colors duration-150 hover:border-base-300 focus:border-base-content/40"
+      className="w-[56px] font-mono tabular-nums"
     />
   )
 }
@@ -74,7 +75,7 @@ function BreakInput({
 
   return (
     <div className="flex items-center gap-1 font-mono text-sm">
-      <input
+      <Input
         type="text"
         inputMode="numeric"
         value={draft}
@@ -84,7 +85,7 @@ function BreakInput({
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur()
         }}
-        className="w-[44px] rounded-md border border-transparent bg-transparent px-1.5 py-1 text-right tabular-nums outline-none transition-colors duration-150 hover:border-base-300 focus:border-base-content/40"
+        className="w-[44px] text-right tabular-nums"
       />
       <span className="text-2xs text-base-content/40">m</span>
     </div>
@@ -247,7 +248,7 @@ export function ShiftsTable({
       <div className="flex max-w-[640px] items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.shifts.newCode')}</label>
-          <input
+          <Input
             type="text"
             value={newCode}
             onChange={(e) => {
@@ -255,17 +256,17 @@ export function ShiftsTable({
               setAddError(null)
             }}
             placeholder={t('settings.shifts.newCodePlaceholder')}
-            className="input input-sm w-[120px]"
+            className="w-[120px]"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.shifts.newLabel')}</label>
-          <input
+          <Input
             type="text"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             placeholder={t('settings.shifts.newLabelPlaceholder')}
-            className="input input-sm w-[160px]"
+            className="w-[160px]"
           />
         </div>
         <button type="button" onClick={handleAdd} disabled={!newCode.trim()} className="btn btn-primary btn-sm">
@@ -359,7 +360,7 @@ function ShiftRow({
         />
       </td>
       <td className="px-2 py-1">
-        <input
+        <Input
           type="text"
           value={codeDraft}
           onChange={(e) => setCodeDraft(e.target.value)}
@@ -367,17 +368,17 @@ function ShiftRow({
           onKeyDown={(e) => {
             if (e.key === 'Enter') e.currentTarget.blur()
           }}
-          className={`w-[90px] rounded-md border bg-transparent px-1.5 py-1 font-mono text-sm outline-none transition-colors duration-150 ${codeError ? 'border-error' : 'border-transparent hover:border-base-300 focus:border-base-content/40'}`}
+          className="w-[90px] font-mono"
           aria-invalid={!!codeError}
         />
         {codeError && <div className="text-2xs text-error">{codeError}</div>}
       </td>
       <td className="px-2 py-1">
-        <input
+        <Input
           type="text"
           value={shift.label}
           onChange={(e) => onSetLabel(e.target.value)}
-          className="w-[130px] rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none transition-colors duration-150 hover:border-base-300 focus:border-base-content/40"
+          className="w-[130px]"
         />
       </td>
       <td className="px-2 py-1">
@@ -408,7 +409,9 @@ function ShiftRow({
         {formatHours(paidHours(shifts, shift.code))}
       </td>
       <td className="px-2 py-1 text-center">
-        <input type="checkbox" className="checkbox checkbox-sm" checked={!!shift.isNight} onChange={onToggleNight} />
+        <label className="mx-auto flex h-8 w-8 cursor-pointer items-center justify-center">
+          <input type="checkbox" className="checkbox checkbox-primary" checked={!!shift.isNight} onChange={onToggleNight} aria-label={t('settings.shifts.col.night')} />
+        </label>
       </td>
       <td className="w-10 px-2 py-1 text-right">
         <button

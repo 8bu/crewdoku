@@ -80,7 +80,7 @@ export function CoverageGrid({ period }: { period: Period }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.coverage.title')}</h1>
         {view.scoped ? (
           <span className="text-xs text-[color:var(--text-dim)]">

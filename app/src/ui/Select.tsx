@@ -27,7 +27,7 @@ export function Select({
   options: SelectOption[]
   placeholder?: string
   size?: 'xs' | 'sm' | 'md'
-  variant?: 'outline' | 'ghost'
+  variant?: 'outline' | 'ghost' | 'field'
   className?: string
   panelClassName?: string
   id?: string
@@ -69,12 +69,11 @@ export function Select({
     }
   }, [open])
 
-  const selectSizeCls = size === 'xs' ? 'select-xs' : size === 'md' ? 'select-md' : 'select-sm'
-  const ghostSizeCls = size === 'xs' ? 'px-1.5 py-1 text-xs' : size === 'md' ? 'px-3 py-2 text-sm' : 'px-1.5 py-1 text-sm'
+  const sizeCls = size === 'xs' ? 'px-1.5 py-1 text-xs' : size === 'md' ? 'px-3 py-2 text-sm' : 'px-2 py-1 text-sm'
   const triggerCls =
     variant === 'ghost'
-      ? `border border-transparent bg-transparent outline-none hover:border-base-300 focus:border-base-content/40 ${ghostSizeCls}`
-      : `select select-bordered ${selectSizeCls}`
+      ? `border border-transparent bg-transparent outline-none hover:border-base-300 focus:border-base-content/40 ${sizeCls}`
+      : `cd-field ${sizeCls}`
 
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>

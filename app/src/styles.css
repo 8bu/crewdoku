@@ -64,9 +64,12 @@
      5.0:1 and avoids unsupported `contrast-color()` behavior entirely. */
   --color-error: oklch(55% 0.21 25);
   --color-error-content: oklch(98% 0.02 25);
-  --radius-selector: 0.5rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
+  /* Airtable-crisp corners: 6px on form controls, 8px on floating surfaces
+     (was 8/8/12) — a purely geometric change, no palette touched. Matched to
+     the `rounded-md`/`rounded-lg` utilities the JSX already uses. */
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
@@ -216,6 +219,35 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+  Form-field affordance (Roster + Settings) — the inline editors used to be
+  fully transparent until hover, so a critical editable value (a shift time, a
+  coverage min/max, a person's name) read as static text. `.cd-field` gives
+  every editor an always-visible box: a hairline at rest, a stronger edge on
+  hover, and a primary focus ring. Width, padding, and font stay on the
+  element; this owns only the affordance.
+*/
+.cd-field {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+.cd-field::placeholder {
+  color: var(--text-dim);
+}
+.cd-field:hover {
+  border-color: var(--border-strong);
+}
+.cd-field:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+.cd-field[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
 /* --- Board grid (ticket 04) ---
    One CSS Grid, all cells mounted (no windowing), frozen header row and name
    column via `position: sticky`. See .scratch/crewdoku-ui/research/03-grid-rendering.md.
@@ -361,6 +393,17 @@ body {
 }
 
 /* Header row — frozen, one row, two-line (weekday/week label over date). */
+
+/* Airtable-style column-header band: the frozen top header row, the top-left
+   corner, and the pinned fairness headers read as a subtle gray band above
+   the white cell field — the grid's clearest "spreadsheet" tell. Uses the
+   existing base-200 surface token (no palette change), unlayered so it wins
+   over the `bg-base-100` utility these cells carry. */
+.cd-header-cell,
+.cd-board__corner,
+.cd-fair-header {
+  background: var(--surface-2);
+}
 
 .cd-header-cell[data-weekend] {
   background: var(--weekend-tint);

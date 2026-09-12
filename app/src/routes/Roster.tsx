@@ -19,6 +19,7 @@ import {
 import { swatchBgMuted } from '../board/shiftColors'
 import { Stub } from './Stub'
 import { Select } from '../ui/Select'
+import { Input } from '../ui/Input'
 
 /**
  * Add, edit, remove people (wayfinder ticket 16) — its own dense table, not
@@ -97,7 +98,7 @@ function RosterTable({ period }: { period: Period }) {
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.roster.title')}</h1>
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {filtered
@@ -108,39 +109,39 @@ function RosterTable({ period }: { period: Period }) {
               ? t('rtc.roster.count.person', { count: active.length })
               : t('rtc.roster.count.people', { count: active.length })}
         </span>
-        <div className="ml-auto flex items-center gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('rtc.roster.filterPlaceholder')}
-            className="input input-sm w-48"
-          />
-          <Select
-            value={teamFilterId}
-            onChange={setTeamFilterId}
-            options={[
-              { value: 'all', label: t('rtc.common.allTeams') },
-              { value: UNASSIGNED_TEAM_ID, label: t('rtc.common.unassigned') },
-              ...teams.map((t) => ({ value: t.id, label: t.name })),
-            ]}
-          />
-          {filtered && (
-            <button
-              type="button"
-              onClick={() => {
-                setQuery('')
-                setTeamFilterId('all')
-              }}
-              className="link link-hover text-xs text-base-content/60 transition-colors duration-150 hover:text-base-content"
-            >
-              {t('rtc.roster.clearFilter')}
-            </button>
-          )}
-          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm">
-            {t('rtc.roster.addPerson')}
+        <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm ml-auto">
+          {t('rtc.roster.addPerson')}
+        </button>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-base-300 px-4 py-2">
+        <Input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('rtc.roster.filterPlaceholder')}
+          className="w-56"
+        />
+        <Select
+          value={teamFilterId}
+          onChange={setTeamFilterId}
+          options={[
+            { value: 'all', label: t('rtc.common.allTeams') },
+            { value: UNASSIGNED_TEAM_ID, label: t('rtc.common.unassigned') },
+            ...teams.map((t) => ({ value: t.id, label: t.name })),
+          ]}
+        />
+        {filtered && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('')
+              setTeamFilterId('all')
+            }}
+            className="link link-hover text-xs text-base-content/60 transition-colors duration-150 hover:text-base-content"
+          >
+            {t('rtc.roster.clearFilter')}
           </button>
-        </div>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -178,7 +179,7 @@ function RosterTable({ period }: { period: Period }) {
                       className="h-10 border-b border-base-300/60 transition-colors duration-150 hover:bg-base-200/40"
                     >
                       <td className="w-[184px] px-2 py-1">
-                        <input
+                        <Input
                           ref={person.id === lastRowId ? lastNameInputRef : undefined}
                           type="text"
                           value={person.name}
@@ -187,13 +188,13 @@ function RosterTable({ period }: { period: Period }) {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddAndFocusNext()
                           }}
-                          className="w-[168px] rounded-md border border-transparent bg-transparent px-1.5 py-1 text-sm outline-none transition-colors duration-150 placeholder:text-base-content/40 hover:border-base-300 focus:border-base-content/40 focus:bg-base-100"
+                          className="w-[168px]"
                         />
                       </td>
                       <td className="w-[160px] px-2 py-1">
-                        {/* Ghost select keeps a person movable across groups from any row. */}
+                        {/* Field select keeps a person movable across groups from any row. */}
                         <Select
-                          variant="ghost"
+                          variant="field"
                           value={person.teamId}
                           onChange={(v) => setPeople((prev) => setPersonTeam(prev, person.id, v))}
                           options={[

@@ -5,6 +5,7 @@ import { useT } from '../../i18n/useT'
 import { durationMinutes, setDurationOne } from './shiftEditing'
 import { generateShifts } from './shiftGenerator'
 import { ShiftTimelineBar } from './ShiftTimelineBar'
+import { Input } from '../../ui/Input'
 
 function toClock(hhmm: string): string {
   return `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`
@@ -44,7 +45,7 @@ function WizardTimeInput({
   }
 
   return (
-    <input
+    <Input
       type="text"
       value={draft}
       aria-label={ariaLabel}
@@ -53,7 +54,7 @@ function WizardTimeInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur()
       }}
-      className="w-[72px] rounded-md border border-base-300 bg-base-200/50 px-2 py-1 font-mono text-sm tabular-nums outline-none transition-colors duration-150 focus:border-primary"
+      className="w-[72px] font-mono tabular-nums"
     />
   )
 }
@@ -149,7 +150,7 @@ export function GenerateShiftsWizard({
     >
       <div
         ref={modalRef}
-        className="cd-generate-shifts-wizard flex w-full max-w-[540px] flex-col gap-4 rounded-xl border border-base-300 bg-base-100 p-5 shadow-2xl"
+        className="cd-generate-shifts-wizard flex w-full max-w-[540px] flex-col gap-4 rounded-lg border border-base-300 bg-base-100 p-5 shadow-lg"
       >
         <div className="flex items-start justify-between gap-3 border-b border-base-300/80 pb-3">
           <div>
@@ -206,7 +207,7 @@ export function GenerateShiftsWizard({
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.shiftCount')}
             </label>
-            <input
+            <Input
               type="number"
               min={1}
               max={8}
@@ -215,7 +216,6 @@ export function GenerateShiftsWizard({
                 const val = parseInt(e.target.value, 10)
                 if (!Number.isNaN(val) && val >= 1 && val <= 8) setShiftCount(val)
               }}
-              className="input input-sm border-base-300 bg-base-200/50"
             />
           </div>
 
@@ -223,7 +223,7 @@ export function GenerateShiftsWizard({
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.duration')}
             </label>
-            <input
+            <Input
               type="number"
               min={0.25}
               step={0.25}
@@ -238,7 +238,6 @@ export function GenerateShiftsWizard({
                   setOverlapMinutes((prev) => Math.max(0, Math.min(prev, nextDuration - 15)))
                 }
               }}
-              className="input input-sm border-base-300 bg-base-200/50"
             />
           </div>
 
@@ -246,7 +245,7 @@ export function GenerateShiftsWizard({
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.breakMinutes')}
             </label>
-            <input
+            <Input
               type="number"
               min={0}
               step={5}
@@ -255,7 +254,6 @@ export function GenerateShiftsWizard({
                 const val = parseInt(e.target.value, 10)
                 if (!Number.isNaN(val) && val >= 0) setBreakMinutes(val)
               }}
-              className="input input-sm border-base-300 bg-base-200/50"
             />
           </div>
 
@@ -263,7 +261,7 @@ export function GenerateShiftsWizard({
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.overlapMinutes')}
             </label>
-            <input
+            <Input
               type="number"
               min={0}
               max={Math.max(0, shiftDurationMin - 15)}
@@ -275,7 +273,6 @@ export function GenerateShiftsWizard({
                   setOverlapMinutes(Math.max(0, Math.min(val, shiftDurationMin - 15)))
                 }
               }}
-              className="input input-sm border-base-300 bg-base-200/50"
             />
           </div>
         </div>
@@ -325,7 +322,7 @@ export function GenerateShiftsWizard({
                   </td>
                   <td className="py-1">
                     <div className="flex items-center gap-1">
-                      <input
+                      <Input
                         type="number"
                         min={0.25}
                         step={0.25}
@@ -337,7 +334,7 @@ export function GenerateShiftsWizard({
                             setShifts(setDurationOne(shifts, idx, Math.round(hours * 60)))
                           }
                         }}
-                        className="w-14 rounded border border-base-300 bg-base-200/50 px-1.5 py-0.5 font-mono text-xs tabular-nums outline-none focus:border-primary"
+                        className="w-14 font-mono tabular-nums"
                       />
                       <span className="text-2xs text-base-content/40">h</span>
                     </div>

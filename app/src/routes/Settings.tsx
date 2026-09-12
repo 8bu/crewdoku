@@ -32,6 +32,7 @@ import { CoverageTable } from './settings/CoverageTable'
 import { AdvancedRules } from './settings/AdvancedRules'
 import { useT } from '../i18n/useT'
 import { GenerateShiftsWizard } from './settings/GenerateShiftsWizard'
+import { Input } from '../ui/Input'
 
 /**
  * Shifts, coverage, the period, and the Advanced door (wayfinder ticket 15)
@@ -254,7 +255,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('settings.title')}</h1>
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {shifts.length === 1
@@ -264,8 +265,9 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-base-300">
-        <div className="flex max-w-[880px] flex-col gap-8 px-4 py-5">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex max-w-[880px] flex-col gap-5 px-4 py-5">
+          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
           <section className="flex flex-col gap-3">
             <div>
               <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.period.title')}</h2>
@@ -274,34 +276,34 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             <div className="flex max-w-[520px] items-end gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.period.label')}</label>
-                <input
+                <Input
                   type="text"
                   value={period.label}
                   onChange={(e) => handlePeriodField('label', e.target.value)}
-                  className="input input-sm w-[180px]"
+                  className="w-[180px]"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.period.start')}</label>
-                <input
+                <Input
                   type="date"
                   value={period.start}
                   onChange={(e) => handlePeriodField('start', e.target.value)}
-                  className="input input-sm"
                 />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.period.end')}</label>
-                <input
+                <Input
                   type="date"
                   value={period.end}
                   onChange={(e) => handlePeriodField('end', e.target.value)}
-                  className="input input-sm"
                 />
               </div>
             </div>
           </section>
+          </div>
 
+          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
           <ShiftsTable
             shifts={shifts}
             onAdd={handleAddShift}
@@ -315,6 +317,8 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onDelete={handleDeleteShift}
             onOpenWizard={() => setWizardOpen(true)}
           />
+          </div>
+          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
           <CoverageTable
             shifts={shifts}
             table={coverage}
@@ -323,6 +327,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onSetOverrideBand={handleSetOverrideBand}
             onRemoveOverride={handleRemoveOverride}
           />
+          </div>
 
           <AdvancedRules
             hardRules={solveSettings.hardRules}

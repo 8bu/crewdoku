@@ -1,11 +1,9 @@
 import { useState } from 'react'
+import { Input } from '../../ui/Input'
 import type { CoverageBand, CoverageTable as CoverageTableData, ShiftDef } from '@crewdoku/domain'
 import { useT } from '../../i18n/useT'
 
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun, for a planner's-week reading order
-
-const BAND_INPUT_CLASS =
-  'w-8 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-center font-mono text-xs tabular-nums outline-none transition-colors duration-150 placeholder:text-base-content/30 hover:border-base-300 focus:border-base-content/40'
 
 /**
  * One band cell — a quiet mono text field with a local draft, committed on
@@ -46,7 +44,8 @@ function BandField({
   }
 
   return (
-    <input
+    <Input
+      density="compact"
       type="text"
       inputMode="numeric"
       value={draft}
@@ -57,7 +56,7 @@ function BandField({
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur()
       }}
-      className={BAND_INPUT_CLASS}
+      className="w-8 text-center font-mono tabular-nums"
     />
   )
 }
@@ -181,11 +180,10 @@ export function CoverageTable({
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-1">
             <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.addOverrideFor')}</label>
-            <input
+            <Input
               type="date"
               value={newOverrideDate}
               onChange={(e) => setNewOverrideDate(e.target.value)}
-              className="input input-sm"
             />
           </div>
           <button

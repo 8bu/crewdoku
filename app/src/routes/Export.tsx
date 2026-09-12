@@ -442,7 +442,7 @@ function ExportWizard({
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('onbex.export.title')}</h1>
         <div className="flex items-center gap-2">
           {step > 1 ? (
@@ -498,7 +498,7 @@ function ExportWizard({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t border-base-300">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-[880px] flex-col gap-6 px-4 py-5">
           {step === 1 && (
             <div className="flex max-w-[560px] flex-col gap-4">

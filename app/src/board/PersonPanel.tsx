@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import type { Person, ShiftCode, ShiftDef, Team } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 import type { FairnessRow } from './fairness'
+import { Input } from '../ui/Input'
 
 const WEEKDAY_KEYS = [
   'board.person.weekday.sun',
@@ -302,9 +303,9 @@ export function PersonPanel({
             </ul>
           )}
           <div className="mt-2 flex gap-1.5">
-            <input
+            <Input
               type="date"
-              className="input input-sm input-bordered flex-1"
+              className="flex-1"
               value={newTimeOff}
               min={dates[0]?.iso}
               max={dates.at(-1)?.iso}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Input } from '../../ui/Input'
 import type { DragEvent } from 'react'
 import { HARD_RULES } from '../../state/solveSettings'
 import type { HardRuleSettings, SoftGoalId } from '@crewdoku/domain'
@@ -53,7 +54,7 @@ export function AdvancedRules({
   }
 
   return (
-    <details className="group max-w-[640px] overflow-hidden border border-base-300 bg-base-100">
+    <details className="group overflow-hidden rounded-lg border border-base-300 bg-base-100">
       <summary className="flex list-none cursor-pointer select-none items-center justify-between px-4 py-3 text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 [&::-webkit-details-marker]:hidden">
         <span>{t('settings.advanced.title')}</span>
         <span
@@ -71,26 +72,27 @@ export function AdvancedRules({
               <li key={rule.id} className="flex items-start gap-2.5 rounded-md border border-base-300 bg-base-100 px-2.5 py-2">
                 <input
                   type="checkbox"
-                  className="checkbox checkbox-sm mt-0.5"
+                  id={`hard-${rule.id}`}
+                  className="checkbox checkbox-primary mt-0.5"
                   checked={rule.id === 'H4' ? true : hardRules.enabled[rule.id]}
                   disabled={rule.locked}
                   onChange={() => onToggleHardRule(rule.id)}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-base-content">
+                  <label htmlFor={`hard-${rule.id}`} className={`flex w-fit items-center gap-2 text-sm font-semibold text-base-content ${rule.locked ? 'cursor-default' : 'cursor-pointer'}`}>
                     {rule.id} — {t(`settings.rule.${rule.id}.label`)}
                     {rule.locked && <span className="text-2xs font-normal text-base-content/40">{t('settings.advanced.alwaysOn')}</span>}
-                  </div>
+                  </label>
                   <p className="mt-0.5 text-xs text-base-content/60">{t(`settings.rule.${rule.id}.desc`)}</p>
                   {rule.id === 'H2' && (
                     <label className="mt-1.5 flex items-center gap-1.5 text-xs text-base-content/70">
                       {t('settings.advanced.cap')}
-                      <input
+                      <Input
                         type="number"
                         min={0}
                         value={hardRules.maxHoursPerWeek}
                         onChange={(e) => onSetMaxHoursPerWeek(Math.max(0, Number(e.target.value)))}
-                        className="input input-xs w-[64px]"
+                        className="w-[64px]"
                       />
                       {t('settings.advanced.hPerWeek')}
                     </label>
@@ -98,12 +100,12 @@ export function AdvancedRules({
                   {rule.id === 'H3' && (
                     <label className="mt-1.5 flex items-center gap-1.5 text-xs text-base-content/70">
                       {t('settings.advanced.minimum')}
-                      <input
+                      <Input
                         type="number"
                         min={0}
                         value={hardRules.minRestHours}
                         onChange={(e) => onSetMinRestHours(Math.max(0, Number(e.target.value)))}
-                        className="input input-xs w-[64px]"
+                        className="w-[64px]"
                       />
                       {t('settings.advanced.hRest')}
                     </label>
@@ -161,13 +163,15 @@ export function AdvancedRules({
                       ▾
                     </button>
                   </div>
-                  <input
-                    type="checkbox"
-                    className="checkbox checkbox-sm flex-none"
-                    checked={softGoalEnabled[id]}
-                    onChange={() => onToggleSoftGoal(id)}
-                    aria-label={t('settings.advanced.goalOn', { name: goalLabel })}
-                  />
+                  <label className="flex h-8 w-8 flex-none cursor-pointer items-center justify-center">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-primary"
+                      checked={softGoalEnabled[id]}
+                      onChange={() => onToggleSoftGoal(id)}
+                      aria-label={t('settings.advanced.goalOn', { name: goalLabel })}
+                    />
+                  </label>
                 </li>
               )
             })}

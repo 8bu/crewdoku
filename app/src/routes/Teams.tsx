@@ -8,6 +8,7 @@ import { Stub } from './Stub'
 import { useTeamsController } from './teams/useTeamsController'
 import { DeleteTeamPopover } from './teams/DeleteTeamPopover'
 import { Select } from '../ui/Select'
+import { Input } from '../ui/Input'
 
 /**
  * Create, rename, delete teams and manage who's on each one (wayfinder
@@ -54,13 +55,13 @@ function TeamsPage({ period }: { period: Period }) {
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.teams.title')}</h1>
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {c.teams.length === 1 ? t('rtc.teams.count.team', { count: c.teams.length }) : t('rtc.teams.count.teams', { count: c.teams.length })} · {c.activePeople.length === 1 ? t('rtc.teams.count.person', { count: c.activePeople.length }) : t('rtc.teams.count.people', { count: c.activePeople.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <input
+          <Input
             ref={c.newNameInputRef}
             type="text"
             value={c.newName}
@@ -69,7 +70,7 @@ function TeamsPage({ period }: { period: Period }) {
               if (e.key === 'Enter') c.handleAdd()
             }}
             placeholder={t('rtc.teams.newTeamPlaceholder')}
-            className="input input-sm w-48"
+            className="w-48"
           />
           <button type="button" onClick={c.handleAdd} disabled={!c.newName.trim()} className="btn btn-primary btn-sm">
             {t('rtc.teams.addTeam')}
@@ -77,7 +78,7 @@ function TeamsPage({ period }: { period: Period }) {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr] border-t border-base-300">
+      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-r border-base-300 p-2">
           <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
             {sidebarTeams.map((team) => {
@@ -106,11 +107,11 @@ function TeamsPage({ period }: { period: Period }) {
             {isUnassigned ? (
               <p className="text-lg font-semibold tracking-tight">{t('rtc.common.unassigned')}</p>
             ) : (
-              <input
+              <Input
                 type="text"
                 value={selected.name}
                 onChange={(e) => c.rename(selected.id, e.target.value)}
-                className="max-w-[360px] border-0 border-b border-transparent bg-transparent pb-1 text-lg font-semibold text-base-content outline-none transition-colors duration-150 hover:border-b-base-content/20 focus:border-b-primary"
+                className="max-w-[360px] text-lg font-semibold text-base-content"
               />
             )}
 
@@ -246,12 +247,12 @@ function AddMemberSearch({
 
   return (
     <div className="relative mt-1 max-w-[420px]">
-      <input
+      <Input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={candidates.length === 1 ? t('rtc.teams.searchToAdd.person', { count: candidates.length }) : t('rtc.teams.searchToAdd.people', { count: candidates.length })}
-        className="input input-sm w-full"
+        className="w-full"
       />
       {q && (
         <ul className="absolute inset-x-0 top-full z-10 mt-1 flex max-h-[260px] list-none flex-col gap-0.5 overflow-y-auto rounded-lg border border-base-300 bg-base-100 p-1.5 shadow-lg">
