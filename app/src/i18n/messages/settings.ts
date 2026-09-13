@@ -85,8 +85,14 @@ export const settings = {
     // Coverage section
     'settings.coverage.title': 'Coverage',
     'settings.coverage.desc':
-      'Minimum and maximum headcount, per shift, per day of week. A specific date below overrides its weekday row.',
-    'settings.coverage.col.shift': 'Shift',
+      'How many people each shift needs. Set it once, then adjust the days that differ. A specific date below overrides its weekday.',
+    'settings.coverage.need': 'need',
+    'settings.coverage.upTo': 'up to',
+    'settings.coverage.mode.every': 'Every day',
+    'settings.coverage.mode.weekend': 'Weekend',
+    'settings.coverage.mode.perDay': 'Per day',
+    'settings.coverage.weekdays': 'Mon–Fri',
+    'settings.coverage.weekend': 'Sat–Sun',
     'settings.coverage.dow.0': 'Sun',
     'settings.coverage.dow.1': 'Mon',
     'settings.coverage.dow.2': 'Tue',
@@ -222,8 +228,14 @@ export const settings = {
     // Coverage section
     'settings.coverage.title': 'Mức đáp ứng nhân sự',
     'settings.coverage.desc':
-      'Số lượng nhân sự tối thiểu và tối đa theo từng ca, từng ngày trong tuần. Ngày cụ thể bên dưới sẽ ghi đè lên hàng ngày trong tuần.',
-    'settings.coverage.col.shift': 'Ca',
+      'Số lượng nhân sự mỗi ca cần. Đặt một lần, rồi chỉnh những ngày khác biệt. Ngày cụ thể bên dưới sẽ ghi đè ngày trong tuần.',
+    'settings.coverage.need': 'cần',
+    'settings.coverage.upTo': 'tối đa',
+    'settings.coverage.mode.every': 'Mỗi ngày',
+    'settings.coverage.mode.weekend': 'Cuối tuần',
+    'settings.coverage.mode.perDay': 'Từng ngày',
+    'settings.coverage.weekdays': 'T2–T6',
+    'settings.coverage.weekend': 'T7–CN',
     'settings.coverage.dow.0': 'CN',
     'settings.coverage.dow.1': 'T2',
     'settings.coverage.dow.2': 'T3',

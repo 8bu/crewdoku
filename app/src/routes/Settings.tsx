@@ -170,11 +170,12 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
     markAllDirty()
   }
 
-  function handleSetBand(weekday: number, code: string, band: CoverageBand) {
-    setCoverage((prev) => ({
-      ...prev,
-      byDow: { ...prev.byDow, [weekday]: { ...prev.byDow[weekday], [code]: band } },
-    }))
+  function handleSetBandDays(weekdays: number[], code: string, band: CoverageBand) {
+    setCoverage((prev) => {
+      const byDow = { ...prev.byDow }
+      for (const wd of weekdays) byDow[wd] = { ...byDow[wd], [code]: band }
+      return { ...prev, byDow }
+    })
     markAllDirty()
   }
   function handleAddOverride(iso: string) {
@@ -322,7 +323,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
           <CoverageTable
             shifts={shifts}
             table={coverage}
-            onSetBand={handleSetBand}
+            onSetBandDays={handleSetBandDays}
             onAddOverride={handleAddOverride}
             onSetOverrideBand={handleSetOverrideBand}
             onRemoveOverride={handleRemoveOverride}
