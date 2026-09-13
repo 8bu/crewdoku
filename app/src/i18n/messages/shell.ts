@@ -15,11 +15,11 @@ export const shell = {
   vi: {
     'nav.aria': 'Các màn hình',
     'nav.board': 'Bảng',
-    'nav.coverage': 'Độ phủ',
+    'nav.coverage': 'Mức đáp ứng nhân sự',
     'nav.roster': 'Nhân sự',
-    'nav.teams': 'Nhóm',
+    'nav.teams': 'Phòng/ban',
     'nav.settings': 'Cài đặt',
-    'nav.export': 'Xuất',
+    'nav.export': 'Xuất dữ liệu',
     'locale.aria': 'Ngôn ngữ giao diện',
   },
 } satisfies AreaCatalog

@@ -144,7 +144,7 @@ export const settings = {
     'settings.title': 'Cài đặt',
     'settings.meta.shift': '{count} ca làm',
     'settings.meta.shifts': '{count} ca làm',
-    'settings.meta.rulesOn': '{on}/{total} quy tắc cứng đang bật',
+    'settings.meta.rulesOn': '{on}/{total} quy tắc bắt buộc đang bật',
 
     // Period section
     'settings.period.title': 'Kỳ làm việc',
@@ -156,7 +156,7 @@ export const settings = {
     // Shifts section
     'settings.shifts.title': 'Ca làm việc',
     'settings.shifts.desc':
-      'Mã ca, tên gọi và thời gian — có thể chỉnh sửa hoàn toàn. Mã ca là khóa chính: đổi tên hoặc xóa sẽ cập nhật mọi nhân sự, nhóm và độ phủ liên quan.',
+      'Mã ca, tên gọi và thời gian — có thể chỉnh sửa hoàn toàn. Mã ca là khóa chính: đổi tên hoặc xóa sẽ cập nhật mọi nhân sự, phòng/ban và yêu cầu nhân sự liên quan.',
     'settings.shifts.col.code': 'Mã',
     'settings.shifts.col.label': 'Tên ca',
     'settings.shifts.col.start': 'Bắt đầu',
@@ -194,7 +194,7 @@ export const settings = {
 
     // Delete shift popover
     'settings.deleteShift.title': 'Xóa ca "{code}"',
-    'settings.deleteShift.desc': 'Mọi liên kết — độ hợp lệ, nguyện vọng/tránh, độ phủ — sẽ chuyển sang:',
+    'settings.deleteShift.desc': 'Mọi liên kết — khả năng làm ca, nguyện vọng/tránh, yêu cầu nhân sự — sẽ chuyển sang:',
     'settings.deleteShift.cancel': 'Hủy',
     'settings.deleteShift.confirm': 'Chuyển & xóa',
 
@@ -215,12 +215,12 @@ export const settings = {
     'settings.wizard.preview.paid': 'Tính công',
     'settings.wizard.preview.night': 'Ca đêm',
     'settings.wizard.preview.overlap': 'Gối ca',
-    'settings.wizard.confirmReplace': 'Thao tác này sẽ thay thế {count} ca hiện tại và đặt lại yêu cầu độ phủ.',
+    'settings.wizard.confirmReplace': 'Thao tác này sẽ thay thế {count} ca hiện tại và đặt lại yêu cầu nhân sự.',
     'settings.wizard.apply': 'Áp dụng ca',
     'settings.wizard.cancel': 'Hủy',
 
     // Coverage section
-    'settings.coverage.title': 'Độ phủ',
+    'settings.coverage.title': 'Mức đáp ứng nhân sự',
     'settings.coverage.desc':
       'Số lượng nhân sự tối thiểu và tối đa theo từng ca, từng ngày trong tuần. Ngày cụ thể bên dưới sẽ ghi đè lên hàng ngày trong tuần.',
     'settings.coverage.col.shift': 'Ca',
@@ -241,19 +241,19 @@ export const settings = {
 
     // Advanced section
     'settings.advanced.title': 'Nâng cao',
-    'settings.advanced.hardRules': 'Quy tắc cứng',
+    'settings.advanced.hardRules': 'Quy tắc bắt buộc',
     'settings.advanced.alwaysOn': 'luôn bật',
     'settings.advanced.cap': 'Giới hạn:',
     'settings.advanced.hPerWeek': 'giờ/tuần',
     'settings.advanced.minimum': 'Tối thiểu:',
     'settings.advanced.hRest': 'giờ nghỉ',
-    'settings.advanced.softGoals': 'Mục tiêu mềm — thứ tự ưu tiên',
+    'settings.advanced.softGoals': 'Mục tiêu mong muốn — thứ tự ưu tiên',
     'settings.advanced.moveUp': 'Di chuyển {name} lên',
     'settings.advanced.moveDown': 'Di chuyển {name} xuống',
     'settings.advanced.goalOn': 'Bật {name}',
 
     // Hard rules
-    'settings.rule.H1.label': 'Độ phủ',
+    'settings.rule.H1.label': 'Mức đáp ứng nhân sự',
     'settings.rule.H1.desc': 'Mỗi ca làm nằm trong khoảng số người tối thiểu/tối đa trong ngày.',
     'settings.rule.H2.label': 'Giờ làm tối đa mỗi tuần',
     'settings.rule.H2.desc': 'Không ai làm việc quá số giờ giới hạn mỗi tuần.',
@@ -266,7 +266,7 @@ export const settings = {
 
     // Soft goals
     'settings.goal.S1.label': 'Công bằng ca đêm',
-    'settings.goal.S1.desc': 'Phân bổ đều các ca đêm trong toàn nhóm.',
+    'settings.goal.S1.desc': 'Phân bổ đều các ca đêm trong toàn bộ nhân sự.',
     'settings.goal.S2.label': 'Đáp ứng nguyện vọng',
     'settings.goal.S2.desc': 'Tối ưu theo nguyện vọng muốn làm hoặc tránh của từng người khi có thể.',
     'settings.goal.S3.label': 'Tính ổn định',

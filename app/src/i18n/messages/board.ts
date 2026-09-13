@@ -92,11 +92,11 @@ export const board = {
     // Import modal on empty board
     'board.import.title': 'Nhập lịch',
     'board.import.description':
-      'Dán hoặc tải lên tệp CSV lịch thực tế — nhân sự, nhóm và các phân công sẽ được tạo cùng lúc.',
+      'Dán hoặc tải lên tệp CSV lịch thực tế — nhân sự, phòng/ban và các phân công sẽ được tạo cùng lúc.',
 
     // Date header
     'board.header.week': 'Tuần {week}',
-    'board.header.coverageAria': 'Độ phủ cho {date}: {coverage}',
+    'board.header.coverageAria': 'Mức đáp ứng nhân sự cho {date}: {coverage}',
     'board.header.weekday.sun': 'CN',
     'board.header.weekday.mon': 'T2',
     'board.header.weekday.tue': 'T3',
@@ -116,7 +116,7 @@ export const board = {
     'board.problems.none': 'Không có vấn đề',
     'board.problems.count_one': '{count} vấn đề',
     'board.problems.count_other': '{count} vấn đề',
-    'board.problems.coverageAndFairness': 'Độ phủ & công bằng',
+    'board.problems.coverageAndFairness': 'Mức đáp ứng nhân sự & công bằng',
     'board.problems.aria': 'Vi phạm quy tắc',
     'board.problems.empty': 'Hiện không có vi phạm nào.',
 
@@ -126,14 +126,14 @@ export const board = {
     'board.person.closeAria': 'Đóng',
     'board.person.sectionPeriod': 'Kỳ này',
     'board.person.hours': 'Giờ',
-    'board.person.mostLoaded': ' · tải cao nhất',
+    'board.person.mostLoaded': ' · nhiều giờ nhất',
     'board.person.nights': 'Đêm',
     'board.person.weekends': 'Cuối tuần',
     'board.person.sectionEligible': 'Ca có thể làm',
     'board.person.eligibleHint': 'Nhấp để bật/tắt. Mờ = không thể làm ca đó.',
     'board.person.sectionPreferences': 'Nguyện vọng',
-    'board.person.inheritTeam': 'Kế thừa từ nhóm',
-    'board.person.teamDefault': 'Mặc định của nhóm: {pref}',
+    'board.person.inheritTeam': 'Kế thừa từ phòng/ban',
+    'board.person.teamDefault': 'Mặc định của phòng/ban: {pref}',
     'board.person.wants': 'Muốn',
     'board.person.avoids': 'Tránh',
     'board.person.prefWants': 'muốn {shifts}',

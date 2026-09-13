@@ -129,7 +129,7 @@ export const onbex = {
 
     // Onboarding - Shape step
     'onbex.shape.title': 'Công ty của bạn hoạt động như thế nào?',
-    'onbex.shape.subtitle': 'Một cú nhấp chuột để điền ca làm việc, chỉ tiêu độ phủ và quy tắc mặc định an toàn. Bạn có thể chỉnh sửa mọi thứ sau trong Cài đặt.',
+    'onbex.shape.subtitle': 'Một cú nhấp chuột để điền ca làm việc, chỉ tiêu nhân sự và quy tắc mặc định an toàn. Bạn có thể chỉnh sửa mọi thứ sau trong Cài đặt.',
 
     // Workspace templates
     'onbex.template.ward.label': 'Ca trực 24/7',
@@ -148,20 +148,20 @@ export const onbex = {
     // Onboarding - People step
     'onbex.people.title': 'Thêm nhân sự',
     'onbex.people.subtitlePrefix': 'Mỗi người một dòng — tên, hoặc',
-    'onbex.people.subtitleSuffix': '. Dán trực tiếp từ bảng tính; mỗi tên nhóm sẽ trở thành một nhóm thực tế.',
+    'onbex.people.subtitleSuffix': '. Dán trực tiếp từ bảng tính; mỗi tên phòng/ban sẽ được tạo thành một phòng/ban trong hệ thống.',
     'onbex.people.placeholder': 'Anna Bauer, Front desk\nBen Keller, Front desk\nChloe Martin',
     'onbex.people.empty': 'Chưa có nhân sự nào.',
     'onbex.people.person': 'nhân sự',
     'onbex.people.people': 'nhân sự',
-    'onbex.people.team': 'nhóm',
-    'onbex.people.teams': 'nhóm',
+    'onbex.people.team': 'phòng/ban',
+    'onbex.people.teams': 'phòng/ban',
     'onbex.people.fromCsv': '⧉ Từ tệp CSV',
 
     // Onboarding - Ready step
     'onbex.ready.title': 'Sẵn sàng tạo lịch',
     'onbex.ready.subtitle': 'Crewdoku sẽ tự xây dựng lịch đầu tiên. Bạn xem lại trước khi chốt lịch.',
     'onbex.ready.inTeamPrefix': ' trong ',
-    'onbex.ready.note': 'Bạn có thể thay đổi bất kỳ điều gì sau này trong Cài đặt, Roster và Nhóm.',
+    'onbex.ready.note': 'Bạn có thể thay đổi bất kỳ điều gì sau này trong Cài đặt, Nhân sự và Phòng/ban.',
     'onbex.ready.generate': 'Tạo lịch làm việc đầu tiên',
     'onbex.ready.skip': 'Đến bảng mà không cần tạo lịch',
 
@@ -181,14 +181,14 @@ export const onbex = {
     'onbex.import.skip': 'Bỏ qua — bắt đầu với bảng trống',
 
     // Export wizard
-    'onbex.export.title': 'Xuất',
-    'onbex.export.step.period': '1 Chu kỳ',
+    'onbex.export.title': 'Xuất dữ liệu',
+    'onbex.export.step.period': '1 Kỳ',
     'onbex.export.step.template': '2 Mẫu',
     'onbex.export.step.preview': '3 Xem trước',
-    'onbex.export.saveWorkspace': 'Lưu không gian làm việc',
-    'onbex.export.loadWorkspace': 'Tải không gian làm việc',
-    'onbex.export.confirmLoad': 'Tải tệp không gian làm việc này? Thao tác này sẽ thay thế toàn bộ dữ liệu hiện có trong Crewdoku.',
-    'onbex.export.workspaceLoaded': 'Đã tải không gian làm việc.',
+    'onbex.export.saveWorkspace': 'Lưu Workspace',
+    'onbex.export.loadWorkspace': 'Tải Workspace',
+    'onbex.export.confirmLoad': 'Tải tệp Workspace này? Thao tác này sẽ thay thế toàn bộ dữ liệu hiện có trong Crewdoku.',
+    'onbex.export.workspaceLoaded': 'Đã tải Workspace.',
 
     // Export - Step 1
     'onbex.export.status.applied': 'lịch đã áp dụng',
@@ -200,14 +200,14 @@ export const onbex = {
     'onbex.export.empty.btn': 'Đến Bảng',
 
     // Export - Step 2 Templates
-    'onbex.export.template.team-grid.label': 'Lưới theo nhóm',
+    'onbex.export.template.team-grid.label': 'Lưới theo phòng/ban',
     'onbex.export.template.team-grid.description': 'Nhân sự × ngày, mỗi người một hàng — cùng định dạng với tính năng Nhập lịch cũ.',
     'onbex.export.template.board.label': 'Bố cục bảng',
-    'onbex.export.template.board.description': 'Nhân sự × ngày được gom theo hàng tiêu đề nhóm — hiển thị giống như Bảng.',
+    'onbex.export.template.board.description': 'Nhân sự × ngày được gom theo hàng tiêu đề phòng/ban — hiển thị giống như Bảng.',
     'onbex.export.template.person-list.label': 'Danh sách theo từng người',
     'onbex.export.template.person-list.description': 'Mỗi ngày có lịch là một hàng, kèm thời gian và số giờ — một tệp cho tất cả mọi người.',
-    'onbex.export.template.coverage-pivot.label': 'Bảng tổng hợp độ phủ',
-    'onbex.export.template.coverage-pivot.description': 'Số người theo từng ca mỗi ngày — số liệu từ màn hình Độ phủ.',
+    'onbex.export.template.coverage-pivot.label': 'Bảng tổng hợp nhân sự',
+    'onbex.export.template.coverage-pivot.description': 'Số người theo từng ca mỗi ngày — số liệu từ màn hình Mức đáp ứng nhân sự.',
 
     // Export - Step 3 Formats & Preview
     'onbex.export.format.csv': 'CSV',
@@ -226,8 +226,8 @@ export const onbex = {
     'onbex.export.col': 'cột',
     'onbex.export.cols': 'cột',
     'onbex.export.download': 'Tải xuống {format}',
-    'onbex.export.refusal.notJson': 'Tệp này không phải là tệp không gian làm việc Crewdoku.',
-    'onbex.export.refusal.notWorkspace': 'Tệp này không chứa không gian làm việc Crewdoku.',
+    'onbex.export.refusal.notJson': 'Tệp này không phải là tệp Workspace Crewdoku.',
+    'onbex.export.refusal.notWorkspace': 'Tệp này không chứa Workspace Crewdoku.',
     'onbex.export.refusal.newerSchema': 'Tệp này được tạo bởi phiên bản Crewdoku mới hơn. Hãy cập nhật ứng dụng để mở.',
   },
 } satisfies AreaCatalog

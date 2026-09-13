@@ -94,7 +94,7 @@ export const boardPanels = {
     'panels.infeasible.title': 'Chưa thể tìm ra lịch',
     'panels.infeasible.subtitle': 'Không có gì trên bảng bị thay đổi.',
     'panels.infeasible.dismiss': 'Bỏ qua',
-    'panels.infeasible.relaxationsPrompt': 'Thử một trong các phương án sau, rồi giải lại:',
+    'panels.infeasible.relaxationsPrompt': 'Thử một trong các phương án sau, rồi tạo lịch lại:',
 
     // ProposalPanel
     'panels.proposal.aria': 'Các thay đổi đề xuất',
@@ -105,26 +105,26 @@ export const boardPanels = {
     'panels.proposal.summary_n_m': '{n} thay đổi trên {m} người',
     'panels.proposal.discard': 'Loại bỏ',
     'panels.proposal.apply': 'Áp dụng',
-    'panels.proposal.identical': 'Kết quả giải giống hệt lịch hiện tại trên bảng.',
+    'panels.proposal.identical': 'Lịch vừa tạo giống hệt lịch hiện tại trên bảng.',
     'panels.proposal.hoursDelta': '{n}h',
     'panels.proposal.nightsDelta_one': '{n} đêm',
     'panels.proposal.nightsDelta_other': '{n} đêm',
     'panels.proposal.weekendsDelta_one': '{n} cuối tuần',
     'panels.proposal.weekendsDelta_other': '{n} cuối tuần',
-    'panels.proposal.periodTotal': 'Tổng kỳ: {before}h tải cao nhất hiện tại → {after}h nếu áp dụng.',
+    'panels.proposal.periodTotal': 'Tổng kỳ: {before}h nhiều giờ nhất hiện tại → {after}h nếu áp dụng.',
 
     // CoveragePanel
     'panels.coverage.noneEligible': 'Không có ai đủ điều kiện và rảnh vào ngày đó.',
-    'panels.coverage.eligibleFree_one': '{n} người đủ điều kiện và rảnh — đang sáng trên bảng.',
-    'panels.coverage.eligibleFree_other': '{n} người đủ điều kiện và rảnh — đang sáng trên bảng.',
+    'panels.coverage.eligibleFree_one': '{n} người đủ điều kiện và rảnh — được tô sáng trên bảng.',
+    'panels.coverage.eligibleFree_other': '{n} người đủ điều kiện và rảnh — được tô sáng trên bảng.',
 
     // InfeasiblePanel — conflict core
     'panels.conflict.starvation.dow': '{shift} vào {dow} cần ít nhất {min}, nhưng chỉ {avail} có thể làm.',
     'panels.conflict.starvation.date': '{shift} vào ngày {date} cần ít nhất {min}, nhưng chỉ {avail} có thể làm.',
     'panels.conflict.dayOvercommit': 'Tổng nhu cầu ca vào ngày {date} ({dow}) cần {req}, nhưng chỉ có {avail}.',
-    'panels.conflict.weeklyHours': 'Tuần {week} cần {demanded} giờ phủ ca, nhưng {people} với {maxHours} giờ mỗi tuần chỉ cung cấp được {supply} giờ.',
+    'panels.conflict.weeklyHours': 'Tuần {week} cần bố trí {demanded} giờ làm, nhưng {people} với {maxHours} giờ mỗi tuần chỉ đáp ứng được {supply} giờ.',
     'panels.conflict.restLock': '{shiftA} ngày {dateA} rồi {shiftB} ngày {dateB} chỉ cho {gap} giờ nghỉ, nhưng nghỉ tối thiểu là {minRest} giờ.',
-    'panels.conflict.fallback': 'Các quy tắc xung đột theo cách trình phân tích không thể nêu tên.',
+    'panels.conflict.fallback': 'Các quy tắc đang xung đột theo cách hệ thống không thể chỉ rõ.',
 
     // InfeasiblePanel — relaxation buttons
     'panels.relax.starvation.dow': 'Giảm mức {shift} tối thiểu vào {dow} xuống {to}',
@@ -132,7 +132,7 @@ export const boardPanels = {
     'panels.relax.dayOvercommit': 'Giảm mức {shift} tối thiểu vào ngày {date} xuống {to}',
     'panels.relax.weeklyHours': 'Nâng giới hạn giờ mỗi tuần lên {to} giờ',
     'panels.relax.restLock': 'Giảm nghỉ tối thiểu xuống {to} giờ',
-    'panels.relax.fallbackH1': 'Giảm tất cả mức phủ ca tối thiểu đi 1',
+    'panels.relax.fallbackH1': 'Giảm tất cả yêu cầu nhân sự tối thiểu đi 1',
     'panels.relax.fallbackH2': 'Nâng giới hạn giờ mỗi tuần lên {to} giờ',
     'panels.relax.fallbackH3': 'Giảm nghỉ tối thiểu xuống {to} giờ',
 
