@@ -26,3 +26,7 @@ export {
   importWorkspaceFile,
   workspaceFileName,
 } from './workspaceFile'
+
+export type { MultiWorkspaceStorage } from './multiWorkspace'
+export { IdbMultiWorkspaceStorage } from './multiWorkspace'
+export { migrateRegistry } from './dto'

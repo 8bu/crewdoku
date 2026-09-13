@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { Logo } from './Logo'
+import { OrgHeader } from './OrgHeader'
+import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useT } from '../i18n/useT'
 
 const SURFACES = [
@@ -19,9 +21,8 @@ export function NavRail() {
       aria-label={t('nav.aria')}
       className="flex w-56 shrink-0 flex-col border-r border-base-300 bg-base-200"
     >
-      <div className="flex h-12 items-center border-b border-base-300 px-4">
-        <Logo className="h-6 w-auto" />
-      </div>
+      <OrgHeader />
+      <WorkspaceSwitcher />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-3">
         <p className="m-0 px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-base-content/40">
           {t('nav.aria')}
@@ -45,8 +46,13 @@ export function NavRail() {
           ))}
         </ul>
       </div>
-      <div className="mt-auto border-t border-base-300">
-        <LocaleSwitcher />
+      <div className="mt-auto flex flex-col border-t border-base-300">
+        <div className="flex h-11 items-center px-4">
+          <Logo className="h-5 w-auto opacity-80" />
+        </div>
+        <div className="px-2 pb-2 text-base-content/50">
+          <LocaleSwitcher />
+        </div>
       </div>
     </nav>
   )

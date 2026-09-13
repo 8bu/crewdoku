@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAtomValue } from 'jotai'
 import { Shell } from './shell/Shell'
 import { Board } from './routes/Board'
 import { Coverage } from './routes/Coverage'
@@ -6,8 +7,21 @@ import { Roster } from './routes/Roster'
 import { Teams } from './routes/Teams'
 import { Settings } from './routes/Settings'
 import { Export } from './routes/Export'
+import { activeOrgIdAtom, activeWorkspaceIdAtom } from './state/orgStore'
+import { OrgPicker } from './workspace/OrgPicker'
+import { WorkspaceCreate } from './workspace/WorkspaceCreate'
+import { PreShellScreen } from './workspace/PreShellScreen'
 
 export function App() {
+  const activeOrgId = useAtomValue(activeOrgIdAtom)
+  const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom)
+  if (activeOrgId === null || activeWorkspaceId === null) {
+    return (
+      <PreShellScreen>
+        {activeOrgId === null ? <OrgPicker /> : <WorkspaceCreate />}
+      </PreShellScreen>
+    )
+  }
   return (
     <Routes>
       <Route element={<Shell />}>

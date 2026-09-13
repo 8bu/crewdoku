@@ -44,6 +44,12 @@ interface IDBObjectStore {
     onsuccess: ((event: unknown) => void) | null
     onerror: ((event: unknown) => void) | null
   }
+  delete(query: string | number): {
+    result: unknown
+    error: unknown
+    onsuccess: ((event: unknown) => void) | null
+    onerror: ((event: unknown) => void) | null
+  }
 }
 
 interface IDBTransaction {

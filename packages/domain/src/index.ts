@@ -78,3 +78,6 @@ export { DEFAULT_SHIFTS, defaultCoverageTable, makePeriod, makePerson, makeTeam 
 
 export type { Workspace } from './workspace'
 export { emptyWorkspace } from './workspace'
+
+export type { Org, WorkspaceMeta, WorkspaceRegistry } from './org'
+export { emptyRegistry, makeOrg, makeWorkspaceMeta } from './org'

@@ -10,6 +10,9 @@ import type {
   SolveSettings,
   Team,
   Workspace,
+  Org,
+  WorkspaceMeta,
+  WorkspaceRegistry,
 } from '@crewdoku/domain'
 import { assignmentKey, splitAssignmentKey } from '@crewdoku/domain'
 
@@ -198,5 +201,27 @@ export function migrate(raw: unknown): WorkspaceDTO | null {
     settings: settings as SolveSettings,
     periods: periods as Period[],
     schedules: schedules as ScheduleDTO[],
+  }
+}
+
+/**
+ * Parses and validates a WorkspaceRegistry on raw unknown input.
+ * schemaVersion 1 with array orgs/workspaces and string|null activeWorkspaceId
+ * passes through; anything else returns null (seam for version 2+).
+ */
+export function migrateRegistry(raw: unknown): WorkspaceRegistry | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const obj = raw as Record<string, unknown>
+  if (obj['schemaVersion'] !== 1) return null
+  const orgs = obj['orgs']
+  const workspaces = obj['workspaces']
+  const active = obj['activeWorkspaceId']
+  if (!Array.isArray(orgs) || !Array.isArray(workspaces)) return null
+  if (active !== null && typeof active !== 'string') return null
+  return {
+    schemaVersion: 1,
+    orgs: orgs as Org[],
+    workspaces: workspaces as WorkspaceMeta[],
+    activeWorkspaceId: active,
   }
 }

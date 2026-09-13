@@ -5,10 +5,10 @@ import { Select } from '../ui/Select'
 import { useT } from '../i18n/useT'
 
 /**
- * Locale switcher in the nav-rail footer — the rail is the only chrome present
- * on every surface (the shell header exists only on period routes). The choice
- * lives in `localeAtom`, drives `useT` app-wide, and is mirrored onto
- * `<html lang>` so the document itself tells the truth.
+ * The app-wide locale control. The choice lives in `localeAtom`, drives `useT`
+ * everywhere, and is mirrored onto `<html lang>` so the document tells the
+ * truth. Layout-neutral: it renders only the select, so each host (the nav-rail
+ * footer, the pre-shell entry overlay) owns its own spacing and muted tone.
  */
 export function LocaleSwitcher() {
   const [locale, setLocale] = useAtom(localeAtom)
@@ -20,19 +20,17 @@ export function LocaleSwitcher() {
   }, [locale])
 
   return (
-    <div className="px-2 pb-2 text-base-content/50">
-      <Select
-        value={locale}
-        onChange={(v) => {
-          const next = LOCALES.find((l) => l.value === v)
-          if (next) setLocale(next.value)
-        }}
-        options={LOCALES}
-        size="xs"
-        variant="ghost"
-        className="w-full"
-        ariaLabel={t('locale.aria')}
-      />
-    </div>
+    <Select
+      value={locale}
+      onChange={(v) => {
+        const next = LOCALES.find((l) => l.value === v)
+        if (next) setLocale(next.value)
+      }}
+      options={LOCALES}
+      size="xs"
+      variant="ghost"
+      className="w-full"
+      ariaLabel={t('locale.aria')}
+    />
   )
 }
