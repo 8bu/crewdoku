@@ -1,3 +1,4 @@
+import { ChevronUp, ChevronDown } from '../../ui/icons'
 import { useState } from 'react'
 import { Input } from '../../ui/Input'
 import type { DragEvent } from 'react'
@@ -151,7 +152,7 @@ export function AdvancedRules({
                       disabled={i === 0}
                       className="cursor-pointer border-none bg-transparent px-1 text-xs text-base-content/50 transition-colors duration-150 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300"
                     >
-                      ▴
+                      <ChevronUp className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
@@ -160,7 +161,7 @@ export function AdvancedRules({
                       disabled={i === softGoalOrder.length - 1}
                       className="cursor-pointer border-none bg-transparent px-1 text-xs text-base-content/50 transition-colors duration-150 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300"
                     >
-                      ▾
+                      <ChevronDown className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <label className="flex h-8 w-8 flex-none cursor-pointer items-center justify-center">

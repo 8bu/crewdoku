@@ -1,3 +1,4 @@
+import { ArrowRight } from '../../ui/icons'
 import { shiftLabel, type FairnessMovement, type PersonChangeGroup, type ProposalChange } from './proposal'
 import type { FairnessTotals } from '../fairness'
 import { useT } from '../../i18n/useT'
@@ -130,7 +131,7 @@ export function ProposalPanel({
                           {shiftLabel(change.from)}
                         </span>
                         <span className="flex-none text-[color:var(--text-faint)]" aria-hidden="true">
-                          →
+                          <ArrowRight className="h-3.5 w-3.5" />
                         </span>
                         <span
                           className="flex-1 font-mono text-2xs font-semibold text-[color:var(--prop)]"

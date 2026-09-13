@@ -1,7 +1,8 @@
+import { ChevronDown } from './icons'
 import { useT } from '../i18n/useT'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
-export type SelectOption = { value: string; label: string }
+export type SelectOption = { value: string; label: string; icon?: ReactNode }
 
 /**
  * A real dropdown, not a native `<select>` — the OS renders `<option>` lists
@@ -86,8 +87,11 @@ export function Select({
         onClick={toggleOpen}
         className={`inline-flex w-full cursor-pointer items-center justify-between gap-2 text-left ${triggerCls}`}
       >
-        <span className="truncate">{selected?.label ?? effectivePlaceholder}</span>
-        <span className="shrink-0 text-2xs text-base-content/40">▾</span>
+        <span className="flex items-center gap-1.5 truncate">
+          {selected?.icon}
+          {selected?.label ?? effectivePlaceholder}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-base-content/40" />
       </button>
       {open && (
         <ul
@@ -104,8 +108,9 @@ export function Select({
                   onChange(o.value)
                   setOpen(false)
                 }}
-                className={o.value === value ? 'active font-medium' : ''}
+                className={`flex items-center gap-2 ${o.value === value ? 'active font-medium' : ''}`}
               >
+                {o.icon}
                 {o.label}
               </button>
             </li>

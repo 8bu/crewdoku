@@ -1,3 +1,4 @@
+import { ChevronRight } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -458,7 +459,7 @@ function ExportWizard({
               {t('onbex.export.step.period')}
             </span>
           )}
-          <span className="text-xs text-base-content/40">▸</span>
+          <ChevronRight className="h-3.5 w-3.5 text-base-content/40" />
           {step > 2 ? (
             <button
               type="button"
@@ -472,7 +473,7 @@ function ExportWizard({
               {t('onbex.export.step.template')}
             </span>
           )}
-          <span className="text-xs text-base-content/40">▸</span>
+          <ChevronRight className="h-3.5 w-3.5 text-base-content/40" />
           <span className={`text-xs ${step === 3 ? 'font-semibold text-base-content' : 'text-base-content/40'}`}>
             {t('onbex.export.step.preview')}
           </span>

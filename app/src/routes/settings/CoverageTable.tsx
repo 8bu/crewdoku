@@ -1,3 +1,4 @@
+import { Plus } from '../../ui/icons'
 import { useState } from 'react'
 import { Input } from '../../ui/Input'
 import { Stepper } from '../../ui/Stepper'
@@ -209,8 +210,9 @@ export function CoverageTable({
               onAddOverride(newOverrideDate)
               setNewOverrideDate('')
             }}
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline btn-sm gap-1.5"
           >
+            <Plus className="h-4 w-4" />
             {t('settings.coverage.addOverride')}
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { X, Plus } from '../../ui/icons'
 import { useState } from 'react'
 import { Input } from '../../ui/Input'
 import { formatHours, paidHours, type ShiftDef } from '@crewdoku/domain'
@@ -269,7 +270,8 @@ export function ShiftsTable({
             className="w-[160px]"
           />
         </div>
-        <button type="button" onClick={handleAdd} disabled={!newCode.trim()} className="btn btn-primary btn-sm">
+        <button type="button" onClick={handleAdd} disabled={!newCode.trim()} className="btn btn-primary btn-sm gap-1.5">
+          <Plus className="h-4 w-4" />
           {t('settings.shifts.addShift')}
         </button>
       </div>
@@ -422,7 +424,7 @@ function ShiftRow({
           title={deleteDisabled ? t('settings.shifts.cantDeleteLast') : undefined}
           className="btn btn-ghost btn-xs btn-square text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed"
         >
-          ✕
+          <X className="h-4 w-4" />
         </button>
       </td>
     </tr>

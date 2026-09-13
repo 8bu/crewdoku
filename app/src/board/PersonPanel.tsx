@@ -1,3 +1,4 @@
+import { X } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useMemo, useState } from 'react'
 import type { Person, ShiftCode, ShiftDef, Team } from '@crewdoku/domain'
@@ -151,7 +152,7 @@ export function PersonPanel({
           <div className="mt-0.5 text-xs text-base-content/50">{team.name}</div>
         </div>
         <button type="button" className="btn btn-ghost btn-xs btn-circle text-base-content/50" onClick={onClose} aria-label={t('board.person.closeAria')}>
-          ✕
+          <X className="h-4 w-4" />
         </button>
       </div>
 
@@ -296,7 +297,7 @@ export function PersonPanel({
                     onClick={() => removeTimeOff(iso)}
                     aria-label={t('board.person.removeTimeOffAria', { date: dateLabel(iso, dateByIso) })}
                   >
-                    ✕
+                    <X className="h-4 w-4" />
                   </button>
                 </li>
               ))}

@@ -78,8 +78,12 @@ pnpm build   # vite build (app + proto); engine packages are source-only, no bui
 
 ## Design system (settled during the prototype phase)
 
-- **No emoji** — geometric Unicode only (▸ ▾ ◢ ◆ ⚠ ✓ ✕). This rule predates and
-  survives the nuke.
+- **No emoji.** UI icons come from `lucide-react`, imported through the curated
+  `app/src/ui/icons.ts` module (the app's single icon convention) — never raw
+  geometric Unicode glyphs (`▾ ✕ ✓ ⚠ →`) for affordances or status marks.
+  Geometric Unicode stays only as typography: separators (`·`), range arrows
+  (`start → end`), en-dashes. (`proto/` predates this and still uses the old
+  Unicode marks; that's the frozen reference, not a pattern to copy into `app/`.)
 - Everything else — type scale, data font, borders, shift-code colours, cell status
   classes — is settled and lives in `proto/src/styles.css`; the decision record is
   `.scratch/crewdoku-ui/issues/02-visual-language.md`.

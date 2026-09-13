@@ -34,7 +34,7 @@ export const settings = {
     'settings.shifts.newCodePlaceholder': 'e.g. SWING',
     'settings.shifts.newLabel': 'Label',
     'settings.shifts.newLabelPlaceholder': 'e.g. Swing',
-    'settings.shifts.addShift': '+ Add shift',
+    'settings.shifts.addShift': 'Add shift',
     'settings.shifts.codeTaken': '"{code}" is already used.',
     'settings.shifts.colorTitle': '{code} colour',
     'settings.shifts.changeColor': "Change {code}'s colour",
@@ -106,7 +106,7 @@ export const settings = {
     'settings.coverage.noOverrides': 'None — every date follows its weekday row above.',
     'settings.coverage.removeOverride': 'Remove',
     'settings.coverage.addOverrideFor': 'Add override for',
-    'settings.coverage.addOverride': '+ Add',
+    'settings.coverage.addOverride': 'Add',
 
     // Advanced section
     'settings.advanced.title': 'Advanced',
@@ -177,7 +177,7 @@ export const settings = {
     'settings.shifts.newCodePlaceholder': 'vd: SWING',
     'settings.shifts.newLabel': 'Tên ca',
     'settings.shifts.newLabelPlaceholder': 'vd: Xoay ca',
-    'settings.shifts.addShift': '+ Thêm ca',
+    'settings.shifts.addShift': 'Thêm ca',
     'settings.shifts.codeTaken': 'Mã "{code}" đã được sử dụng.',
     'settings.shifts.colorTitle': 'Màu của {code}',
     'settings.shifts.changeColor': 'Đổi màu ca {code}',
@@ -249,7 +249,7 @@ export const settings = {
     'settings.coverage.noOverrides': 'Không có — mọi ngày đều áp dụng theo hàng thứ trong tuần ở trên.',
     'settings.coverage.removeOverride': 'Xóa',
     'settings.coverage.addOverrideFor': 'Thêm ghi đè cho ngày',
-    'settings.coverage.addOverride': '+ Thêm',
+    'settings.coverage.addOverride': 'Thêm',
 
     // Advanced section
     'settings.advanced.title': 'Nâng cao',

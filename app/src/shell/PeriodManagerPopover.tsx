@@ -1,3 +1,4 @@
+import { X, Check, Plus } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -123,7 +124,8 @@ export function PeriodManagerPopover({
         {creating ? (
           <CreatePeriodForm periods={sortedPeriods} onCreate={handleCreate} onCancel={() => setCreating(false)} />
         ) : (
-          <button type="button" className="btn btn-ghost btn-xs rounded-md" onClick={() => setCreating(true)}>
+          <button type="button" className="btn btn-ghost btn-xs gap-1 rounded-md" onClick={() => setCreating(true)}>
+            <Plus className="h-3.5 w-3.5" />
             {t('chrome.periodManager.newPeriod')}
           </button>
         )}
@@ -185,7 +187,7 @@ function PeriodRow({
         onClick={onSwitch}
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md border-none bg-transparent px-2.5 py-1.5 text-left"
       >
-        <span className="w-3 shrink-0 text-primary">{isSelected ? '◆' : ''}</span>
+        <span className="w-3 shrink-0 text-primary">{isSelected && <Check className="h-3.5 w-3.5" />}</span>
         <span className="truncate text-sm font-semibold text-base-content">{period.label}</span>
         <span className="ml-auto shrink-0 text-xs tabular-nums text-base-content/60 transition-opacity duration-150 group-focus-within:opacity-0 group-hover:opacity-0">
           {period.start} → {period.end}
@@ -207,7 +209,7 @@ function PeriodRow({
             title={isOnly ? t('chrome.periodManager.cannotDeleteOnly') : t('chrome.periodManager.deletePeriod')}
             className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-xs text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
     </li>

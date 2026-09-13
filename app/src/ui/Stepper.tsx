@@ -1,3 +1,4 @@
+import { Plus, Minus } from './icons'
 import { useEffect, useState } from 'react'
 
 /**
@@ -77,7 +78,7 @@ export function Stepper({
         onClick={() => bump(-1)}
         className="cursor-pointer px-1.5 py-0.5 leading-none text-base-content/50 hover:text-base-content"
       >
-        −
+        <Minus className="h-3.5 w-3.5" />
       </button>
       <input
         type="text"
@@ -107,7 +108,7 @@ export function Stepper({
         onClick={() => bump(1)}
         className="cursor-pointer px-1.5 py-0.5 leading-none text-base-content/50 hover:text-base-content"
       >
-        +
+        <Plus className="h-3.5 w-3.5" />
       </button>
     </div>
   )

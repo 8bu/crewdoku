@@ -1,3 +1,4 @@
+import { X, Plus } from '../ui/icons'
 import { useState } from 'react'
 import { useT } from '../i18n/useT'
 import { Logo } from '../shell/Logo'
@@ -139,7 +140,7 @@ export function OrgPicker() {
                   onClick={() => void remove(o.id)}
                   className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-base-300 bg-base-100 text-xs text-base-content/50 opacity-70 transition-all duration-150 hover:border-error hover:text-error hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/40 group-hover:opacity-100"
                 >
-                  ✕
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             ))}
@@ -149,7 +150,7 @@ export function OrgPicker() {
               className="group flex w-28 flex-col items-center gap-2"
             >
               <span className="flex h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed border-base-300 text-3xl text-base-content/40 transition-colors duration-150 group-hover:border-base-content/40 group-hover:text-base-content/60">
-                +
+                <Plus className="h-8 w-8" />
               </span>
               <span className="w-full text-sm text-base-content/60">{t('workspace.org.add')}</span>
             </button>

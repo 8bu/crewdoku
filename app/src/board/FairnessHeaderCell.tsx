@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { WarningTriangleIcon } from './icons'
+import { WarningTriangleIcon } from '../ui/icons'
 
 /**
  * Sticky in both directions at once — top like every date header, right like

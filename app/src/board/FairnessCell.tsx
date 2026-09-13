@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import type { Violation } from './violations'
-import { WarningTriangleIcon } from './icons'
+import { WarningTriangleIcon } from '../ui/icons'
 
 type FairnessCellProps = {
   personId: string

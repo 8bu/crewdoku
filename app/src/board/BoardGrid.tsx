@@ -1,3 +1,4 @@
+import { TriangleAlert } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -901,7 +902,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
             for why — same fix, same reason). */}
         {settingsDirty && hasSchedule && !pendingProposal && generateFlow.state.phase === 'idle' && (
           <div className="flex items-center gap-2.5 border-b border-warning/40 bg-warning/15 px-3.5 py-[7px] text-xs text-base-content">
-            <span aria-hidden="true">⚠</span>
+            <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span>{t('board.banner.settingsDirty')}</span>
           </div>
         )}

@@ -1,3 +1,4 @@
+import { Check } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { Fragment, useCallback, useMemo, useState } from 'react'
 import { HeaderCell } from '../board/HeaderCell'
@@ -161,7 +162,7 @@ export function CoverageGrid({ period }: { period: Period }) {
                 {view.scoped ? (
                   <span className="text-[color:var(--text-faint)]">—</span>
                 ) : row.shortDays === 0 && row.overDays === 0 ? (
-                  <span className="text-[color:var(--ok)]">✓</span>
+                  <Check className="h-3.5 w-3.5 text-[color:var(--ok)]" />
                 ) : (
                   <>
                     {row.shortDays > 0 && (

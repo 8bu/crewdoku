@@ -5,7 +5,7 @@ export const chrome = {
   en: {
     'chrome.select.placeholder': 'Select…',
     'chrome.periodSelector.none': 'No period',
-    'chrome.periodManager.newPeriod': '+ New period',
+    'chrome.periodManager.newPeriod': 'New period',
     'chrome.periodManager.deleteConfirm': 'Delete "{label}"?',
     'chrome.periodManager.cancel': 'Cancel',
     'chrome.periodManager.delete': 'Delete',
@@ -33,7 +33,7 @@ export const chrome = {
   vi: {
     'chrome.select.placeholder': 'Chọn…',
     'chrome.periodSelector.none': 'Không có kỳ',
-    'chrome.periodManager.newPeriod': '+ Kỳ mới',
+    'chrome.periodManager.newPeriod': 'Kỳ mới',
     'chrome.periodManager.deleteConfirm': 'Xóa "{label}"?',
     'chrome.periodManager.cancel': 'Hủy',
     'chrome.periodManager.delete': 'Xóa',

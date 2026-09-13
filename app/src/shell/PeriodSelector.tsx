@@ -1,3 +1,4 @@
+import { ChevronDown } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useRef, useState } from 'react'
 import { useAtomValue } from 'jotai'
@@ -38,7 +39,7 @@ export function PeriodSelector() {
         ) : (
           <span className="text-base-content/60">{t('chrome.periodSelector.none')}</span>
         )}
-        <span className="text-2xs text-base-content/40">▾</span>
+        <ChevronDown className="h-3.5 w-3.5 text-base-content/40" />
       </button>
       {openRect && <PeriodManagerPopover rect={openRect} onClose={() => setOpenRect(null)} />}
     </div>

@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight } from '../ui/icons'
 import { memo } from 'react'
 import type { Team } from '@crewdoku/domain'
 
@@ -33,7 +34,7 @@ function TeamHeaderRowImpl({ team, count, collapsed, onToggle }: TeamHeaderRowPr
           — pinned-column content always outranks a per-cell state marker (proposal-changed,
           coverage-dim-lit; max z-index:1) regardless of DOM order. */}
       <span className="cd-team-row__label sticky left-0 z-[3] flex h-full items-center gap-2 bg-base-200 px-[var(--cell-pad-x)]">
-        <span className="cd-team-row__chevron w-[1em] text-[color:var(--text-dim)]">{collapsed ? '▸' : '▾'}</span>
+        <span className="cd-team-row__chevron flex w-[1em] items-center text-[color:var(--text-dim)]">{collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}</span>
         <span className="cd-team-row__name">{team.name}</span>
         <span className="cd-team-row__count font-normal text-[color:var(--text-faint)]">{count}</span>
       </span>

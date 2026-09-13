@@ -1,3 +1,4 @@
+import { ChevronDown, Plus } from '../ui/icons'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n/useT'
 import { Input } from '../ui/Input'
@@ -36,7 +37,7 @@ export function WorkspaceSwitcher() {
   }
 
   return (
-    <div className="border-b border-base-300 px-2 py-2">
+    <div className="flex h-12 items-center border-b border-base-300 px-2">
       <button
         ref={triggerRef}
         type="button"
@@ -47,9 +48,7 @@ export function WorkspaceSwitcher() {
         className="flex w-full items-center gap-2 rounded-md border border-base-300 bg-base-100 px-2.5 py-1.5 text-left transition-colors duration-150 hover:border-base-content/30"
       >
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-base-content">{activeMeta.name}</span>
-        <span aria-hidden className="shrink-0 text-2xs text-base-content/40">
-          ▾
-        </span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-base-content/40" aria-hidden />
       </button>
       {rect && (
         <SwitcherPopover
@@ -143,9 +142,10 @@ function SwitcherPopover({
             <button
               type="button"
               onClick={() => setMode('new-ws')}
-              className="rounded-md px-2 py-1 text-left text-sm text-base-content/70 hover:bg-base-200"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-base-content/70 hover:bg-base-200"
             >
-              + {t('workspace.switcher.newWorkspace')}
+              <Plus className="h-3.5 w-3.5" />
+              {t('workspace.switcher.newWorkspace')}
             </button>
             <button
               type="button"

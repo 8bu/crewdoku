@@ -1,3 +1,4 @@
+import { X } from '../../ui/icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatHours, paidHours, type CoverageTable, type ShiftDef } from '@crewdoku/domain'
 import { swatchBg } from '../../board/shiftColors'
@@ -165,7 +166,7 @@ export function GenerateShiftsWizard({
             aria-label={t('settings.wizard.cancel')}
             className="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 

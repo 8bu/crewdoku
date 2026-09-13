@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import type { Violation } from './violations'
 
@@ -58,7 +59,7 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
           aria-pressed={showIssues}
           onClick={onToggleIssues}
         >
-          <span aria-hidden="true">{showIssues ? '▾' : '▸'}</span>
+          {showIssues ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           {t('board.problems.coverageAndFairness')}
         </button>
       </div>
