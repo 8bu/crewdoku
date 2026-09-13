@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crewdoku",
+  "compatibility_date": "2026-09-14",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [{ "pattern": "crewdoku.8bu.dev", "custom_domain": true }]
+}
