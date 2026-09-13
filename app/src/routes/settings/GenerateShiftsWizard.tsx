@@ -203,7 +203,7 @@ export function GenerateShiftsWizard({
 
         {/* Shift count, Duration, Break, Overlap */}
         <div className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4">
-          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+          <div className="grid min-w-0 grid-cols-1 grid-rows-subgrid row-span-2 gap-y-1">
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.shiftCount')}
             </label>
@@ -219,7 +219,7 @@ export function GenerateShiftsWizard({
             />
           </div>
 
-          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+          <div className="grid min-w-0 grid-cols-1 grid-rows-subgrid row-span-2 gap-y-1">
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.duration')}
             </label>
@@ -241,7 +241,7 @@ export function GenerateShiftsWizard({
             />
           </div>
 
-          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+          <div className="grid min-w-0 grid-cols-1 grid-rows-subgrid row-span-2 gap-y-1">
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.breakMinutes')}
             </label>
@@ -257,7 +257,7 @@ export function GenerateShiftsWizard({
             />
           </div>
 
-          <div className="grid grid-rows-subgrid row-span-2 gap-y-1">
+          <div className="grid min-w-0 grid-cols-1 grid-rows-subgrid row-span-2 gap-y-1">
             <label className="self-end text-2xs font-semibold uppercase tracking-wide text-base-content/50">
               {t('settings.wizard.overlapMinutes')}
             </label>
