@@ -1,12 +1,12 @@
-import { X, Upload } from './icons'
 /**
  * Shared paste-a-list import dialog used by the Roster and Teams modules.
- * Generalizes the onboarding People step's paste UX (textarea + optional CSV
- * upload + live summary) into a reusable, i18n-agnostic component: callers
- * pass every display string as a prop, so this component never calls the
- * translation hook itself.
+ * Generalizes the onboarding People step's paste UX (textarea + optional file
+ * upload of CSV or Excel + live summary) into a reusable, i18n-agnostic
+ * component: callers pass every display string as a prop, so this component
+ * never calls the translation hook itself.
  */
 import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { X, Upload } from './icons'
 
 export function BatchImportModal<T>({
   title,
