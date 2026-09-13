@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addTeam, countMembers, deleteTeam, renameTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
+import { addTeam, addTeamsFromNames, countMembers, deleteTeam, parseTeamNames, renameTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
 import type { Person, Team } from '@crewdoku/domain'
 
 const teams: Team[] = [
@@ -74,5 +74,35 @@ describe('deleteTeam', () => {
     const people = [person({ id: 'p1', teamId: 't2' })]
     const result = deleteTeam(teams, people, 't1', 't2')
     expect(result.people[0]).toEqual(people[0])
+  })
+})
+
+describe('parseTeamNames', () => {
+  it('trims each line and drops blank lines', () => {
+    expect(parseTeamNames('Front desk\n\n Kitchen ')).toEqual(['Front desk', 'Kitchen'])
+  })
+})
+
+describe('addTeamsFromNames', () => {
+  it('creates one team per unique name, order preserved, with fresh ids', () => {
+    const next = addTeamsFromNames(teams, ['Kitchen', 'Bar'])
+    expect(next.map((t) => t.name)).toEqual(['Opening', 'Closing', 'Kitchen', 'Bar'])
+    expect(new Set(next.map((t) => t.id)).size).toBe(next.length)
+  })
+
+  it('skips a name already present, case-insensitively', () => {
+    const existing = addTeam(teams, 'Kitchen')
+    const next = addTeamsFromNames(existing, ['KITCHEN', 'Bar'])
+    expect(next.map((t) => t.name)).toEqual(['Opening', 'Closing', 'Kitchen', 'Bar'])
+  })
+
+  it('de-duplicates repeats within the batch', () => {
+    const next = addTeamsFromNames(teams, ['Bar', 'bar'])
+    expect(next.map((t) => t.name)).toEqual(['Opening', 'Closing', 'Bar'])
+  })
+
+  it('skips blank or whitespace-only names', () => {
+    const next = addTeamsFromNames(teams, ['', '   ', 'Bar'])
+    expect(next.map((t) => t.name)).toEqual(['Opening', 'Closing', 'Bar'])
   })
 })

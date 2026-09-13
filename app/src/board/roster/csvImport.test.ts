@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyCsvImport, parseEmployeeCsv } from './csvImport'
+import { applyCsvImport, parseEmployeeCsv, parsePastedRoster } from './csvImport'
 import { UNASSIGNED_TEAM_ID } from '@crewdoku/domain'
 
 describe('parseEmployeeCsv', () => {
@@ -30,26 +30,25 @@ describe('parseEmployeeCsv', () => {
   it('skips rows with no name and reports why', () => {
     const result = parseEmployeeCsv('name,team\n,Frontline\nBob,Backline\n')
     expect(result.rows).toEqual([{ name: 'Bob', team: 'Backline' }])
-    expect(result.errors).toHaveLength(1)
-    expect(result.errors[0]).toMatch(/missing a name/)
+    expect(result.errors).toEqual([{ kind: 'missingName', line: 2 }])
   })
 
   it('rejects a file with no name/team header', () => {
     const result = parseEmployeeCsv('first,last\nAlice,Johnson\n')
     expect(result.rows).toEqual([])
-    expect(result.errors[0]).toMatch(/name.*team/)
+    expect(result.errors).toEqual([{ kind: 'noHeader' }])
   })
 
   it('rejects an empty file', () => {
     const result = parseEmployeeCsv('')
     expect(result.rows).toEqual([])
-    expect(result.errors[0]).toMatch(/empty/)
+    expect(result.errors).toEqual([{ kind: 'empty' }])
   })
 
   it('reports a header with no rows below it', () => {
     const result = parseEmployeeCsv('name,team\n')
     expect(result.rows).toEqual([])
-    expect(result.errors[0]).toMatch(/No employee rows/)
+    expect(result.errors).toEqual([{ kind: 'noRows' }])
   })
 })
 
@@ -87,5 +86,32 @@ describe('applyCsvImport', () => {
     const second = applyCsvImport(first.people, first.teams, [{ name: 'Bob', team: 'Backline' }])
     expect(second.people.map((p) => p.name)).toEqual(['Alice', 'Bob'])
     expect(second.teams.map((t) => t.name)).toEqual(['Frontline', 'Backline'])
+  })
+})
+
+describe('parsePastedRoster', () => {
+  it('parses one name per line, with or without a team', () => {
+    expect(parsePastedRoster('Anna Bauer, Front desk\nBen Keller\n\nChloe Martin,  Kitchen ')).toEqual([
+      { name: 'Anna Bauer', team: 'Front desk' },
+      { name: 'Ben Keller', team: '' },
+      { name: 'Chloe Martin', team: 'Kitchen' },
+    ])
+  })
+
+  it('splits on tabs, so a two-column spreadsheet range pastes straight in', () => {
+    expect(parsePastedRoster('Anna\tWard A\nBen\tWard B')).toEqual([
+      { name: 'Anna', team: 'Ward A' },
+      { name: 'Ben', team: 'Ward B' },
+    ])
+  })
+
+  it('drops a pasted name/team header line but keeps anything else', () => {
+    expect(parsePastedRoster('Name, Team\nAnna, Ward A')).toEqual([{ name: 'Anna', team: 'Ward A' }])
+    expect(parsePastedRoster('Name Smith, Ward A')).toEqual([{ name: 'Name Smith', team: 'Ward A' }])
+  })
+
+  it('returns nothing for empty or whitespace input', () => {
+    expect(parsePastedRoster('')).toEqual([])
+    expect(parsePastedRoster('\n  \n')).toEqual([])
   })
 })

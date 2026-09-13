@@ -9,6 +9,13 @@ export const rtc = {
     'rtc.common.unnamed': '(unnamed)',
     'rtc.common.cancel': 'Cancel',
 
+    // Import
+    'rtc.import.apply': 'Import',
+    'rtc.import.csvError.empty': 'That file is empty.',
+    'rtc.import.csvError.noHeader': 'The first row must be a header with "name" and "team" columns.',
+    'rtc.import.csvError.noRows': 'No people found below the header.',
+    'rtc.import.csvError.missingName': 'Row {line}: missing a name — skipped.',
+
     // Roster
     'rtc.roster.title': 'Roster',
     'rtc.roster.count.person': '{count} person',
@@ -25,6 +32,14 @@ export const rtc = {
     'rtc.roster.removePerson': 'Remove {name}',
     'rtc.roster.removeUnnamed': 'Remove unnamed person',
     'rtc.roster.noTeams': 'No teams yet.',
+    'rtc.roster.import': '⧉ Import',
+    'rtc.roster.importTitle': 'Import people',
+    'rtc.roster.importSubtitlePrefix': 'One person per line —',
+    'rtc.roster.importSubtitleSuffix':
+      '. Paste straight from a spreadsheet; each new team name becomes a team.',
+    'rtc.roster.importPlaceholder': 'Anna Bauer, Front desk\nBen Keller, Front desk\nChloe Martin',
+    'rtc.roster.importEmpty': 'Nothing to import yet.',
+    'rtc.roster.importFromCsv': '⧉ From a CSV file',
 
     // Teams
     'rtc.teams.title': 'Teams',
@@ -50,6 +65,14 @@ export const rtc = {
     'rtc.teams.moveCountTo.people': 'Move {count} people to:',
     'rtc.teams.moveAndDelete': 'Move & delete',
     'rtc.teams.confirmDelete': 'Delete',
+    'rtc.teams.import': '⧉ Import',
+    'rtc.teams.importTitle': 'Import teams',
+    'rtc.teams.importSubtitle': 'One team name per line. Names that already exist are skipped.',
+    'rtc.teams.importPlaceholder': 'Front desk\nKitchen\nNight crew',
+    'rtc.teams.importEmpty': 'Nothing to import yet.',
+    'rtc.teams.importNew.team': '{count} new team',
+    'rtc.teams.importNew.teams': '{count} new teams',
+    'rtc.teams.importExisting': '{count} already exist',
 
     // Coverage
     'rtc.coverage.title': 'Coverage',
@@ -83,6 +106,13 @@ export const rtc = {
     'rtc.common.unnamed': '(chưa đặt tên)',
     'rtc.common.cancel': 'Hủy',
 
+    // Import
+    'rtc.import.apply': 'Nhập',
+    'rtc.import.csvError.empty': 'Tệp trống.',
+    'rtc.import.csvError.noHeader': 'Dòng đầu tiên phải là tiêu đề có cột "name" và "team".',
+    'rtc.import.csvError.noRows': 'Không tìm thấy nhân sự nào bên dưới tiêu đề.',
+    'rtc.import.csvError.missingName': 'Dòng {line}: thiếu tên — đã bỏ qua.',
+
     // Roster
     'rtc.roster.title': 'Nhân sự',
     'rtc.roster.count.person': '{count} nhân sự',
@@ -99,6 +129,14 @@ export const rtc = {
     'rtc.roster.removePerson': 'Xóa {name}',
     'rtc.roster.removeUnnamed': 'Xóa nhân sự chưa đặt tên',
     'rtc.roster.noTeams': 'Chưa có phòng/ban nào.',
+    'rtc.roster.import': '⧉ Nhập danh sách',
+    'rtc.roster.importTitle': 'Nhập danh sách nhân sự',
+    'rtc.roster.importSubtitlePrefix': 'Mỗi người một dòng —',
+    'rtc.roster.importSubtitleSuffix':
+      '. Dán trực tiếp từ bảng tính; mỗi tên phòng/ban mới sẽ được tạo thành một phòng/ban.',
+    'rtc.roster.importPlaceholder': 'Anna Bauer, Lễ tân\nBen Keller, Lễ tân\nChloe Martin',
+    'rtc.roster.importEmpty': 'Chưa có gì để nhập.',
+    'rtc.roster.importFromCsv': '⧉ Từ tệp CSV',
 
     // Teams
     'rtc.teams.title': 'Phòng/ban',
@@ -124,6 +162,14 @@ export const rtc = {
     'rtc.teams.moveCountTo.people': 'Chuyển {count} nhân sự sang:',
     'rtc.teams.moveAndDelete': 'Chuyển & xóa',
     'rtc.teams.confirmDelete': 'Xóa',
+    'rtc.teams.import': '⧉ Nhập danh sách',
+    'rtc.teams.importTitle': 'Nhập danh sách phòng/ban',
+    'rtc.teams.importSubtitle': 'Mỗi tên phòng/ban một dòng. Tên đã tồn tại sẽ được bỏ qua.',
+    'rtc.teams.importPlaceholder': 'Lễ tân\nBếp\nCa đêm',
+    'rtc.teams.importEmpty': 'Chưa có gì để nhập.',
+    'rtc.teams.importNew.team': '{count} phòng/ban mới',
+    'rtc.teams.importNew.teams': '{count} phòng/ban mới',
+    'rtc.teams.importExisting': '{count} đã tồn tại',
 
     // Coverage
     'rtc.coverage.title': 'Mức đáp ứng nhân sự',

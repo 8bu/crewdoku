@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { WORKSPACE_TEMPLATES, parsePastedRoster } from './templates'
+import { WORKSPACE_TEMPLATES } from './templates'
 
 describe('WORKSPACE_TEMPLATES', () => {
   it('has four shapes with unique ids', () => {
@@ -46,32 +46,5 @@ describe('WORKSPACE_TEMPLATES', () => {
     for (let dow = 0; dow < 7; dow++) {
       for (const band of Object.values(custom.coverage.byDow[dow]!)) expect(band.min).toBe(0)
     }
-  })
-})
-
-describe('parsePastedRoster', () => {
-  it('parses one name per line, with or without a team', () => {
-    expect(parsePastedRoster('Anna Bauer, Front desk\nBen Keller\n\nChloe Martin,  Kitchen ')).toEqual([
-      { name: 'Anna Bauer', team: 'Front desk' },
-      { name: 'Ben Keller', team: '' },
-      { name: 'Chloe Martin', team: 'Kitchen' },
-    ])
-  })
-
-  it('splits on tabs, so a two-column spreadsheet range pastes straight in', () => {
-    expect(parsePastedRoster('Anna\tWard A\nBen\tWard B')).toEqual([
-      { name: 'Anna', team: 'Ward A' },
-      { name: 'Ben', team: 'Ward B' },
-    ])
-  })
-
-  it('drops a pasted name/team header line but keeps anything else', () => {
-    expect(parsePastedRoster('Name, Team\nAnna, Ward A')).toEqual([{ name: 'Anna', team: 'Ward A' }])
-    expect(parsePastedRoster('Name Smith, Ward A')).toEqual([{ name: 'Name Smith', team: 'Ward A' }])
-  })
-
-  it('returns nothing for empty or whitespace input', () => {
-    expect(parsePastedRoster('')).toEqual([])
-    expect(parsePastedRoster('\n  \n')).toEqual([])
   })
 })

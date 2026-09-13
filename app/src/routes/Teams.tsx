@@ -9,6 +9,8 @@ import { useTeamsController } from './teams/useTeamsController'
 import { DeleteTeamPopover } from './teams/DeleteTeamPopover'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
+import { BatchImportModal } from '../ui/BatchImportModal'
+import { parseTeamNames } from '../board/roster/teamOps'
 
 /**
  * Create, rename, delete teams and manage who's on each one (wayfinder
@@ -41,6 +43,7 @@ function TeamsPage({ period }: { period: Period }) {
   const c = useTeamsController(period)
   const sidebarTeams = [...c.teams, UNASSIGNED_TEAM]
   const [selectedId, setSelectedId] = useState(c.teams[0]?.id ?? UNASSIGNED_TEAM_ID)
+  const [importOpen, setImportOpen] = useState(false)
   const selected = sidebarTeams.find((t) => t.id === selectedId) ?? sidebarTeams[0]!
   const isUnassigned = selected.id === UNASSIGNED_TEAM_ID
   const pendingTeam = c.pendingDelete ? c.teams.find((t) => t.id === c.pendingDelete!.teamId) : null
@@ -61,6 +64,9 @@ function TeamsPage({ period }: { period: Period }) {
           {c.teams.length === 1 ? t('rtc.teams.count.team', { count: c.teams.length }) : t('rtc.teams.count.teams', { count: c.teams.length })} · {c.activePeople.length === 1 ? t('rtc.teams.count.person', { count: c.activePeople.length }) : t('rtc.teams.count.people', { count: c.activePeople.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm">
+            {t('rtc.teams.import')}
+          </button>
           <Input
             ref={c.newNameInputRef}
             type="text"
@@ -221,6 +227,31 @@ function TeamsPage({ period }: { period: Period }) {
           />
         )}
       </div>
+      {importOpen && (
+        <BatchImportModal<string>
+          title={t('rtc.teams.importTitle')}
+          subtitle={t('rtc.teams.importSubtitle')}
+          placeholder={t('rtc.teams.importPlaceholder')}
+          emptyLabel={t('rtc.teams.importEmpty')}
+          applyLabel={t('rtc.import.apply')}
+          cancelLabel={t('rtc.common.cancel')}
+          parse={parseTeamNames}
+          renderSummary={(names) => {
+            const existing = new Set(c.teams.map((team) => team.name.trim().toLowerCase()))
+            const uniq = [...new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean))]
+            const newCount = uniq.filter((k) => !existing.has(k)).length
+            const dupCount = uniq.length - newCount
+            const newLabel =
+              newCount === 1
+                ? t('rtc.teams.importNew.team', { count: newCount })
+                : t('rtc.teams.importNew.teams', { count: newCount })
+            if (dupCount === 0) return newLabel
+            return `${newLabel} · ${t('rtc.teams.importExisting', { count: dupCount })}`
+          }}
+          onApply={(names) => c.addTeamsBulk(names)}
+          onCancel={() => setImportOpen(false)}
+        />
+      )}
     </section>
   )
 }

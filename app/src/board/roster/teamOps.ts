@@ -18,6 +18,30 @@ export function addTeam(teams: Team[], name: string): Team[] {
   return [...teams, { id: nextTeamId(teams), name, wants: [], avoids: [] }]
 }
 
+/** Splits pasted text into trimmed team names, one per line, dropping blank lines. */
+export function parseTeamNames(text: string): string[] {
+  return text.split(/\r\n|\r|\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+}
+
+/**
+ * Bulk-creates teams from names, skipping blanks and any name that already
+ * exists (case-insensitive) or repeats within the batch. Order preserved;
+ * ids come from `addTeam`.
+ */
+export function addTeamsFromNames(teams: Team[], names: string[]): Team[] {
+  let next = teams
+  const seen = new Set(teams.map((t) => t.name.trim().toLowerCase()))
+  for (const raw of names) {
+    const name = raw.trim()
+    if (!name) continue
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    next = addTeam(next, name)
+  }
+  return next
+}
+
 export function renameTeam(teams: Team[], teamId: string, name: string): Team[] {
   return teams.map((t) => (t.id === teamId ? { ...t, name } : t))
 }

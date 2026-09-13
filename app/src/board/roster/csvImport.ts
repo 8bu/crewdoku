@@ -10,7 +10,12 @@ import { addPerson, setPersonName, setPersonTeam } from './rosterOps'
 import { addTeam } from './teamOps'
 
 export type CsvRow = { name: string; team: string }
-export type CsvParseResult = { rows: CsvRow[]; errors: string[] }
+export type CsvError =
+  | { kind: 'empty' }
+  | { kind: 'noHeader' }
+  | { kind: 'noRows' }
+  | { kind: 'missingName'; line: number }
+export type CsvParseResult = { rows: CsvRow[]; errors: CsvError[] }
 
 function splitCsvLine(line: string): string[] {
   // Only ever asked to carry a name and a team name — no embedded-comma
@@ -26,24 +31,24 @@ export function parseEmployeeCsv(text: string): CsvParseResult {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
 
-  if (lines.length === 0) return { rows: [], errors: ['That file is empty.'] }
+  if (lines.length === 0) return { rows: [], errors: [{ kind: 'empty' }] }
 
   const header = splitCsvLine(lines[0]!).map((cell) => cell.toLowerCase())
   const nameIdx = header.indexOf('name')
   const teamIdx = header.indexOf('team')
   if (nameIdx === -1 || teamIdx === -1) {
-    return { rows: [], errors: ['The first row must be a header with "name" and "team" columns.'] }
+    return { rows: [], errors: [{ kind: 'noHeader' }] }
   }
-  if (lines.length === 1) return { rows: [], errors: ['No employee rows found below the header.'] }
+  if (lines.length === 1) return { rows: [], errors: [{ kind: 'noRows' }] }
 
   const rows: CsvRow[] = []
-  const errors: string[] = []
+  const errors: CsvError[] = []
   for (let i = 1; i < lines.length; i++) {
     const cells = splitCsvLine(lines[i]!)
     const name = cells[nameIdx] ?? ''
     const team = cells[teamIdx] ?? ''
     if (!name) {
-      errors.push(`Row ${i + 1}: missing a name — skipped.`)
+      errors.push({ kind: 'missingName', line: i + 1 })
       continue
     }
     rows.push({ name, team })
@@ -83,4 +88,24 @@ export function applyCsvImport(
   }
 
   return { people: nextPeople, teams: nextTeams }
+}
+
+/**
+ * The People step's paste box: one person per line, `Name` or `Name, Team`
+ * (tab also splits, so a two-column spreadsheet range pastes straight in).
+ * A lone `name, team` header line from a copied sheet is dropped; anything
+ * else is taken at face value.
+ */
+export function parsePastedRoster(text: string): CsvRow[] {
+  const rows: CsvRow[] = []
+  for (const line of text.split(/\r\n|\r|\n/)) {
+    const cells = line.split(/[,\t]/).map((c) => c.trim())
+    const name = cells[0] ?? ''
+    const team = cells[1] ?? ''
+    if (!name) continue
+    rows.push({ name, team })
+  }
+  const first = rows[0]
+  if (first && first.name.toLowerCase() === 'name' && first.team.toLowerCase() === 'team') rows.shift()
+  return rows
 }

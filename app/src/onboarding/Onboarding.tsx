@@ -1,4 +1,5 @@
 import { useT } from '../i18n/useT'
+import { csvErrorText } from '../i18n/csvErrors'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSetAtom } from 'jotai'
@@ -9,9 +10,9 @@ import { shiftsAtom } from '../state/shifts'
 import { coverageAtom } from '../state/coverageRules'
 import { solveSettingsAtom } from '../state/solveSettings'
 import { useMarkAutoGenerateOnMount, useMarkWorkspaceOnboarded } from '../state/onboarding'
-import { applyCsvImport, parseEmployeeCsv, type CsvRow } from '../board/roster/csvImport'
+import { applyCsvImport, parseEmployeeCsv, parsePastedRoster, type CsvRow } from '../board/roster/csvImport'
 import type { BoardData } from '../board/mockBoard'
-import { WORKSPACE_TEMPLATES, parsePastedRoster, type WorkspaceTemplate } from './templates'
+import { WORKSPACE_TEMPLATES, type WorkspaceTemplate } from './templates'
 
 type Step = 'shape' | 'people' | 'ready'
 
@@ -114,7 +115,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
 
   async function handleCsvFile(file: File) {
     const parsed = parseEmployeeCsv(await file.text())
-    setCsvErrors(parsed.errors)
+    setCsvErrors(parsed.errors.map((e) => csvErrorText(t, e)))
     if (parsed.rows.length === 0) return
     const lines = parsed.rows.map((r) => (r.team ? `${r.name}, ${r.team}` : r.name))
     setPasteText((prev) => (prev.trim() ? `${prev.trimEnd()}\n${lines.join('\n')}` : lines.join('\n')))

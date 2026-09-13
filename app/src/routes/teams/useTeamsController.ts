@@ -7,6 +7,7 @@ import { seedBoardData } from '../../board/periodSeed'
 import type { Period } from '../../state/shell'
 import {
   addTeam,
+  addTeamsFromNames,
   countMembers,
   deleteTeam,
   renameTeam,
@@ -42,6 +43,10 @@ export function useTeamsController(period: Period) {
     setTeams((prev) => addTeam(prev, name))
     setNewName('')
     newNameInputRef.current?.focus()
+  }
+
+  function addTeamsBulk(names: string[]) {
+    setTeams((prev) => addTeamsFromNames(prev, names))
   }
 
   function startDelete(teamId: string, anchor: HTMLElement) {
@@ -80,6 +85,7 @@ export function useTeamsController(period: Period) {
     newName,
     setNewName,
     handleAdd,
+    addTeamsBulk,
     newNameInputRef,
     pendingDelete,
     reassignToId,

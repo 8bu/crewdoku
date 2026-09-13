@@ -1,4 +1,5 @@
 import { useT } from '../i18n/useT'
+import { csvErrorText } from '../i18n/csvErrors'
 import { useMemo, useRef, useState } from 'react'
 import { useAtomValue } from 'jotai'
 import { selectedPeriodAtom, type Period } from '../state/shell'
@@ -16,10 +17,12 @@ import {
   setPersonTeam,
   toggleShiftEligibility,
 } from '../board/roster/rosterOps'
+import { parsePastedRoster, parseEmployeeCsv, applyCsvImport, type CsvRow } from '../board/roster/csvImport'
 import { swatchBgMuted } from '../board/shiftColors'
 import { Stub } from './Stub'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
+import { BatchImportModal } from '../ui/BatchImportModal'
 
 /**
  * Add, edit, remove people (wayfinder ticket 16) — its own dense table, not
@@ -47,11 +50,12 @@ function RosterTable({ period }: { period: Period }) {
   const t = useT()
   const initial = useMemo(() => seedBoardData(period), [period])
   const [people, setPeople] = useRosterPeople(initial.people)
-  const [teams] = useRosterTeams(initial.teams)
+  const [teams, setTeams] = useRosterTeams(initial.teams)
   const [shifts] = useRosterShifts(DEFAULT_SHIFTS)
   const active = useMemo(() => activeRoster(people), [people])
   const [query, setQuery] = useState('')
   const [teamFilterId, setTeamFilterId] = useState<string>('all')
+  const [importOpen, setImportOpen] = useState(false)
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return active.filter((p) => {
@@ -109,9 +113,14 @@ function RosterTable({ period }: { period: Period }) {
               ? t('rtc.roster.count.person', { count: active.length })
               : t('rtc.roster.count.people', { count: active.length })}
         </span>
-        <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm ml-auto">
-          {t('rtc.roster.addPerson')}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm">
+            {t('rtc.roster.import')}
+          </button>
+          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm">
+            {t('rtc.roster.addPerson')}
+          </button>
+        </div>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-base-300 px-4 py-2">
         <Input
@@ -243,6 +252,51 @@ function RosterTable({ period }: { period: Period }) {
           </div>
         )}
       </div>
+      {importOpen && (
+        <BatchImportModal<CsvRow>
+          title={t('rtc.roster.importTitle')}
+          subtitle={
+            <>
+              {t('rtc.roster.importSubtitlePrefix')} <span className="font-mono text-xs">Name, Team</span>
+              {t('rtc.roster.importSubtitleSuffix')}
+            </>
+          }
+          placeholder={t('rtc.roster.importPlaceholder')}
+          emptyLabel={t('rtc.roster.importEmpty')}
+          applyLabel={t('rtc.import.apply')}
+          cancelLabel={t('rtc.common.cancel')}
+          parse={parsePastedRoster}
+          renderSummary={(rows) => {
+            const teamNames = new Set(rows.filter((r) => r.team).map((r) => r.team.toLowerCase()))
+            const peopleLabel =
+              rows.length === 1
+                ? t('rtc.roster.count.person', { count: rows.length })
+                : t('rtc.roster.count.people', { count: rows.length })
+            if (teamNames.size === 0) return peopleLabel
+            const teamsLabel =
+              teamNames.size === 1
+                ? t('rtc.teams.count.team', { count: teamNames.size })
+                : t('rtc.teams.count.teams', { count: teamNames.size })
+            return `${peopleLabel} · ${teamsLabel}`
+          }}
+          onApply={(rows) => {
+            const result = applyCsvImport(people, teams, rows)
+            setPeople(() => result.people)
+            setTeams(() => result.teams)
+          }}
+          csv={{
+            label: t('rtc.roster.importFromCsv'),
+            toText: (fileText) => {
+              const parsed = parseEmployeeCsv(fileText)
+              return {
+                text: parsed.rows.map((r) => (r.team ? `${r.name}, ${r.team}` : r.name)).join('\n'),
+                errors: parsed.errors.map((e) => csvErrorText(t, e)),
+              }
+            },
+          }}
+          onCancel={() => setImportOpen(false)}
+        />
+      )}
     </section>
   )
 }
