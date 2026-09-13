@@ -1,3 +1,4 @@
+import { Upload, Plus } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useState } from 'react'
 import { useAtomValue } from 'jotai'
@@ -10,7 +11,8 @@ import { DeleteTeamPopover } from './teams/DeleteTeamPopover'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
 import { BatchImportModal } from '../ui/BatchImportModal'
-import { parseTeamNames } from '../board/roster/teamOps'
+import { parseTeamNames, parseTeamNameRows } from '../board/roster/teamOps'
+import { readXlsxRows } from '../board/roster/xlsxImport'
 
 /**
  * Create, rename, delete teams and manage who's on each one (wayfinder
@@ -64,7 +66,8 @@ function TeamsPage({ period }: { period: Period }) {
           {c.teams.length === 1 ? t('rtc.teams.count.team', { count: c.teams.length }) : t('rtc.teams.count.teams', { count: c.teams.length })} · {c.activePeople.length === 1 ? t('rtc.teams.count.person', { count: c.activePeople.length }) : t('rtc.teams.count.people', { count: c.activePeople.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm">
+          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm gap-1.5">
+            <Upload className="h-4 w-4" />
             {t('rtc.teams.import')}
           </button>
           <Input
@@ -78,7 +81,8 @@ function TeamsPage({ period }: { period: Period }) {
             placeholder={t('rtc.teams.newTeamPlaceholder')}
             className="w-48"
           />
-          <button type="button" onClick={c.handleAdd} disabled={!c.newName.trim()} className="btn btn-primary btn-sm">
+          <button type="button" onClick={c.handleAdd} disabled={!c.newName.trim()} className="btn btn-primary btn-sm gap-1.5">
+            <Plus className="h-4 w-4" />
             {t('rtc.teams.addTeam')}
           </button>
         </div>
@@ -250,6 +254,20 @@ function TeamsPage({ period }: { period: Period }) {
           }}
           onApply={(names) => c.addTeamsBulk(names)}
           onCancel={() => setImportOpen(false)}
+          file={{
+            label: t('rtc.teams.importFromFile'),
+            accept: '.csv,.xlsx',
+            read: async (f) => {
+              try {
+                const names = f.name.toLowerCase().endsWith('.xlsx')
+                  ? parseTeamNameRows(await readXlsxRows(f))
+                  : parseTeamNames(await f.text())
+                return { text: names.join('\n'), errors: [] }
+              } catch {
+                return { text: '', errors: [t('rtc.import.fileError.unreadable')] }
+              }
+            },
+          }}
         />
       )}
     </section>

@@ -1,3 +1,4 @@
+import { X, Upload } from './icons'
 /**
  * Shared paste-a-list import dialog used by the Roster and Teams modules.
  * Generalizes the onboarding People step's paste UX (textarea + optional CSV
@@ -18,7 +19,7 @@ export function BatchImportModal<T>({
   renderSummary,
   onApply,
   onCancel,
-  csv,
+  file,
 }: {
   title: string
   subtitle: ReactNode
@@ -30,11 +31,11 @@ export function BatchImportModal<T>({
   renderSummary: (rows: T[]) => ReactNode
   onApply: (rows: T[]) => void
   onCancel: () => void
-  csv?: { label: string; toText: (fileText: string) => { text: string; errors: string[] } }
+  file?: { label: string; accept: string; read: (file: File) => Promise<{ text: string; errors: string[] }> }
 }) {
   const modalRef = useRef<HTMLDivElement>(null)
   const [text, setText] = useState('')
-  const [csvErrors, setCsvErrors] = useState<string[]>([])
+  const [fileErrors, setFileErrors] = useState<string[]>([])
 
   useEffect(() => {
     function closeOnEscape(e: KeyboardEvent) {
@@ -75,7 +76,7 @@ export function BatchImportModal<T>({
             aria-label={cancelLabel}
             className="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -87,9 +88,9 @@ export function BatchImportModal<T>({
           autoFocus
         />
 
-        {csvErrors.length > 0 && (
+        {fileErrors.length > 0 && (
           <ul className="flex flex-col gap-1 text-xs text-error">
-            {csvErrors.map((error, i) => (
+            {fileErrors.map((error, i) => (
               <li key={i}>{error}</li>
             ))}
           </ul>
@@ -97,19 +98,19 @@ export function BatchImportModal<T>({
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-base-content/70">{rows.length === 0 ? emptyLabel : renderSummary(rows)}</div>
-          {csv && (
-            <label className="btn btn-ghost btn-xs">
-              {csv.label}
+          {file && (
+            <label className="btn btn-ghost btn-xs gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
+              {file.label}
               <input
                 type="file"
-                accept=".csv,text/csv"
+                accept={file.accept}
                 className="hidden"
                 onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    void file.text().then((fileText) => {
-                      const { text: added, errors } = csv.toText(fileText)
-                      setCsvErrors(errors)
+                  const picked = e.target.files?.[0]
+                  if (picked) {
+                    void file.read(picked).then(({ text: added, errors }) => {
+                      setFileErrors(errors)
                       if (added) setText((prev) => (prev.trim() ? prev.trimEnd() + '\n' + added : added))
                     })
                   }

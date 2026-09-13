@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addTeam, addTeamsFromNames, countMembers, deleteTeam, parseTeamNames, renameTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
+import { addTeam, addTeamsFromNames, countMembers, deleteTeam, parseTeamNames, parseTeamNameRows, renameTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
 import type { Person, Team } from '@crewdoku/domain'
 
 const teams: Team[] = [
@@ -80,6 +80,28 @@ describe('deleteTeam', () => {
 describe('parseTeamNames', () => {
   it('trims each line and drops blank lines', () => {
     expect(parseTeamNames('Front desk\n\n Kitchen ')).toEqual(['Front desk', 'Kitchen'])
+  })
+})
+
+describe('parseTeamNameRows', () => {
+  it('takes the first column of each row', () => {
+    expect(parseTeamNameRows([['Frontline'], ['Kitchen'], ['Night crew']])).toEqual([
+      'Frontline',
+      'Kitchen',
+      'Night crew',
+    ])
+  })
+
+  it('ignores extra columns', () => {
+    expect(parseTeamNameRows([['Frontline', 'ignored'], ['Kitchen', 'x']])).toEqual(['Frontline', 'Kitchen'])
+  })
+
+  it('drops blank or whitespace-only first cells', () => {
+    expect(parseTeamNameRows([['  '], ['Kitchen'], ['']])).toEqual(['Kitchen'])
+  })
+
+  it('returns nothing for empty input', () => {
+    expect(parseTeamNameRows([])).toEqual([])
   })
 })
 

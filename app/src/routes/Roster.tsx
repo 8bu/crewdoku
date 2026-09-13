@@ -1,3 +1,4 @@
+import { X, Upload, Plus } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { csvErrorText } from '../i18n/csvErrors'
 import { useMemo, useRef, useState } from 'react'
@@ -17,7 +18,8 @@ import {
   setPersonTeam,
   toggleShiftEligibility,
 } from '../board/roster/rosterOps'
-import { parsePastedRoster, parseEmployeeCsv, applyCsvImport, type CsvRow } from '../board/roster/csvImport'
+import { parsePastedRoster, applyCsvImport, employeeRowsToLines, type CsvRow } from '../board/roster/csvImport'
+import { readEmployeeFile } from '../board/roster/xlsxImport'
 import { swatchBgMuted } from '../board/shiftColors'
 import { Stub } from './Stub'
 import { Select } from '../ui/Select'
@@ -114,10 +116,12 @@ function RosterTable({ period }: { period: Period }) {
               : t('rtc.roster.count.people', { count: active.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm">
+          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm gap-1.5">
+            <Upload className="h-4 w-4" />
             {t('rtc.roster.import')}
           </button>
-          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm">
+          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm gap-1.5">
+            <Plus className="h-4 w-4" />
             {t('rtc.roster.addPerson')}
           </button>
         </div>
@@ -159,7 +163,8 @@ function RosterTable({ period }: { period: Period }) {
             <p className="m-0 text-sm text-[color:var(--text-dim)]">
               {t('rtc.roster.emptyDescription')}
             </p>
-            <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm">
+            <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm gap-1.5">
+              <Plus className="h-4 w-4" />
               {t('rtc.roster.addPerson')}
             </button>
           </div>
@@ -240,7 +245,7 @@ function RosterTable({ period }: { period: Period }) {
                           onClick={() => setPeople((prev) => removePerson(prev, person.id))}
                           className="btn btn-ghost btn-xs btn-square text-base-content/40 transition-colors duration-150 hover:text-error"
                         >
-                          ✕
+                          <X className="h-4 w-4" />
                         </button>
                       </td>
                     </tr>
@@ -284,13 +289,18 @@ function RosterTable({ period }: { period: Period }) {
             setPeople(() => result.people)
             setTeams(() => result.teams)
           }}
-          csv={{
-            label: t('rtc.roster.importFromCsv'),
-            toText: (fileText) => {
-              const parsed = parseEmployeeCsv(fileText)
-              return {
-                text: parsed.rows.map((r) => (r.team ? `${r.name}, ${r.team}` : r.name)).join('\n'),
-                errors: parsed.errors.map((e) => csvErrorText(t, e)),
+          file={{
+            label: t('rtc.roster.importFromFile'),
+            accept: '.csv,.xlsx',
+            read: async (f) => {
+              try {
+                const parsed = await readEmployeeFile(f)
+                return {
+                  text: employeeRowsToLines(parsed.rows).join('\n'),
+                  errors: parsed.errors.map((e) => csvErrorText(t, e)),
+                }
+              } catch {
+                return { text: '', errors: [t('rtc.import.fileError.unreadable')] }
               }
             },
           }}

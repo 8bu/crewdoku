@@ -15,6 +15,7 @@ export const rtc = {
     'rtc.import.csvError.noHeader': 'The first row must be a header with "name" and "team" columns.',
     'rtc.import.csvError.noRows': 'No people found below the header.',
     'rtc.import.csvError.missingName': 'Row {line}: missing a name — skipped.',
+    'rtc.import.fileError.unreadable': "That file couldn't be read as a spreadsheet.",
 
     // Roster
     'rtc.roster.title': 'Roster',
@@ -24,7 +25,7 @@ export const rtc = {
     'rtc.roster.countFiltered.people': '{filtered} of {total} people',
     'rtc.roster.filterPlaceholder': 'Filter by name…',
     'rtc.roster.clearFilter': 'Clear filter',
-    'rtc.roster.addPerson': '+ Add person',
+    'rtc.roster.addPerson': 'Add person',
     'rtc.roster.emptyDescription':
       'No one on the roster yet. Add your first person — Enter in a name field adds the next row.',
     'rtc.roster.noMatch': 'No one matches this filter.',
@@ -32,14 +33,14 @@ export const rtc = {
     'rtc.roster.removePerson': 'Remove {name}',
     'rtc.roster.removeUnnamed': 'Remove unnamed person',
     'rtc.roster.noTeams': 'No teams yet.',
-    'rtc.roster.import': '⧉ Import',
+    'rtc.roster.import': 'Import',
     'rtc.roster.importTitle': 'Import people',
     'rtc.roster.importSubtitlePrefix': 'One person per line —',
     'rtc.roster.importSubtitleSuffix':
       '. Paste straight from a spreadsheet; each new team name becomes a team.',
     'rtc.roster.importPlaceholder': 'Anna Bauer, Front desk\nBen Keller, Front desk\nChloe Martin',
     'rtc.roster.importEmpty': 'Nothing to import yet.',
-    'rtc.roster.importFromCsv': '⧉ From a CSV file',
+    'rtc.roster.importFromFile': 'From a CSV or Excel file',
 
     // Teams
     'rtc.teams.title': 'Teams',
@@ -48,7 +49,7 @@ export const rtc = {
     'rtc.teams.count.person': '{count} person',
     'rtc.teams.count.people': '{count} people',
     'rtc.teams.newTeamPlaceholder': 'New team name…',
-    'rtc.teams.addTeam': '+ Add team',
+    'rtc.teams.addTeam': 'Add team',
     'rtc.teams.wants': 'Wants',
     'rtc.teams.avoids': 'Avoids',
     'rtc.teams.peopleHeader': 'People ({count})',
@@ -65,7 +66,8 @@ export const rtc = {
     'rtc.teams.moveCountTo.people': 'Move {count} people to:',
     'rtc.teams.moveAndDelete': 'Move & delete',
     'rtc.teams.confirmDelete': 'Delete',
-    'rtc.teams.import': '⧉ Import',
+    'rtc.teams.import': 'Import',
+    'rtc.teams.importFromFile': 'From a CSV or Excel file',
     'rtc.teams.importTitle': 'Import teams',
     'rtc.teams.importSubtitle': 'One team name per line. Names that already exist are skipped.',
     'rtc.teams.importPlaceholder': 'Front desk\nKitchen\nNight crew',
@@ -112,6 +114,7 @@ export const rtc = {
     'rtc.import.csvError.noHeader': 'Dòng đầu tiên phải là tiêu đề có cột "name" và "team".',
     'rtc.import.csvError.noRows': 'Không tìm thấy nhân sự nào bên dưới tiêu đề.',
     'rtc.import.csvError.missingName': 'Dòng {line}: thiếu tên — đã bỏ qua.',
+    'rtc.import.fileError.unreadable': 'Không đọc được tệp này dưới dạng bảng tính.',
 
     // Roster
     'rtc.roster.title': 'Nhân sự',
@@ -121,7 +124,7 @@ export const rtc = {
     'rtc.roster.countFiltered.people': '{filtered} / {total} nhân sự',
     'rtc.roster.filterPlaceholder': 'Lọc theo tên…',
     'rtc.roster.clearFilter': 'Xóa bộ lọc',
-    'rtc.roster.addPerson': '+ Thêm nhân sự',
+    'rtc.roster.addPerson': 'Thêm nhân sự',
     'rtc.roster.emptyDescription':
       'Chưa có ai trong danh sách nhân sự. Hãy thêm người đầu tiên — nhấn Enter ở ô tên để thêm hàng tiếp theo.',
     'rtc.roster.noMatch': 'Không có ai khớp với bộ lọc này.',
@@ -129,14 +132,14 @@ export const rtc = {
     'rtc.roster.removePerson': 'Xóa {name}',
     'rtc.roster.removeUnnamed': 'Xóa nhân sự chưa đặt tên',
     'rtc.roster.noTeams': 'Chưa có phòng/ban nào.',
-    'rtc.roster.import': '⧉ Nhập danh sách',
+    'rtc.roster.import': 'Nhập danh sách',
     'rtc.roster.importTitle': 'Nhập danh sách nhân sự',
     'rtc.roster.importSubtitlePrefix': 'Mỗi người một dòng —',
     'rtc.roster.importSubtitleSuffix':
       '. Dán trực tiếp từ bảng tính; mỗi tên phòng/ban mới sẽ được tạo thành một phòng/ban.',
     'rtc.roster.importPlaceholder': 'Anna Bauer, Lễ tân\nBen Keller, Lễ tân\nChloe Martin',
     'rtc.roster.importEmpty': 'Chưa có gì để nhập.',
-    'rtc.roster.importFromCsv': '⧉ Từ tệp CSV',
+    'rtc.roster.importFromFile': 'Từ tệp CSV hoặc Excel',
 
     // Teams
     'rtc.teams.title': 'Phòng/ban',
@@ -145,7 +148,7 @@ export const rtc = {
     'rtc.teams.count.person': '{count} nhân sự',
     'rtc.teams.count.people': '{count} nhân sự',
     'rtc.teams.newTeamPlaceholder': 'Tên phòng/ban mới…',
-    'rtc.teams.addTeam': '+ Thêm phòng/ban',
+    'rtc.teams.addTeam': 'Thêm phòng/ban',
     'rtc.teams.wants': 'Muốn làm',
     'rtc.teams.avoids': 'Tránh làm',
     'rtc.teams.peopleHeader': 'Nhân sự ({count})',
@@ -162,7 +165,8 @@ export const rtc = {
     'rtc.teams.moveCountTo.people': 'Chuyển {count} nhân sự sang:',
     'rtc.teams.moveAndDelete': 'Chuyển & xóa',
     'rtc.teams.confirmDelete': 'Xóa',
-    'rtc.teams.import': '⧉ Nhập danh sách',
+    'rtc.teams.import': 'Nhập danh sách',
+    'rtc.teams.importFromFile': 'Từ tệp CSV hoặc Excel',
     'rtc.teams.importTitle': 'Nhập danh sách phòng/ban',
     'rtc.teams.importSubtitle': 'Mỗi tên phòng/ban một dòng. Tên đã tồn tại sẽ được bỏ qua.',
     'rtc.teams.importPlaceholder': 'Lễ tân\nBếp\nCa đêm',

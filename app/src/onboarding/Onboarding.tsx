@@ -1,3 +1,4 @@
+import { Check, TriangleAlert, Upload } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { csvErrorText } from '../i18n/csvErrors'
 import { useMemo, useRef, useState } from 'react'
@@ -10,7 +11,8 @@ import { shiftsAtom } from '../state/shifts'
 import { coverageAtom } from '../state/coverageRules'
 import { solveSettingsAtom } from '../state/solveSettings'
 import { useMarkAutoGenerateOnMount, useMarkWorkspaceOnboarded } from '../state/onboarding'
-import { applyCsvImport, parseEmployeeCsv, parsePastedRoster, type CsvRow } from '../board/roster/csvImport'
+import { applyCsvImport, parsePastedRoster, employeeRowsToLines, type CsvRow } from '../board/roster/csvImport'
+import { readEmployeeFile } from '../board/roster/xlsxImport'
 import type { BoardData } from '../board/mockBoard'
 import { WORKSPACE_TEMPLATES, type WorkspaceTemplate } from './templates'
 
@@ -34,7 +36,7 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
               : 'border border-base-300 text-base-content/40'
         }`}
       >
-        {done ? '✓' : n}
+        {done ? <Check className="h-3 w-3" /> : n}
       </span>
       <span className={`text-sm font-medium ${active ? 'text-base-content' : 'text-base-content/50'}`}>{label}</span>
     </div>
@@ -113,12 +115,16 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
     setStep('people')
   }
 
-  async function handleCsvFile(file: File) {
-    const parsed = parseEmployeeCsv(await file.text())
-    setCsvErrors(parsed.errors.map((e) => csvErrorText(t, e)))
-    if (parsed.rows.length === 0) return
-    const lines = parsed.rows.map((r) => (r.team ? `${r.name}, ${r.team}` : r.name))
-    setPasteText((prev) => (prev.trim() ? `${prev.trimEnd()}\n${lines.join('\n')}` : lines.join('\n')))
+  async function handleImportFile(file: File) {
+    try {
+      const parsed = await readEmployeeFile(file)
+      setCsvErrors(parsed.errors.map((e) => csvErrorText(t, e)))
+      if (parsed.rows.length === 0) return
+      const lines = employeeRowsToLines(parsed.rows)
+      setPasteText((prev) => (prev.trim() ? `${prev.trimEnd()}\n${lines.join('\n')}` : lines.join('\n')))
+    } catch {
+      setCsvErrors([t('rtc.import.fileError.unreadable')])
+    }
   }
 
   function finish(rosterRows: CsvRow[], generate: boolean) {
@@ -134,7 +140,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b border-base-300 bg-base-100 px-6 py-3">
+      <div className="flex h-12 items-center gap-4 border-b border-base-300 bg-base-100 px-6">
         {STEPS.map((s, i) => (
           <div key={s.key} className="flex items-center gap-4">
             {i > 0 && <div className="h-px w-8 flex-none bg-base-300" />}
@@ -205,16 +211,17 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                     </>
                   )}
                 </p>
-                <label className="btn btn-ghost btn-xs">
-                  {t('onbex.people.fromCsv')}
+                <label className="btn btn-ghost btn-xs gap-1.5">
+                  <Upload className="h-3.5 w-3.5" />
+                  {t('onbex.people.fromFile')}
                   <input
                     ref={fileRef}
                     type="file"
-                    accept=".csv,text/csv"
+                    accept=".csv,.xlsx"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) void handleCsvFile(file)
+                      if (file) void handleImportFile(file)
                       e.target.value = ''
                     }}
                   />
@@ -222,7 +229,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
               </div>
 
               {rows.length > 0 && rows.length < template.minPeople && template.peopleHint && (
-                <p className="text-xs text-warning">◆ {t(`onbex.template.${template.id}.hint`)}</p>
+                <p className="flex items-start gap-1.5 text-xs text-warning"><TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{t(`onbex.template.${template.id}.hint`)}</span></p>
               )}
 
               <div className="flex items-center gap-3">

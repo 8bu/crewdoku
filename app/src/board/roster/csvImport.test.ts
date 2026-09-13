@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyCsvImport, parseEmployeeCsv, parsePastedRoster } from './csvImport'
+import { applyCsvImport, parseEmployeeCsv, parseEmployeeRows, parsePastedRoster } from './csvImport'
 import { UNASSIGNED_TEAM_ID } from '@crewdoku/domain'
 
 describe('parseEmployeeCsv', () => {
@@ -49,6 +49,57 @@ describe('parseEmployeeCsv', () => {
     const result = parseEmployeeCsv('name,team\n')
     expect(result.rows).toEqual([])
     expect(result.errors).toEqual([{ kind: 'noRows' }])
+  })
+})
+
+describe('parseEmployeeRows', () => {
+  it('reads a two-column table, leaving a blank team blank', () => {
+    const result = parseEmployeeRows([
+      ['name', 'team'],
+      ['Alice', 'Frontline'],
+      ['Bob', ''],
+    ])
+    expect(result.rows).toEqual([
+      { name: 'Alice', team: 'Frontline' },
+      { name: 'Bob', team: '' },
+    ])
+    expect(result.errors).toEqual([])
+  })
+
+  it('drops fully-empty trailing rows', () => {
+    const result = parseEmployeeRows([
+      ['name', 'team'],
+      ['Alice', 'A'],
+      ['', ''],
+    ])
+    expect(result.rows).toEqual([{ name: 'Alice', team: 'A' }])
+    expect(result.errors).toEqual([])
+  })
+
+  it('rejects a table with no name/team header', () => {
+    const result = parseEmployeeRows([
+      ['x', 'y'],
+      ['Alice', 'A'],
+    ])
+    expect(result.errors[0]).toEqual({ kind: 'noHeader' })
+  })
+
+  it('reports a header with no rows below it', () => {
+    expect(parseEmployeeRows([['name', 'team']]).errors).toEqual([{ kind: 'noRows' }])
+  })
+
+  it('reports empty input', () => {
+    expect(parseEmployeeRows([]).errors).toEqual([{ kind: 'empty' }])
+  })
+
+  it('skips a blank-name row but keeps the rest and reports why', () => {
+    const result = parseEmployeeRows([
+      ['name', 'team'],
+      ['', 'A'],
+      ['Bob', 'B'],
+    ])
+    expect(result.rows).toEqual([{ name: 'Bob', team: 'B' }])
+    expect(result.errors).toEqual([{ kind: 'missingName', line: 2 }])
   })
 })
 

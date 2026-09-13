@@ -23,6 +23,11 @@ export function parseTeamNames(text: string): string[] {
   return text.split(/\r\n|\r|\n/).map((line) => line.trim()).filter((line) => line.length > 0)
 }
 
+/** First column of each spreadsheet row as a trimmed team name, blanks dropped. Mirror of `parseTeamNames` for the `.xlsx` path. */
+export function parseTeamNameRows(rows: string[][]): string[] {
+  return rows.map((r) => (r[0] ?? '').trim()).filter((n) => n.length > 0)
+}
+
 /**
  * Bulk-creates teams from names, skipping blanks and any name that already
  * exists (case-insensitive) or repeats within the batch. Order preserved;

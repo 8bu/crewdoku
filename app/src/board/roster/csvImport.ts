@@ -26,34 +26,54 @@ function splitCsvLine(line: string): string[] {
 
 /** Header row is required and must name both columns — order and case don't matter. */
 export function parseEmployeeCsv(text: string): CsvParseResult {
-  const lines = text
+  const rows = text
     .split(/\r\n|\r|\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
+    .map(splitCsvLine)
+  return parseEmployeeRows(rows)
+}
 
-  if (lines.length === 0) return { rows: [], errors: [{ kind: 'empty' }] }
+/**
+ * The shared core behind both the CSV and the `.xlsx` import: given rows that
+ * are already split into cells, it detects the `name`/`team` header and reads
+ * each row off it. Row-based so a spreadsheet reader feeds it the same shape a
+ * CSV split produces.
+ */
+export function parseEmployeeRows(cellRows: string[][]): CsvParseResult {
+  const rows = cellRows.filter((cells) => cells.some((cell) => cell.trim().length > 0))
 
-  const header = splitCsvLine(lines[0]!).map((cell) => cell.toLowerCase())
+  if (rows.length === 0) return { rows: [], errors: [{ kind: 'empty' }] }
+
+  const header = rows[0]!.map((cell) => cell.trim().toLowerCase())
   const nameIdx = header.indexOf('name')
   const teamIdx = header.indexOf('team')
   if (nameIdx === -1 || teamIdx === -1) {
     return { rows: [], errors: [{ kind: 'noHeader' }] }
   }
-  if (lines.length === 1) return { rows: [], errors: [{ kind: 'noRows' }] }
+  if (rows.length === 1) return { rows: [], errors: [{ kind: 'noRows' }] }
 
-  const rows: CsvRow[] = []
+  const parsed: CsvRow[] = []
   const errors: CsvError[] = []
-  for (let i = 1; i < lines.length; i++) {
-    const cells = splitCsvLine(lines[i]!)
-    const name = cells[nameIdx] ?? ''
-    const team = cells[teamIdx] ?? ''
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i]!
+    const name = (cells[nameIdx] ?? '').trim()
+    const team = (cells[teamIdx] ?? '').trim()
     if (!name) {
       errors.push({ kind: 'missingName', line: i + 1 })
       continue
     }
-    rows.push({ name, team })
+    parsed.push({ name, team })
   }
-  return { rows, errors }
+  return { rows: parsed, errors }
+}
+
+/**
+ * Renders parsed rows as the paste-box text both import surfaces share: one
+ * person per line, `Name` or `Name, Team`. The inverse of `parsePastedRoster`.
+ */
+export function employeeRowsToLines(rows: CsvRow[]): string[] {
+  return rows.map((r) => (r.team ? `${r.name}, ${r.team}` : r.name))
 }
 
 /**

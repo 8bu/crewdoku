@@ -41,7 +41,7 @@ export const onbex = {
     'onbex.people.people': 'people',
     'onbex.people.team': 'team',
     'onbex.people.teams': 'teams',
-    'onbex.people.fromCsv': '⧉ From a CSV file',
+    'onbex.people.fromFile': 'From a CSV or Excel file',
 
     // Onboarding - Ready step
     'onbex.ready.title': 'Ready to generate',
@@ -155,7 +155,7 @@ export const onbex = {
     'onbex.people.people': 'nhân sự',
     'onbex.people.team': 'phòng/ban',
     'onbex.people.teams': 'phòng/ban',
-    'onbex.people.fromCsv': '⧉ Từ tệp CSV',
+    'onbex.people.fromFile': 'Từ tệp CSV hoặc Excel',
 
     // Onboarding - Ready step
     'onbex.ready.title': 'Sẵn sàng tạo lịch',
