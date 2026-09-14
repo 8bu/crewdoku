@@ -109,6 +109,72 @@ describe('detectViolations', () => {
   })
 })
 
+// Regression: the board's H2 must bucket weeks like the domain/solver — 7-day
+// windows from the period start (weekIndexOf), counting paidHours — not the
+// board's Monday-reset `date.weekIndex` with clock hours. A Sunday-start period
+// is where the two disagree.
+describe('detectViolations H2 weekly hours', () => {
+  const CAP = 38
+
+  // Contiguous BoardDates from a start date, carrying the board's Monday-reset
+  // weekIndex exactly as mockBoard builds it, so these tests prove the checker
+  // ignores it and buckets by period-start 7-day windows instead.
+  function days(startIso: string, n: number): BoardDate[] {
+    const out: BoardDate[] = []
+    let weekIndex = -1
+    for (let i = 0; i < n; i++) {
+      const d = new Date(`${startIso}T00:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + i)
+      const iso = d.toISOString().slice(0, 10)
+      const weekday = d.getUTCDay()
+      const isMonday = weekday === 1
+      if (isMonday || i === 0) weekIndex++
+      out.push({
+        iso,
+        weekday,
+        dayOfMonth: d.getUTCDate(),
+        monthShort: 'Sep',
+        isWeekend: weekday === 0 || weekday === 6,
+        isMonday,
+        weekIndex,
+        holidayName: null,
+      })
+    }
+    return out
+  }
+
+  function hoursViolations(dates: BoardDate[], worked: string[], shifts = DEFAULT_SHIFTS) {
+    const map: Record<string, Assignment> = {}
+    for (const dt of dates) map[`p1|${dt.iso}`] = worked.includes(dt.iso) ? assignment('EARLY') : assignment('OFF')
+    return detectViolations([person('p1')], dates, board(map), shifts, ENABLED, CAP, MIN_REST_HOURS).filter(
+      (v) => v.kind === 'hours',
+    )
+  }
+
+  // Period starts Sunday 2026-09-13: period-week 0 is Sep13-19, week 1 Sep20-26.
+  it('does not flag 5 shifts spanning a Monday boundary that sit <=4 in each period-start week', () => {
+    // Sep16-19 (4 shifts, 32h) in week 0, Sep20 (8h) in week 1 — both under 38h.
+    // The board's Monday week (Sep14-20) would wrongly see all five (40h).
+    const v = hoursViolations(days('2026-09-13', 9), ['2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20'])
+    expect(v).toEqual([])
+  })
+
+  it('flags a genuine 40h period-start week', () => {
+    // Sep14-18 (Mon-Fri) are all in period-week 0: 5 shifts = 40h > 38.
+    const v = hoursViolations(days('2026-09-13', 9), ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18'])
+    expect(v).toHaveLength(1)
+    expect(v[0]!.message).toContain('over the 38h cap')
+  })
+
+  it('counts paid hours, subtracting unpaid breaks', () => {
+    // 5 EARLY shifts in one period-week = 40h clock, but a 30-min unpaid break
+    // each is 37.5h paid — under the 38h cap, so not flagged.
+    const shifts = DEFAULT_SHIFTS.map((s) => (s.code === 'EARLY' ? { ...s, unpaidBreakMinutes: 30 } : s))
+    const v = hoursViolations(days('2026-09-13', 9), ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18'], shifts)
+    expect(v).toEqual([])
+  })
+})
+
 describe('partitionViolationsForBoard', () => {
   const dates = [date('2026-01-05', 1, 5), date('2026-01-06', 2, 6)]
   const people = [person('p1', 'Anna')]

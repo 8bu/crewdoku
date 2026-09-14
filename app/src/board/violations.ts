@@ -10,9 +10,9 @@
  * `enabled` the same way Settings' Advanced door controls them.
  */
 
-import { assignmentKey, type Assignment, type Person, type ShiftDef } from '@crewdoku/domain'
+import { assignmentKey, paidHours, weekIndexOf, type Assignment, type Person, type ShiftDef } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
-import { shiftDurationHours, shiftSpan } from './shiftDuration'
+import { shiftSpan } from './shiftDuration'
 import type { HardRuleId } from '@crewdoku/domain'
 
 export type ViolationKind = 'ineligible' | 'rest' | 'hours' | 'unavailable'
@@ -102,6 +102,8 @@ export function detectViolations(
   minRestHours: number,
 ): Violation[] {
   const violations: Violation[] = []
+  const periodStart = dates[0]
+  if (!periodStart) return violations
 
   for (const person of people) {
     let prevDate: BoardDate | null = null
@@ -147,7 +149,8 @@ export function detectViolations(
       }
 
       if (enabled.H2) {
-        if (date.weekIndex !== weekIndex) {
+        const wIdx = weekIndexOf(periodStart.iso, date.iso)
+        if (wIdx !== weekIndex) {
           if (weekAnchor && weekHours > maxHoursPerWeek) {
             violations.push({
               id: `hours|${assignmentKey(person.id, weekAnchor.iso)}|${weekIndex}`,
@@ -157,12 +160,12 @@ export function detectViolations(
               message: `${person.name} is scheduled ${formatHours(weekHours)} the week of ${dateLabel(weekAnchor)}, over the ${maxHoursPerWeek}h cap`,
             })
           }
-          weekIndex = date.weekIndex
+          weekIndex = wIdx
           weekHours = 0
           weekAnchor = null
         }
         if (assignment.code !== 'OFF') {
-          weekHours += shiftDurationHours(shifts, assignment.code)
+          weekHours += paidHours(shifts, assignment.code)
           weekAnchor = weekAnchor ?? date
         }
       }
