@@ -94,11 +94,11 @@ export function OrgPicker() {
           <p className="m-0 text-xl font-semibold tracking-tight text-base-content">
             {t('workspace.org.introTagline')}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <Step icon={Users} title={t('workspace.org.step1.title')} caption={t('workspace.org.step1.caption')} />
-            <ArrowRight className="h-4 w-4 shrink-0 text-base-content/25" />
+            <ArrowRight className="mt-2.5 h-4 w-4 shrink-0 text-base-content/25" />
             <Step icon={Sparkles} title={t('workspace.org.step2.title')} caption={t('workspace.org.step2.caption')} />
-            <ArrowRight className="h-4 w-4 shrink-0 text-base-content/25" />
+            <ArrowRight className="mt-2.5 h-4 w-4 shrink-0 text-base-content/25" />
             <Step icon={Download} title={t('workspace.org.step3.title')} caption={t('workspace.org.step3.caption')} />
           </div>
         </div>
