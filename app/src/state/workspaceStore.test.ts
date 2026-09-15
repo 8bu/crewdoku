@@ -15,14 +15,17 @@ import {
   deleteWorkspace,
   leaveOrg,
   selectOrg,
+  startSampleWorkspace,
   switchWorkspace,
 } from './workspaceStore'
 import { activeOrgIdAtom, activeWorkspaceIdAtom, orgsAtom, workspaceMetasAtom } from './orgStore'
 import { peopleAtom } from './roster'
+import { teamsAtom } from './teams'
+import { shiftsAtom } from './shifts'
 import { periodsAtom } from './shell'
 import { scheduleByPeriodAtom } from './schedule'
 import { overridesByPeriodAtom } from './boardOverrides'
-import { workspaceOnboardedAtom } from './onboarding'
+import { autoGenerateOnMountAtom, workspaceOnboardedAtom } from './onboarding'
 
 class FakeStorage implements MultiWorkspaceStorage {
   registry: WorkspaceRegistry | null = null
@@ -74,6 +77,9 @@ beforeEach(() => {
   store.set(periodsAtom, [])
   store.set(scheduleByPeriodAtom, {})
   store.set(overridesByPeriodAtom, {})
+  store.set(teamsAtom, [])
+  store.set(shiftsAtom, null)
+  store.set(autoGenerateOnMountAtom, new Set<string>())
   store.set(workspaceOnboardedAtom, false)
 })
 
@@ -249,5 +255,43 @@ describe('selectOrg / leaveOrg', () => {
     await selectOrg(org.id)
     expect(store.get(activeOrgIdAtom)).toBe(org.id)
     expect(store.get(activeWorkspaceIdAtom)).toBeNull()
+  })
+})
+
+describe('startSampleWorkspace', () => {
+  it('seeds a populated org+workspace, arms auto-generate, and persists it', async () => {
+    const storage = new FakeStorage()
+    await bootWorkspace(storage)
+
+    await startSampleWorkspace()
+
+    // A new org + workspace exists and is the active selection.
+    const orgs = store.get(orgsAtom)
+    const metas = store.get(workspaceMetasAtom)
+    expect(orgs).toHaveLength(1)
+    expect(metas).toHaveLength(1)
+    const meta = metas[0]
+    if (!meta) throw new Error('expected one workspace')
+    expect(store.get(activeOrgIdAtom)).toBe(meta.orgId)
+    expect(store.get(activeWorkspaceIdAtom)).toBe(meta.id)
+
+    // Roster is populated across two teams with the retail shift catalog, so
+    // the board renders a real sample rather than an empty starter.
+    expect((store.get(peopleAtom) ?? []).length).toBeGreaterThan(0)
+    expect(store.get(teamsAtom)).toHaveLength(2)
+    expect((store.get(shiftsAtom) ?? []).map((s) => s.code)).toEqual(['OPEN', 'CLOSE'])
+
+    // The wizard stays shut (roster present) and the one seeded period is armed
+    // to auto-solve once on the board's next mount.
+    expect(store.get(workspaceOnboardedAtom)).toBe(true)
+    const periods = store.get(periodsAtom)
+    const period = periods[0]
+    if (!period) throw new Error('expected one seeded period')
+    expect(periods).toHaveLength(1)
+    expect(store.get(autoGenerateOnMountAtom).has(period.id)).toBe(true)
+
+    // The seeded aggregate is persisted so a reload restores the sample.
+    expect(storage.registry?.activeWorkspaceId).toBe(meta.id)
+    expect(storage.workspaces.get(meta.id)?.people.length).toBe((store.get(peopleAtom) ?? []).length)
   })
 })

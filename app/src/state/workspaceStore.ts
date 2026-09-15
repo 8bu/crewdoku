@@ -25,6 +25,8 @@ import { scheduleByPeriodAtom, type ScheduleState } from './schedule'
 import { overridesByPeriodAtom } from './boardOverrides'
 import { orgsAtom, workspaceMetasAtom, activeOrgIdAtom, activeWorkspaceIdAtom } from './orgStore'
 import { autoGenerateOnMountAtom, onboardedPeriodsAtom, workspaceOnboardedAtom } from './onboarding'
+import { applyCsvImport, type CsvRow } from '../board/roster/csvImport'
+import { WORKSPACE_TEMPLATES } from '../onboarding/templates'
 
 /**
  * The persistence seam (app ticket 02, extended for multi-workspace). The jotai
@@ -327,6 +329,68 @@ export async function createWorkspace(orgId: string, name: string): Promise<Work
   resetOnboardingFor(store, starter)
   await storageRef.saveRegistry(readRegistry(store))
   return meta
+}
+
+/** A small, believable sample roster for the one-click demo workspace. */
+const SAMPLE_ROWS: CsvRow[] = [
+  { name: 'Ava Bennett', team: 'Front of house' },
+  { name: 'Liam Carter', team: 'Front of house' },
+  { name: 'Sofia Delgado', team: 'Front of house' },
+  { name: 'Noah Fischer', team: 'Front of house' },
+  { name: 'Mia Okafor', team: 'Front of house' },
+  { name: 'Ethan Reyes', team: 'Front of house' },
+  { name: 'Hana Sato', team: 'Kitchen' },
+  { name: 'Omar Haddad', team: 'Kitchen' },
+  { name: 'Lucas Moreau', team: 'Kitchen' },
+  { name: 'Priya Nair', team: 'Kitchen' },
+  { name: 'Chloe Martin', team: 'Kitchen' },
+  { name: 'Diego Alvarez', team: 'Kitchen' },
+]
+
+/**
+ * One-click sample (org picker "see a sample schedule"): a fully seeded org +
+ * workspace — a retail shape plus a small roster — that lands straight on the
+ * board and auto-solves once, so a first-time visitor sees a real, fair,
+ * rule-legal schedule with zero setup. It is an ordinary org (deletable from
+ * the picker), not a special mode; the one-shot auto-generate reuses the exact
+ * path the first-run wizard uses.
+ */
+export async function startSampleWorkspace(): Promise<void> {
+  const store = getDefaultStore()
+  const currentId = store.get(activeWorkspaceIdAtom)
+  if (currentId) await storageRef.saveWorkspace(currentId, collectWorkspace(store))
+
+  const template = WORKSPACE_TEMPLATES.find((t) => t.id === 'retail')
+  if (!template) throw new Error('startSampleWorkspace: retail template is missing')
+  const { people, teams } = applyCsvImport([], [], SAMPLE_ROWS)
+  const today = new Date().toISOString().slice(0, 10)
+  const period = createPeriod('Sample fortnight', today, 'biweek', 'ready')
+  const sample: Workspace = {
+    people,
+    teams,
+    shifts: template.shifts,
+    coverage: template.coverage,
+    settings: template.solveSettings,
+    periods: [period],
+    schedules: new Map(),
+  }
+
+  const org = makeOrg('Sample team')
+  const meta = makeWorkspaceMeta(org.id, 'Downtown store')
+  await storageRef.saveWorkspace(meta.id, sample)
+
+  store.set(orgsAtom, [...store.get(orgsAtom), org])
+  store.set(workspaceMetasAtom, [...store.get(workspaceMetasAtom), meta])
+  hydrate(store, sample)
+  // Seed the onboarding gates directly — not resetOnboardingFor, which would
+  // clear the auto-generate flag. The roster is present so the wizard stays
+  // shut, and the board auto-solves this one period on mount.
+  store.set(workspaceOnboardedAtom, true)
+  store.set(onboardedPeriodsAtom, new Set<string>())
+  store.set(autoGenerateOnMountAtom, new Set<string>([period.id]))
+  store.set(activeOrgIdAtom, org.id)
+  store.set(activeWorkspaceIdAtom, meta.id)
+  await storageRef.saveRegistry(readRegistry(store))
 }
 
 /** Switches the active workspace: flush current, load target, re-hydrate. */

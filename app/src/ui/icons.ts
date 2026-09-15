@@ -13,6 +13,9 @@ export {
   Minus,
   ArrowRight,
   Upload,
+  Users,
+  Sparkles,
+  Download,
   TriangleAlert,
   TriangleAlert as WarningTriangleIcon,
 } from 'lucide-react'

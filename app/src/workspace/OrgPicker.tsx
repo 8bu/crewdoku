@@ -1,10 +1,10 @@
-import { X, Plus } from '../ui/icons'
+import { X, Plus, ArrowRight, Users, Sparkles, Download } from '../ui/icons'
 import { useState } from 'react'
 import { useT } from '../i18n/useT'
 import { Logo } from '../shell/Logo'
 import { Input } from '../ui/Input'
 import { useOrgs } from '../state/orgStore'
-import { createOrg, deleteOrg, selectOrg } from '../state/workspaceStore'
+import { createOrg, deleteOrg, selectOrg, startSampleWorkspace } from '../state/workspaceStore'
 
 /** Up to two initials for an org avatar tile. */
 function initials(name: string): string {
@@ -14,6 +14,19 @@ function initials(name: string): string {
   if (parts.length === 1) return first.slice(0, 2).toUpperCase()
   const last = parts[parts.length - 1] ?? first
   return (first.charAt(0) + last.charAt(0)).toUpperCase()
+}
+
+/** One step in the first-run "how it works" strip: icon, verb, short caption. */
+function Step({ icon: Icon, title, caption }: { icon: typeof Users; title: string; caption: string }) {
+  return (
+    <div className="flex w-36 flex-col items-center gap-1.5 text-center">
+      <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="text-sm font-semibold text-base-content">{title}</span>
+      <span className="text-xs text-base-content/50">{caption}</span>
+    </div>
+  )
 }
 
 /**
@@ -62,9 +75,34 @@ export function OrgPicker() {
     }
   }
 
+  async function startSample() {
+    if (busy) return
+    setBusy(true)
+    try {
+      await startSampleWorkspace()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="flex h-full flex-col items-center justify-center bg-base-200 p-6">
-      <Logo className="mb-8 h-8 w-auto" />
+      <Logo className="mb-6 h-8 w-auto" />
+
+      {firstRun && (
+        <div className="mb-8 flex flex-col items-center gap-6">
+          <p className="m-0 text-xl font-semibold tracking-tight text-base-content">
+            {t('workspace.org.introTagline')}
+          </p>
+          <div className="flex items-center gap-2">
+            <Step icon={Users} title={t('workspace.org.step1.title')} caption={t('workspace.org.step1.caption')} />
+            <ArrowRight className="h-4 w-4 shrink-0 text-base-content/25" />
+            <Step icon={Sparkles} title={t('workspace.org.step2.title')} caption={t('workspace.org.step2.caption')} />
+            <ArrowRight className="h-4 w-4 shrink-0 text-base-content/25" />
+            <Step icon={Download} title={t('workspace.org.step3.title')} caption={t('workspace.org.step3.caption')} />
+          </div>
+        </div>
+      )}
 
       {mode === 'create' || firstRun ? (
         <div className="w-full max-w-[420px] rounded-lg border border-base-300 bg-base-100 p-8 shadow-lg">
@@ -156,6 +194,17 @@ export function OrgPicker() {
             </button>
           </div>
         </div>
+      )}
+
+      {firstRun && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void startSample()}
+          className="mt-5 text-sm text-base-content/50 underline-offset-4 transition-colors hover:text-base-content hover:underline disabled:opacity-50"
+        >
+          {t('workspace.org.sample')}
+        </button>
       )}
     </div>
   )
