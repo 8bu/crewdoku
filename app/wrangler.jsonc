@@ -4,6 +4,10 @@
   "compatibility_date": "2026-09-14",
   "assets": {
     "directory": "./dist",
+    // "none": serve /foo.html as-is (Google Search Console verification file
+    // must return 200 at its exact path). Everything else still falls through
+    // to the SPA index.html via not_found_handling.
+    "html_handling": "none",
     "not_found_handling": "single-page-application"
   },
   "routes": [{ "pattern": "crewdoku.8bu.dev", "custom_domain": true }]
