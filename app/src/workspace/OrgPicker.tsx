@@ -19,12 +19,12 @@ function initials(name: string): string {
 /** One step in the first-run "how it works" strip: icon, verb, short caption. */
 function Step({ icon: Icon, title, caption }: { icon: typeof Users; title: string; caption: string }) {
   return (
-    <div className="flex w-36 flex-col items-center gap-1.5 text-center">
+    <div className="flex w-44 flex-col items-center gap-1.5 text-center">
       <span className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
         <Icon className="h-4 w-4" />
       </span>
       <span className="text-sm font-semibold text-base-content">{title}</span>
-      <span className="text-xs text-base-content/50">{caption}</span>
+      <span className="text-xs leading-snug text-base-content/50">{caption}</span>
     </div>
   )
 }
