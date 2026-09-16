@@ -5,7 +5,7 @@
 Crewdoku builds multi-week shift schedules for one team. Describe your people
 and the coverage each shift needs, press **Generate**, and get a fair,
 rule-legal roster you can tweak by hand and export. It runs entirely in your
-browser — no server, no account, no data leaves your machine.
+browser — no server, no account, and your schedule never leaves your machine.
 
 **Try it:** <https://crewdoku.8bu.dev>
 
@@ -77,6 +77,33 @@ pnpm build        # → app/dist/
 
 The included [`app/wrangler.jsonc`](app/wrangler.jsonc) deploys it as Cloudflare
 Workers static assets: `cd app && npx wrangler deploy`.
+
+A self-host sends nothing anywhere unless you build it with a PostHog project
+token. The token and host are baked in at build time and are never committed
+(`.env.*` is gitignored):
+
+```bash
+VITE_POSTHOG_PROJECT_TOKEN=phc_... VITE_POSTHOG_HOST=https://us.i.posthog.com pnpm build
+```
+
+Put them in `app/.env.production` to have every `pnpm build` pick them up; use
+`https://eu.i.posthog.com` for an EU project. With no token the SDK is never even
+fetched.
+
+## Privacy
+
+Your schedule lives in IndexedDB on your machine and is never uploaded. The
+public build reports anonymous, structural usage analytics through PostHog:
+counts and enums only — a solve finished, an export was CSV, a roster of 12 rows
+was imported. It never sends your people, teams, shifts, schedules, or any name.
+
+The integration is deliberately narrow: autocapture, session recording, surveys,
+heatmaps, exception capture, and feature flags are all off, so nothing is ever
+read off the screen; events are never tied to a person profile; and no cookie is
+set. IP handling is a project setting on PostHog's side — turn on "Discard client
+IP data" there if you want it gone too. Collection can be switched off entirely
+under **Settings → Privacy**; the choice is per device and takes effect
+immediately, not on the next load.
 
 ## Development
 

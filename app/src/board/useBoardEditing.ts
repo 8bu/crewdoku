@@ -12,6 +12,7 @@ import {
 import type { BoardDate } from './mockBoard'
 import { isEligible } from './eligibility'
 import { useBoardOverrides } from '../state/boardOverrides'
+import { track } from '../analytics'
 import {
   clampCoord,
   moveSelection,
@@ -159,6 +160,10 @@ export function useBoardEditing(
         patch.set(assignmentKey(person.id, date.iso), buildAssignment(shifts, person, code))
       }
       if (patch.size === 0) return
+      // One event per committed edit, not per cell — `patch` covers the whole
+      // selection. A typed code, a menu pick, and Delete (which lands here as
+      // OFF) are all sets.
+      track('board_cell_edited', { kind: 'set' })
       applyOverrides((prev) => commitEdit(historyRef.current, prev, patch))
     },
     [locked, selection, visiblePeople, dates, shifts, applyOverrides],
@@ -174,6 +179,7 @@ export function useBoardEditing(
       patch.set(assignmentKey(person.id, date.iso), undefined)
     }
     if (patch.size === 0) return
+    track('board_cell_edited', { kind: 'clear' })
     applyOverrides((prev) => commitEdit(historyRef.current, prev, patch))
   }, [locked, selection, visiblePeople, dates, applyOverrides])
 
@@ -249,6 +255,9 @@ export function useBoardEditing(
       })
 
       if (patch.size === 0) return
+      // A paste can cover many cells and still counts as the one edit that
+      // actually landed.
+      track('board_cell_edited', { kind: 'set' })
       applyOverrides((prev) => commitEdit(historyRef.current, prev, patch))
       setSelection({ anchor: origin, focus: { row: lastRow, col: lastCol } })
     },

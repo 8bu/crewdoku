@@ -108,6 +108,12 @@ export const settings = {
     'settings.coverage.addOverrideFor': 'Add override for',
     'settings.coverage.addOverride': 'Add',
 
+    // Privacy section
+    'settings.privacy.title': 'Privacy',
+    'settings.privacy.desc':
+      'Anonymous usage analytics help improve Crewdoku. They record counts and settings only — never your people, teams, or schedule.',
+    'settings.privacy.toggle': 'Send anonymous usage analytics',
+
     // Advanced section
     'settings.advanced.title': 'Advanced',
     'settings.advanced.hardRules': 'Hard rules',
@@ -250,6 +256,12 @@ export const settings = {
     'settings.coverage.removeOverride': 'Xóa',
     'settings.coverage.addOverrideFor': 'Thêm ghi đè cho ngày',
     'settings.coverage.addOverride': 'Thêm',
+
+    // Privacy section
+    'settings.privacy.title': 'Quyền riêng tư',
+    'settings.privacy.desc':
+      'Số liệu sử dụng ẩn danh giúp cải thiện Crewdoku. Chúng chỉ ghi nhận số lượng và cài đặt — không bao giờ ghi nhân sự, phòng/ban hay lịch phân công của bạn.',
+    'settings.privacy.toggle': 'Gửi số liệu sử dụng ẩn danh',
 
     // Advanced section
     'settings.advanced.title': 'Nâng cao',

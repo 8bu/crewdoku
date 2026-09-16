@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CancelledError } from '@crewdoku/solver'
+import { track } from '../../analytics'
 import type { ConflictCoreItem, RelaxationOption, ScheduleMap, SolveResult } from '../../engine/types'
 
 export type GenerateState =
@@ -45,11 +46,14 @@ export function useGenerateFlow(
     runSolve(onLog)
       .then((result) => {
         if (runIdRef.current !== id) return
+        const durationMs = Date.now() - startedAtRef.current
         if (result.status === 'solved') {
           onSolved(result.schedule)
           setState({ phase: 'idle' })
+          track('solve_finished', { outcome: 'solved', duration_ms: durationMs })
         } else {
           setState({ phase: 'infeasible', conflictCore: result.conflictCore, relaxations: result.relaxations })
+          track('solve_finished', { outcome: 'infeasible', duration_ms: durationMs })
         }
       })
       .catch((error: unknown) => {
@@ -59,11 +63,16 @@ export function useGenerateFlow(
         // reset the UI. Anything else is a genuine engine/environment failure.
         if (!(error instanceof CancelledError)) {
           console.error('Solve failed', error)
+          track('solve_finished', { outcome: 'error', duration_ms: Date.now() - startedAtRef.current })
         }
       })
   }, [runSolve, onSolved])
 
   const cancel = useCallback(() => {
+    // The Cancel button only renders while solving, so this is the cancelled
+    // run's terminal transition; the bump below is what turns its own
+    // still-in-flight `.then`/`.catch` away.
+    track('solve_finished', { outcome: 'cancelled', duration_ms: Date.now() - startedAtRef.current })
     runIdRef.current++
     cancelSolve()
     setState({ phase: 'idle' })

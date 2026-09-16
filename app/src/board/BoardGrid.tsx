@@ -25,6 +25,7 @@ import { useSolveSettings } from '../state/solveSettings'
 import { useSettingsDirty } from '../state/settingsDirty'
 import { useTakeAutoGenerateOnMount } from '../state/onboarding'
 import { buildModelInput, cancelSolve, solve } from '../engine'
+import { track } from '../analytics'
 import type { ModelInput, RelaxationOption, ScheduleMap } from '../engine/types'
 import { useGenerateFlow } from './generate/useGenerateFlow'
 import { GenerateControls } from './generate/GenerateControls'
@@ -276,6 +277,11 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     // Removed people (ticket 16) drop out inside `buildModelInput`; their
     // existing entries above still carry through untouched, since the proposal
     // only ever spans the model's active people.
+
+    // "Generate" was pressed — and this is the only place that both knows the
+    // request is going out and has the two sizes the model input is built
+    // from. A relaxation retry runs this same body, and is its own run.
+    track('solve_started', { people: people.length, period_days: data.dates.length })
     const base = buildModelInput({
       people,
       teams,
@@ -683,6 +689,9 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       patch.set(assignmentKey(change.personId, change.dateIso), change.to)
     }
     editing.applyPatch(patch)
+    // The auto-apply path (a wizard-triggered solve) lands here too — that is
+    // still the proposal going onto the board.
+    track('proposal_applied', { changed: pendingProposal.changes.length })
     setSchedule(baseAssignments, true)
     setSettingsDirty(false)
     setPendingProposal(null)
@@ -691,7 +700,11 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   // Discard needs no state of its own to unwind — the board was never
   // touched, only its display preferred the proposal (see
   // `getDisplayAssignment`), so dropping the preference is the whole thing.
-  const discardProposal = useCallback(() => setPendingProposal(null), [])
+  const discardProposal = useCallback(() => {
+    if (!pendingProposal) return
+    track('proposal_discarded', { changed: pendingProposal.changes.length })
+    setPendingProposal(null)
+  }, [pendingProposal])
 
   // Onboarding (ticket 14): a period whose roster was just imported skips
   // the usual manual-click Generate — the wizard marks this period for one

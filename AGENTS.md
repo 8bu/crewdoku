@@ -87,6 +87,21 @@ pnpm build   # vite build (app + proto); engine packages are source-only, no bui
 
 ---
 
+## Analytics
+
+`app/src/analytics.ts` is the app's only product-analytics seam (PostHog,
+imported lazily so it never costs an unconfigured build a byte). It stays off
+unless the build is given `VITE_POSTHOG_PROJECT_TOKEN`: with no token the SDK is
+never fetched, which is what a clone and a self-host get by default. Its
+`AnalyticsEventMap` is the complete list of what may leave the app — counts,
+enums, and booleans only, never a person, team, organization, workspace, period,
+or shift name, and never cell contents. Add the event to that map before you call
+`track`, and treat the visitor's switch (`crewdoku-analytics`, surfaced in
+Settings → Privacy) as authoritative. The SDK runs with every DOM-reading feature
+off; keep it that way, because this UI renders real people's names.
+
+---
+
 ## Historical reference — old app (deleted, `docs/_archive/` + git history only)
 
 The previous build was a pnpm + Turborepo monorepo: pure `@crewdoku/domain` (entities,

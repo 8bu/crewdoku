@@ -5,6 +5,7 @@ import { Logo } from '../shell/Logo'
 import { Input } from '../ui/Input'
 import { useOrgs } from '../state/orgStore'
 import { createOrg, deleteOrg, selectOrg, startSampleWorkspace } from '../state/workspaceStore'
+import { track } from '../analytics'
 
 /** Up to two initials for an org avatar tile. */
 function initials(name: string): string {
@@ -60,6 +61,9 @@ export function OrgPicker() {
     try {
       const org = createOrg(name)
       await selectOrg(org.id)
+      // Reported from the action, not from the store: boot and hydration reach
+      // the store functions too, and those are not user actions.
+      track('org_created', {})
     } finally {
       setBusy(false)
     }
@@ -80,6 +84,8 @@ export function OrgPicker() {
     setBusy(true)
     try {
       await startSampleWorkspace()
+      track('org_created', {})
+      track('workspace_created', { template: 'retail' })
     } finally {
       setBusy(false)
     }

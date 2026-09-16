@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useAtomValue } from 'jotai'
 import { selectedPeriodAtom } from '../state/shell'
 import { useIsOnboarded, useIsWorkspaceOnboarded } from '../state/onboarding'
+import { usePageView } from '../analytics'
 import { useRosterPeople } from '../state/roster'
 import { seedBoardData } from '../board/periodSeed'
 import { BoardGrid } from '../board/BoardGrid'
@@ -40,6 +41,17 @@ export function Board() {
   const [people] = useRosterPeople(initial?.people ?? [])
   const wsOnboarded = useIsWorkspaceOnboarded()
   const importDone = useIsOnboarded(period?.id ?? '')
+  // The board is gated twice (below), so the view reported is the screen
+  // actually rendered rather than the route's URL.
+  usePageView(
+    !period || !initial
+      ? null
+      : people.length === 0 && !wsOnboarded
+        ? 'onboarding'
+        : period.setup === 'import' && !importDone
+          ? 'schedule-import'
+          : '/board',
+  )
   if (!period || !initial) return <Stub title="Board" tickets="04–13" />
   if (people.length === 0 && !wsOnboarded) return <Onboarding period={period} initial={initial} />
   if (period.setup === 'import' && !importDone) {

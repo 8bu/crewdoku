@@ -4,6 +4,7 @@ import { Logo } from '../shell/Logo'
 import { Input } from '../ui/Input'
 import { useActiveOrg } from '../state/orgStore'
 import { createWorkspace, leaveOrg } from '../state/workspaceStore'
+import { track } from '../analytics'
 
 /**
  * Shown when an org is entered but has no workspace yet (fresh org, or the last
@@ -27,6 +28,9 @@ export function WorkspaceCreate() {
     setBusy(true)
     try {
       await createWorkspace(orgId, name.trim())
+      // 'starter': this path seeds the generic starter catalog, not a named
+      // workspace template.
+      track('workspace_created', { template: 'starter' })
     } finally {
       setBusy(false)
     }

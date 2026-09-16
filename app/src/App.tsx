@@ -8,6 +8,7 @@ import { Teams } from './routes/Teams'
 import { Settings } from './routes/Settings'
 import { Export } from './routes/Export'
 import { activeOrgIdAtom, activeWorkspaceIdAtom } from './state/orgStore'
+import { usePageView } from './analytics'
 import { OrgPicker } from './workspace/OrgPicker'
 import { WorkspaceCreate } from './workspace/WorkspaceCreate'
 import { PreShellScreen } from './workspace/PreShellScreen'
@@ -15,6 +16,9 @@ import { PreShellScreen } from './workspace/PreShellScreen'
 export function App() {
   const activeOrgId = useAtomValue(activeOrgIdAtom)
   const activeWorkspaceId = useAtomValue(activeWorkspaceIdAtom)
+  // The two screens below the shell have no route of their own, so this is the
+  // one place that can name them; every route reports itself once it renders.
+  usePageView(activeOrgId === null ? 'welcome' : activeWorkspaceId === null ? 'workspace-new' : null)
   if (activeOrgId === null || activeWorkspaceId === null) {
     return (
       <PreShellScreen>

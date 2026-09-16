@@ -4,6 +4,7 @@ import { THEMES, THEME_STORAGE_KEY, applyTheme, resolveTheme, themeAtom, type Th
 import { Select } from '../ui/Select'
 import { Monitor, Moon, Sun } from '../ui/icons'
 import { useT } from '../i18n/useT'
+import { track } from '../analytics'
 
 // Sized to the Select's own chevron so the trigger's icon slot never jumps.
 const iconCls = 'h-3.5 w-3.5 shrink-0'
@@ -39,7 +40,10 @@ export function ThemeSwitcher() {
       value={pref}
       onChange={(v) => {
         const next = THEMES.find((th) => th.value === v)
-        if (next) setPref(next.value)
+        if (next) {
+          setPref(next.value)
+          track('theme_changed', { theme: next.value })
+        }
       }}
       options={THEMES.map((th) => ({ value: th.value, label: t(th.labelKey), icon: THEME_ICONS[th.value] }))}
       size="xs"

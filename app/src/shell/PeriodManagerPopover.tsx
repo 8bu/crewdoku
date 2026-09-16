@@ -14,6 +14,7 @@ import {
   type PeriodSetup,
 } from '../state/shell'
 import { deletePeriodAtom, updatePeriodAtom } from '../state/periodOps'
+import { track } from '../analytics'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
 
@@ -71,6 +72,9 @@ export function PeriodManagerPopover({
   function handleCreate(label: string, start: string, duration: PeriodDuration, setup: PeriodSetup) {
     const period = createPeriod(label, start, duration, setup)
     addPeriod(period)
+    // The duration is the planner's own choice, made here; the periods a
+    // workspace is seeded with at boot never reach this handler.
+    track('period_created', { duration })
     onClose()
   }
 

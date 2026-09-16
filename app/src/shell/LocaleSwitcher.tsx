@@ -3,6 +3,7 @@ import { useAtom } from 'jotai'
 import { LOCALES, LOCALE_STORAGE_KEY, localeAtom, type LocaleId } from '../state/locale'
 import { Select } from '../ui/Select'
 import { useT } from '../i18n/useT'
+import { track } from '../analytics'
 
 // Small SVG flags (not emoji — emoji flags don't render on Windows/Chrome and
 // the design system forbids emoji). A clipping span rounds the corners.
@@ -60,7 +61,10 @@ export function LocaleSwitcher() {
       value={locale}
       onChange={(v) => {
         const next = LOCALES.find((l) => l.value === v)
-        if (next) setLocale(next.value)
+        if (next) {
+          setLocale(next.value)
+          track('locale_changed', { locale: next.value })
+        }
       }}
       options={options}
       size="xs"

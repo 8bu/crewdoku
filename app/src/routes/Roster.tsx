@@ -25,6 +25,7 @@ import { Stub } from './Stub'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
 import { BatchImportModal } from '../ui/BatchImportModal'
+import { track, usePageView, type ImportSource } from '../analytics'
 
 /**
  * Add, edit, remove people (wayfinder ticket 16) — its own dense table, not
@@ -42,6 +43,7 @@ import { BatchImportModal } from '../ui/BatchImportModal'
  * language.
  */
 export function Roster() {
+  usePageView('/roster')
   const t = useT()
   const period = useAtomValue(selectedPeriodAtom)
   if (!period) return <Stub title={t('rtc.roster.title')} tickets="16" />
@@ -58,6 +60,12 @@ function RosterTable({ period }: { period: Period }) {
   const [query, setQuery] = useState('')
   const [teamFilterId, setTeamFilterId] = useState<string>('all')
   const [importOpen, setImportOpen] = useState(false)
+  // The import modal is shared with the Teams page and only ever sees the
+  // text, so it cannot say which channel produced it. The file picker is the
+  // one place a file is read, so it records what it read here and `onApply`
+  // reports it — a fresh open resets it so a paste can't inherit an earlier
+  // open's file.
+  const importSourceRef = useRef<ImportSource>('paste')
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return active.filter((p) => {
@@ -90,6 +98,11 @@ function RosterTable({ period }: { period: Period }) {
     setPeople((prev) => addPerson(prev))
   }
 
+  function handleOpenImport() {
+    importSourceRef.current = 'paste'
+    setImportOpen(true)
+  }
+
   function handleAddAndFocusNext() {
     // A new row is always blank, so a name filter would hide it the instant
     // it's added — clearing filters here keeps "Enter to add the next row"
@@ -116,7 +129,7 @@ function RosterTable({ period }: { period: Period }) {
               : t('rtc.roster.count.people', { count: active.length })}
         </span>
         <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm gap-1.5">
+          <button type="button" onClick={handleOpenImport} className="btn btn-ghost btn-sm gap-1.5">
             <Upload className="h-4 w-4" />
             {t('rtc.roster.import')}
           </button>
@@ -285,6 +298,7 @@ function RosterTable({ period }: { period: Period }) {
             return `${peopleLabel} · ${teamsLabel}`
           }}
           onApply={(rows) => {
+            track('roster_imported', { source: importSourceRef.current, rows: rows.length })
             const result = applyCsvImport(people, teams, rows)
             setPeople(() => result.people)
             setTeams(() => result.teams)
@@ -293,6 +307,9 @@ function RosterTable({ period }: { period: Period }) {
             label: t('rtc.roster.importFromFile'),
             accept: '.csv,.xlsx',
             read: async (f) => {
+              // Same predicate `readEmployeeFile` dispatches on, so the
+              // recorded channel is the branch that actually read the file.
+              importSourceRef.current = f.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv'
               try {
                 const parsed = await readEmployeeFile(f)
                 return {

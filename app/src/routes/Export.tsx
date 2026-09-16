@@ -1,5 +1,6 @@
 import { ChevronRight } from '../ui/icons'
 import { useT } from '../i18n/useT'
+import { track, usePageView } from '../analytics'
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getDefaultStore, useAtomValue } from 'jotai'
@@ -40,6 +41,7 @@ export function Export() {
 
   const firstPeriod = periods[0]
   const t = useT()
+  usePageView('/export')
   if (!firstPeriod) {
     return <Stub title={t('onbex.export.title')} tickets="18" />
   }
@@ -402,6 +404,9 @@ function ExportWizard({
         break
       }
     }
+    // After the dispatch, so the awaited XLSX/PDF writers have produced their
+    // file too — and a failed download throws past this line unreported.
+    track('export_completed', { format: formatId, template: templateId })
   }, [period, rows, formatId, templateId])
 
   // Workspace file (app ticket 06): save the whole workspace to a JSON file

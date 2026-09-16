@@ -1,9 +1,10 @@
 import { Check, TriangleAlert, Upload } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { csvErrorText } from '../i18n/csvErrors'
+import { track } from '../analytics'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import type { Period } from '../state/shell'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
@@ -89,6 +90,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
   const [people, setPeople] = useRosterPeople(initial.people)
   const [teams, setTeams] = useRosterTeams(initial.teams)
   const setShifts = useSetAtom(shiftsAtom)
+  const shifts = useAtomValue(shiftsAtom)
   const setCoverage = useSetAtom(coverageAtom)
   const setSolveSettings = useSetAtom(solveSettingsAtom)
   const markAutoGenerate = useMarkAutoGenerateOnMount()
@@ -108,6 +110,9 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
   }, [rows])
 
   function pickShape(tmpl: WorkspaceTemplate) {
+    // The id, never the label: the four ids are the stable part of a template,
+    // while the label is copy that can be renamed or translated.
+    track('onboarding_template_selected', { template: tmpl.id })
     setTemplate(tmpl)
     setShifts(tmpl.shifts)
     setCoverage(tmpl.coverage)
@@ -133,6 +138,15 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
     setPeople(() => result.people)
     if (generate) markAutoGenerate(period.id)
     markWorkspaceOnboarded()
+    // The wizard's only exit, so both "generate my first schedule" and "go to
+    // the board" reach it — their difference is reported by the solve events.
+    // Counts are the post-apply roster, not the rows just pasted: rows merge
+    // into whatever the workspace already had.
+    track('onboarding_completed', {
+      people: result.people.length,
+      teams: result.teams.length,
+      shifts: shifts?.length ?? 0,
+    })
     navigate('/board')
   }
 

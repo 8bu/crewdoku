@@ -13,6 +13,7 @@ import { Input } from '../ui/Input'
 import { BatchImportModal } from '../ui/BatchImportModal'
 import { parseTeamNames, parseTeamNameRows } from '../board/roster/teamOps'
 import { readXlsxRows } from '../board/roster/xlsxImport'
+import { usePageView } from '../analytics'
 
 /**
  * Create, rename, delete teams and manage who's on each one (wayfinder
@@ -34,6 +35,7 @@ import { readXlsxRows } from '../board/roster/xlsxImport'
  * Roster's "+ Add person".
  */
 export function Teams() {
+  usePageView('/teams')
   const t = useT()
   const period = useAtomValue(selectedPeriodAtom)
   if (!period) return <Stub title={t('rtc.teams.title')} tickets="19" />

@@ -33,6 +33,13 @@ import { AdvancedRules } from './settings/AdvancedRules'
 import { useT } from '../i18n/useT'
 import { GenerateShiftsWizard } from './settings/GenerateShiftsWizard'
 import { Input } from '../ui/Input'
+import {
+  analyticsConfigured,
+  setAnalyticsEnabled,
+  track,
+  useAnalyticsEnabled,
+  usePageView,
+} from '../analytics'
 
 /**
  * Shifts, coverage, the period, and the Advanced door (wayfinder ticket 15)
@@ -52,6 +59,7 @@ import { Input } from '../ui/Input'
  * default: it's the one glanceable tell that something inside was changed.
  */
 export function Settings() {
+  usePageView('/settings')
   const t = useT()
   const period = useAtomValue(selectedPeriodAtom)
   const initial = useMemo(() => (period ? seedBoardData(period) : null), [period])
@@ -76,6 +84,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
   const [, setOverridesByPeriod] = useAtom(overridesByPeriodAtom)
 
   const [wizardOpen, setWizardOpen] = useState(false)
+  const analyticsOn = useAnalyticsEnabled()
 
   // The shared board schedule and any hand-edit overrides are themselves a
   // reference to a shift code (ticket 15) — a rename/delete rewrites them
@@ -144,6 +153,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
     markAllDirty()
   }
   function handleApplyGeneratedShifts(nextShifts: ShiftDef[], nextCoverage: DomainCoverageTable) {
+    track('shifts_generated', { shifts: nextShifts.length })
     setShifts(() => nextShifts)
     setCoverage(() => nextCoverage)
     markAllDirty()
@@ -329,6 +339,31 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onRemoveOverride={handleRemoveOverride}
           />
           </div>
+
+          {/* No measurement ID means nothing is collected, so there is nothing
+              to switch off — a dead control would be worse than none. */}
+          {analyticsConfigured() && (
+            <div className="rounded-lg border border-base-300 bg-base-100 p-5">
+            <section className="flex flex-col gap-3">
+              <div>
+                <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.privacy.title')}</h2>
+                <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('settings.privacy.desc')}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="analytics-enabled"
+                  className="checkbox checkbox-sm checkbox-primary"
+                  checked={analyticsOn}
+                  onChange={(e) => setAnalyticsEnabled(e.target.checked)}
+                />
+                <label htmlFor="analytics-enabled" className="cursor-pointer text-sm text-base-content">
+                  {t('settings.privacy.toggle')}
+                </label>
+              </div>
+            </section>
+            </div>
+          )}
 
           <AdvancedRules
             hardRules={solveSettings.hardRules}

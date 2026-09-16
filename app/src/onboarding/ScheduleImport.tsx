@@ -1,4 +1,5 @@
 import { useT } from '../i18n/useT'
+import { track } from '../analytics'
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Period } from '../state/shell'
@@ -175,6 +176,9 @@ export function ScheduleImportScreen({ period, initial }: { period: Period; init
   const dates = useMemo(() => initial.dates.map((d) => d.iso), [initial.dates])
 
   function handleApply(result: { people: Person[]; teams: Team[]; assignments: Map<string, Assignment> }) {
+    // The commit, not the preview: the panel recomputes `applyScheduleImport`
+    // on every keystroke, while only this click is a decision.
+    track('schedule_imported', { assignments: result.assignments.size })
     setPeople(() => result.people)
     setTeams(() => result.teams)
     setSchedule(result.assignments, true)
