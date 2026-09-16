@@ -23,7 +23,17 @@
   --text-xl--line-height: 1.3;
 }
 
-@plugin "daisyui";
+/*
+  `themes: false` stops daisyUI emitting its own `light`/`dark` `@plugin`
+  defaults. Both custom themes below carry the full token set, so the built-in
+  pair was pure dead weight — and worse, its `dark` (blue-tinted, `base-300`
+  *lighter* than `base-100`) silently took over under
+  `prefers-color-scheme: dark` and fought every hand-authored token in this
+  file. Dark is now an authored theme ("console-dark"), not an inherited one.
+*/
+@plugin "daisyui" {
+  themes: false;
+}
 @plugin "daisyui/theme" {
   /*
     "console" — UI revamp (2026-08-27), direction inspired by shadcn/ui,
@@ -74,6 +84,73 @@
   --size-field: 0.25rem;
   --border: 1px;
   --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  /*
+    "console-dark" — the same zinc/indigo material world as `console`, planned
+    for a dark canvas as *layered elevated surfaces* rather than as an inverted
+    light theme. Depth is carried by luminance stacking, not by shadow: a drop
+    shadow on a 16%-luminance canvas is nearly invisible, so the canvas sits
+    darkest (`--bg` = base-200), cards/board cells/panels lift one step
+    (`--surface` = base-100), and borders/hover lift again (base-300) — the
+    exact inverse ordering of the light theme, where the canvas is the
+    *lightest* of the three. Shadows are kept, but their job is separation
+    from the canvas (see `--shadow-pane` below), not depth.
+
+    The four semantic colours are *lightened* rather than reused: indigo at the
+    light theme's L=0.56 reads as muddy near-black on a dark surface, so
+    primary moves to L=0.72 and every semantic colour pairs with a DARK
+    `*-content` (light theme pairs light-on-dark) — chips, badges and tooltips
+    stay legible without `contrast-color()` guessing per usage.
+
+    Radii, sizes and border width are identical to `console`: the two themes
+    are one geometry, two material finishes.
+  */
+  name: "console-dark";
+  default: false;
+  /* Any dark media-preference load without a `data-theme` attribute still gets
+     the daisyUI-level palette, not the light one. The attribute is the
+     primary mechanism (see the app's pre-paint script). */
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(21% 0.006 285);
+  --color-base-200: oklch(16% 0.005 285);
+  --color-base-300: oklch(30% 0.008 285);
+  --color-base-content: oklch(92% 0.006 285);
+  --color-primary: oklch(72% 0.16 276);
+  --color-primary-content: oklch(15% 0.03 276);
+  --color-secondary: oklch(72% 0.012 285);
+  --color-secondary-content: oklch(16% 0.01 285);
+  --color-accent: oklch(92% 0.006 285);
+  --color-accent-content: oklch(16% 0.01 285);
+  --color-neutral: oklch(82% 0.01 285);
+  --color-neutral-content: oklch(18% 0.01 285);
+  --color-info: oklch(74% 0.14 245);
+  --color-info-content: oklch(16% 0.03 245);
+  --color-success: oklch(74% 0.15 152);
+  --color-success-content: oklch(17% 0.03 152);
+  --color-warning: oklch(80% 0.15 75);
+  --color-warning-content: oklch(18% 0.04 75);
+  /* Same reasoning as the light theme's `--color-error`, mirrored: the tooltip
+     pairs `--viol` (= this error) with `--color-error-content`, and dark ink
+     on this red measures 6.4:1. */
+  --color-error: oklch(70% 0.19 25);
+  --color-error-content: oklch(16% 0.03 25);
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  /*
+    daisyUI's soft-UI cue (a 1px inner top highlight on btn/inputs). Kept at 1
+    here — on a dark canvas it is the cheapest "this control is raised" signal
+    and it does not touch the board's own cell chrome, which is where the
+    restrained half of this brief matters.
+  */
+  --depth: 1;
   --noise: 0;
 }
 
@@ -191,6 +268,163 @@
      and the same borderless geometry as the other semantic tooltips. */
   --holiday-tip-bg: oklch(0.88 0.11 90);
   --holiday-tip-fg: oklch(0.16 0.005 90);
+}
+
+/*
+  Dark-theme hand tokens — the variables the `:root` block above declares for
+  the light canvas, re-picked against the dark one. Unlayered and *after*
+  `:root` deliberately: `:root` and `[data-theme='console-dark']` are both
+  0-1-0, so source order is the tiebreak and these must always win.
+
+  Only tokens whose value depends on the surface luminance appear here. Every
+  alias onto a daisyUI variable (`--bg`, `--surface`, `--surface-2`,
+  `--border`, `--grid-line`, `--text`, `--text-inv`, `--sel`, `--pin`,
+  `--viol`, `--ok`, `--over`, `--sh-off-*`) already re-themes for free through
+  the `console-dark` theme block, and is deliberately not repeated.
+*/
+[data-theme='console-dark'] {
+  /* The light formulas *lighten* away from the ink (its ink is dark, so +L is
+     a step down the hierarchy). Dark's ink is light, so both signs flip: dim
+     is L 0.70, faint L 0.64, and the ordering still reads text > dim > faint.
+
+     Faint is a floor, not a taste call. It is `.cd-cell__code`'s colour on an
+     unassigned cell (10px bold on the 21% surface) and `.cd-cell__time`'s on
+     every cell. At L 0.64 it measures 4.6:1 on base-100; mirroring the light
+     theme's 0.45 offset literally would land it at 2.5:1 — invisible. */
+  --border-strong: oklch(from var(--color-base-300) calc(l + 0.14) c h);
+  --text-dim: oklch(from var(--color-base-content) calc(l - 0.22) c h);
+  --text-faint: oklch(from var(--color-base-content) calc(l - 0.28) c h);
+
+  /* A black drop shadow on a 16% canvas separates nothing — there is no light
+     to occlude. Separation here is a 1px light rim (the panel's own edge
+     catching light) plus a deep, wide, very dark falloff so the rim reads as
+     the *front* face of something raised. The trailing inset highlight is the
+     soft-UI cue, on every floating surface so it stays one material. */
+  --shadow-pane:
+    0 0 0 1px oklch(1 0 0 / 0.07),
+    0 12px 32px -8px oklch(0 0 0 / 0.65),
+    0 2px 8px -2px oklch(0 0 0 / 0.5),
+    inset 0 1px 0 oklch(1 0 0 / 0.06);
+  --shadow-edge: oklch(0 0 0 / 0.55);
+
+  --row-select-glow: oklch(0.72 0.16 276 / 0.14);
+  /* Lighter than light's L 0.50, not darker: this one is *text* on a
+     `primary/10` wash, so on dark it has to climb toward the ink. */
+  --sel-active: oklch(0.82 0.13 276);
+  /* Same move as the light version ("info, pushed away from the surface"),
+     opposite sign: there L + 0.18, here L − 0.38, with chroma halved so the
+     wash tints the cells under it instead of reading as a blue block. */
+  --sel-bg: oklch(from var(--color-info) calc(l - 0.38) calc(c * 0.5) h);
+  --prop: oklch(0.74 0.16 305);
+  /* A first Generate outlines nearly all 4200 cells at once, so this stays a
+     low-chroma mid-lightness violet: legible as a hairline over the muted
+     shift washes, invisible as a grid-wide tint. */
+  --prop-outline: oklch(0.55 0.11 305);
+
+  /* --- Shift palette, dark ---
+     The light palette's job was "pale enough to fill 4200 cells without
+     shouting". On a 21% surface that inverts: the *cell wash* has to be the
+     darker end (L 0.30-0.34) so the code/time ink, picked by
+     `contrast-color()`, stays white; and the full-strength swatch has to be a
+     mid-lightness dot (L 0.54-0.58) that reads against the dark chrome it
+     sits in. Chroma is held high enough — 0.05-0.07 muted, 0.10-0.14 full —
+     that the eight hues stay tellable apart at cell size. That is the board's
+     entire information channel, so it outranks any other dark-theme tidy-up.
+
+     The swatches sit at the *bottom* of that lightness band on purpose.
+     `ShiftTimelineBar` paints each block with `swatchBg()` and a hard-coded
+     `text-white` 10px bold label — the only text ever drawn on a swatch — so
+     the swatch's own luminance is the only lever for that label's contrast.
+     At L 0.54-0.58 white measures 4.73:1 on all eight (the light theme's pale
+     swatches, by contrast, put the same label at 1.36-1.75:1). Every value
+     stays inside sRGB, so no gamut mapping shifts the hue off its id.
+
+     Navy and slate are the pair to watch: they share the blue end (265 vs
+     250), so slate stays near-neutral in chroma (0.03) exactly as it is in
+     light, and navy keeps enough chroma to read as "blue", not "dark gray". */
+  --sh-amber-bg: oklch(0.559 0.115 80);
+  --sh-amber-bg-muted: oklch(0.33 0.055 80);
+  --sh-orange-bg: oklch(0.57 0.14 40);
+  --sh-orange-bg-muted: oklch(0.33 0.06 40);
+  --sh-lime-bg: oklch(0.546 0.138 125);
+  --sh-lime-bg-muted: oklch(0.32 0.06 125);
+  --sh-teal-bg: oklch(0.541 0.112 165);
+  --sh-teal-bg-muted: oklch(0.32 0.055 165);
+  --sh-sky-bg: oklch(0.548 0.102 225);
+  --sh-sky-bg-muted: oklch(0.33 0.06 225);
+  --sh-navy-bg: oklch(0.56 0.14 265);
+  --sh-navy-bg-muted: oklch(0.33 0.07 265);
+  --sh-rose-bg: oklch(0.573 0.14 350);
+  --sh-rose-bg-muted: oklch(0.33 0.06 350);
+  --sh-slate-bg: oklch(0.554 0.03 250);
+  --sh-slate-bg-muted: oklch(0.31 0.015 250);
+
+  /* --- Tints ---
+     Weekend stays the light theme's *relationship*, not its value: there it
+     sits a touch darker than the white cell, here a touch darker than the 21%
+     cell — a quieter "this row is off-cadence" than a hue would be. Holiday
+     keeps its warm hue at a strength that survives a dark band. */
+  --weekend-tint: oklch(0.185 0.006 285);
+  --holiday-tint: oklch(0.3 0.06 85);
+  --holiday-mark: oklch(0.8 0.14 85);
+  /* The amber tooltip stays a light surface even in dark — it is a high-
+     contrast callout, and the existing near-black `--holiday-tip-fg` ink is
+     still its correct pair (9.7:1), so only the surface moves. */
+  --holiday-tip-bg: oklch(0.84 0.13 90);
+}
+
+/*
+  Board-rule dark counterparts. Scoped by the same attribute rather than
+  rewritten into the base rules, so the light path stays byte-identical and
+  each override carries its own reason. All unlayered and after the base
+  rules, so they win on both specificity and order.
+*/
+
+/*
+  Dim-and-light drill-down. The light theme dims toward its white canvas, so
+  0.32 still leaves a shape; on dark the dimmed cells fall toward a canvas
+  that is already dark and simply vanish. 0.45 keeps the grid's silhouette
+  readable — the point of the state is "everything else steps back", not
+  "everything else is gone".
+*/
+[data-theme='console-dark'] .cd-board[data-coverage-dim] .cd-cell {
+  opacity: 0.45;
+}
+
+/*
+  Focus ring. An 18% primary tint is a strong cue against white and a faint
+  one against a 21% surface — the ring is the only focus affordance
+  `.cd-field` has, so it takes more alpha here.
+*/
+[data-theme='console-dark'] .cd-field:focus {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 32%, transparent);
+}
+
+/*
+  Three more board rules were audited and need no override, because the dark
+  theme's *ordering* already reproduces the light theme's relationship:
+
+  - Header band (`--surface-2`). Light puts the band at base-200, a step below
+    the white cell field. Dark's base-200 is likewise a step below dark's
+    base-100, so the band still reads as the gutter above the grid — and its
+    `border-b` (now `--border-strong`, L 0.44) is the line that separates it.
+  - Scroll shadow (`--shadow-edge`, overridden above). The band's own
+    border-strong line is the visible rim; the shadow only has to darken the
+    cells it falls on, which a 55% black does on a 21% surface.
+  - Pinned-column shadows on `.cd-fair-header`/`.cd-fair-cell`. Same token,
+    same reasoning.
+*/
+
+/*
+  Solve-in-progress line. `--sel` already brightens with the dark theme, but a
+  2px inset line at the very top of a `max-content`-wide grid is easy to miss
+  on a dark canvas; the soft bloom below it is what makes it read as a state
+  rather than a stray border.
+*/
+[data-theme='console-dark'] .cd-board[data-generating] {
+  box-shadow:
+    inset 0 2px 0 0 var(--sel),
+    0 0 24px -6px color-mix(in oklch, var(--sel) 55%, transparent);
 }
 
 html,

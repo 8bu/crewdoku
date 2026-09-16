@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LocaleSwitcher } from './LocaleSwitcher'
+import { ThemeSwitcher } from './ThemeSwitcher'
 import { Logo } from './Logo'
 import { OrgHeader } from './OrgHeader'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
@@ -47,6 +48,7 @@ export function NavRail() {
         </ul>
       </div>
       <div className="mt-auto flex flex-col gap-1 border-t border-base-300 px-2 py-2 text-base-content/50">
+        <ThemeSwitcher />
         <LocaleSwitcher />
         <div className="flex items-center gap-1.5 px-2 pt-0.5">
           <Logo className="h-5 w-auto opacity-80" />

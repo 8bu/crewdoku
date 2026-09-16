@@ -1,8 +1,24 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="console">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1280" />
+    <!-- Follows the resolved data-theme (not the OS media query) so an explicit
+         Light/Dark pick keeps browser chrome in step; state/theme.ts rewrites it. -->
+    <meta name="theme-color" content="#f9f9fa" />
+    <!-- Resolve the theme before first paint: styles.css keys every dark override on
+         [data-theme="console-dark"] and React only mounts later, so without this a
+         dark-mode load flashes the light theme. Kept in sync with state/theme.ts. -->
+    <script>
+      try {
+        var pref = localStorage.getItem('crewdoku-theme')
+        var dark = pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.setAttribute('data-theme', dark ? 'console-dark' : 'console')
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#141417' : '#f9f9fa'
+      } catch (e) {
+        /* localStorage can throw in locked-down browsers — the static default stands */
+      }
+    </script>
     <link rel="icon" href="/favicon.ico?v=lexend-logo-1" sizes="any" />
     <link rel="icon" href="/favicon.svg?v=lexend-logo-1" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=lexend-logo-1" />
@@ -40,8 +56,6 @@
       content="Describe your team and coverage, press Generate, and Crewdoku builds a fair, rule-legal multi-week shift schedule you can tweak by hand and export — all offline, on your own machine."
     />
     <meta name="twitter:image" content="https://crewdoku.8bu.dev/og-image.png" />
-
-    <meta name="theme-color" content="#15151a" />
   </head>
   <body>
     <div id="root"></div>

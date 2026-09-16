@@ -1,6 +1,6 @@
 import type { AreaCatalog } from './types'
 
-/** Nav rail + locale switcher — the chrome present on every surface. */
+/** Nav rail + device controls (locale, theme) — the chrome present on every surface. */
 export const shell = {
   en: {
     'nav.aria': 'Surfaces',
@@ -11,6 +11,10 @@ export const shell = {
     'nav.settings': 'Settings',
     'nav.export': 'Export',
     'locale.aria': 'UI language',
+    'theme.aria': 'Appearance',
+    'theme.system': 'System',
+    'theme.light': 'Light',
+    'theme.dark': 'Dark',
   },
   vi: {
     'nav.aria': 'Các màn hình',
@@ -21,5 +25,9 @@ export const shell = {
     'nav.settings': 'Cài đặt',
     'nav.export': 'Xuất dữ liệu',
     'locale.aria': 'Ngôn ngữ giao diện',
+    'theme.aria': 'Giao diện',
+    'theme.system': 'Theo hệ thống',
+    'theme.light': 'Sáng',
+    'theme.dark': 'Tối',
   },
 } satisfies AreaCatalog

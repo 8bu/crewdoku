@@ -17,5 +17,8 @@ export {
   Sparkles,
   Download,
   TriangleAlert,
+  Sun,
+  Moon,
+  Monitor,
   TriangleAlert as WarningTriangleIcon,
 } from 'lucide-react'
