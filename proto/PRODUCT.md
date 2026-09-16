@@ -50,8 +50,8 @@ future work, not a gap in this phase.
   (S1–S5) are scored, weighted, and shown, never hidden.
 - Every hand-edit is accepted even when rule-breaking — flagged, never
   refused.
-- Explicitly unresolved as of this phase (per `.scratch/crewdoku-ui/map.md`
-  "Not yet specified"): the complete keyboard map across surfaces; empty/
+- Explicitly unresolved as of this phase ("Not yet specified" in the UI-phase
+  plan): the complete keyboard map across surfaces; empty/
   loading/error states as a designed set rather than one at a time; help and
   first-run copy; print/hand-off; timing of the real-engine swap.
 

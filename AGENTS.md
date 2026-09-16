@@ -22,15 +22,15 @@ and behavior are copied verbatim; only three seams change — domain types
 (`@crewdoku/domain`), persistence (`@crewdoku/persistence`), and the solver
 (`@crewdoku/solver`). Never wire the real engine into `proto/`.
 
-**Start every session by reading the wayfinder maps.** Complete:
-`.scratch/crewdoku-ui/map.md` (all 25 tickets closed; its TODO-fog list holds the
-parked real-app decisions — the behavior spec) and `.scratch/crewdoku-engine/map.md`
-(all 11 tickets closed). The app-phase map (now **complete**, all 8 tickets) is:
-`.scratch/crewdoku-app/map.md` (tickets in `.scratch/crewdoku-app/issues/`). Each
-map holds its destination, settled decisions, and ticket list. This effort carries
-execution — a ticket ends in working code, not only a decision. Skills the tickets
-lean on: `/prototype`, `/grilling`, `/domain-modeling`, `/grillwithform`, `ste` for
-prose.
+**Planning notes are local-only.** The wayfinder maps and tickets for each phase
+(`.scratch/crewdoku-ui/`, `.scratch/crewdoku-engine/`, `.scratch/crewdoku-app/`) are
+gitignored working notes, not part of the repository. If the directory exists in
+your checkout, read the three `map.md` files first — each holds its phase's
+destination, settled decisions, and closed ticket list, and the UI map's TODO-fog
+list is the behavior spec for parked real-app decisions. If it is absent, the
+settled outcomes are already reflected in this file, `VISION.md`, and the code;
+nothing else depends on it. Skills the work leans on: `/prototype`, `/grilling`,
+`/domain-modeling`, `/grillwithform`, `ste` for prose.
 
 Visual reference (read-only, not runnable): `docs/design/prototype/` (Codex Design
 handoff bundle) and `docs/design/crewdoku-proto/` (prior HTML/JSX mockup). The
@@ -52,9 +52,7 @@ crewdoku/
 │   └── harness/             @crewdoku/harness — UI-less end-to-end driver (tests only).
 ├── docs/design/             Visual reference (see above).
 ├── docs/_archive/           Superseded specs/plans from the pre-nuke app.
-├── .scratch/crewdoku-ui/    UI phase map + tickets (complete).
-├── .scratch/crewdoku-engine/ Engine phase map + tickets (complete).
-├── .scratch/crewdoku-app/   App phase map + tickets (complete).
+├── .scratch/                Local planning notes (gitignored; see above).
 ├── pnpm-workspace.yaml · turbo.json · tsconfig.base.json
 ```
 
@@ -85,8 +83,7 @@ pnpm build   # vite build (app + proto); engine packages are source-only, no bui
   (`start → end`), en-dashes. (`proto/` predates this and still uses the old
   Unicode marks; that's the frozen reference, not a pattern to copy into `app/`.)
 - Everything else — type scale, data font, borders, shift-code colours, cell status
-  classes — is settled and lives in `proto/src/styles.css`; the decision record is
-  `.scratch/crewdoku-ui/issues/02-visual-language.md`.
+  classes — is settled and lives in `proto/src/styles.css`.
 
 ---
 

@@ -250,7 +250,7 @@ body {
 
 /* --- Board grid (ticket 04) ---
    One CSS Grid, all cells mounted (no windowing), frozen header row and name
-   column via `position: sticky`. See .scratch/crewdoku-ui/research/03-grid-rendering.md.
+   column via `position: sticky`.
 */
 
 /*

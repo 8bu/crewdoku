@@ -96,7 +96,7 @@ The current phase builds that engine for real, as pure workspace packages under
 The proof surface for this phase is a **test harness**, not a browser: load a
 workspace → solve → legal proposal (or real conflict core) → persist → reload, at
 full scale (100 people × 6 weeks), with the domain's checker as the solver's
-independent oracle. The map and tickets live in `.scratch/crewdoku-engine/`.
+independent oracle.
 
 After the engine: a **fresh `app/`** — a rebuild of the prototype's UI on the real
 packages, with its own map. The prototype itself is never wired to the real engine.

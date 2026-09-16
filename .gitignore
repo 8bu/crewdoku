@@ -36,3 +36,6 @@ src/locales/*/messages.mjs
 packages/*/dist/
 app/dist/
 app/src/locales/*/messages.mjs
+
+# wayfinder maps + tickets (local planning notes, not source)
+.scratch/

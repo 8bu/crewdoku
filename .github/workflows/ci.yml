@@ -16,7 +16,6 @@ name: CI
 on:
   push:
     paths-ignore:
-      - '.scratch/**'
       - 'docs/**'
       - '**/*.md'
       - '.claude/**'
