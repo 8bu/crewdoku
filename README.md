@@ -108,3 +108,9 @@ Issues and pull requests are welcome. Keep changes small and focused, run
 `pnpm lint` and `pnpm test` before opening a PR, and note that the product
 scope is deliberately narrow — see the non-goals in `VISION.md` before
 proposing accounts, roles, or multi-user features.
+
+## License
+
+[GNU AGPL-3.0](LICENSE). You may use, modify, and redistribute Crewdoku freely;
+if you run a modified version as a network service, you must make its source
+available to your users under the same license.
