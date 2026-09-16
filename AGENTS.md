@@ -1,4 +1,4 @@
-# Crewdoku — Project Context for Codex
+# Crewdoku — Project Context for Agents
 
 You are working on **Crewdoku**, an offline-first, single-user web app to build and
 manage one company's multi-week team schedule. Product intent: `VISION.md`.
