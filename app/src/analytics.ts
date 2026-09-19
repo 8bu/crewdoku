@@ -57,6 +57,7 @@ export type ExportFormat = 'csv' | 'tsv' | 'json' | 'xlsx' | 'pdf'
 export type ExportTemplate = 'team-grid' | 'board' | 'person-list' | 'coverage-pivot'
 export type ImportSource = 'paste' | 'csv' | 'xlsx'
 export type SolveOutcome = 'solved' | 'infeasible' | 'cancelled' | 'error'
+export type TourOutcome = 'completed' | 'skipped'
 
 /**
  * Every event the app may send, with the exact parameters allowed on it.
@@ -80,6 +81,9 @@ export type AnalyticsEventMap = {
   onboarding_template_selected: { template: string }
   /** The wizard finished and its roster landed. */
   onboarding_completed: { people: number; teams: number; shifts: number }
+  /** The onboarding product tour ended, walked to the last stop or dismissed
+   *  early; `step` is the 1-based stop reached, `steps` the total. */
+  product_tour: { outcome: TourOutcome; step: number; steps: number }
   /** A roster arrived on the Roster screen, pasted or from a file. */
   roster_imported: { source: ImportSource; rows: number }
   /** An existing schedule was imported into a period (that panel is CSV only). */
@@ -214,12 +218,13 @@ export function initAnalytics(): void {
         capture_heatmaps: false,
         capture_performance: false,
         // A session recording of this app is a recording of a company's
-        // schedule. Surveys have nothing to ask here either.
+        // schedule, so replay stays off.
         disable_session_recording: true,
-        disable_surveys: true,
-        // No flags to evaluate, no surveys to match, no remote config to
-        // fetch: one request fewer, and nothing asked for that is not used.
-        advanced_disable_flags: true,
+        // Surveys are on so a product survey can reach the visitor. That needs
+        // the flags/remote-config request, so flags are left at their default
+        // (enabled). A survey renders PostHog's own popover and reads nothing
+        // off the board, so the structure-only rule above still holds.
+        disable_surveys: false,
         // Never a person profile: events stay anonymous, so there is no
         // people table to keep and no identity to merge or erase.
         person_profiles: 'never',

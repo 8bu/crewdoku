@@ -4,6 +4,7 @@ import { useNavigate, type NavigateFunction } from 'react-router-dom'
 import { driver, type Config, type DriveStep, type Driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useT, type Translate } from '../../i18n/useT'
+import { track } from '../../analytics'
 
 /** Device-scoped, like the theme and the locale: whether the tour was already
  *  shown belongs to the person looking at the screen, not to the workspace. */
@@ -101,12 +102,21 @@ function afterAnchor(anchor: string | undefined, then: () => void): void {
 export function startProductTour(t: Translate, navigate: NavigateFunction, onDone: () => void): void {
   const stops = buildStops()
   let finished = false
+  let completed = false
+  // driver.js clears its active index during teardown, so `finish` can't read
+  // it there; track the stop the walk has reached as it moves instead.
+  let reached = 0
   let instance: Driver
 
   const finish = () => {
     if (finished) return
     finished = true
     markTourSeen()
+    track('product_tour', {
+      outcome: completed ? 'completed' : 'skipped',
+      step: reached + 1,
+      steps: stops.length,
+    })
     onDone()
     if (window.location.pathname !== '/board') navigate('/board')
   }
@@ -117,6 +127,7 @@ export function startProductTour(t: Translate, navigate: NavigateFunction, onDon
       instance.destroy()
       return
     }
+    reached = index
     if (stop.route !== window.location.pathname) navigate(stop.route)
     afterAnchor(stop.anchor, () => instance.moveTo(index))
   }
@@ -136,8 +147,11 @@ export function startProductTour(t: Translate, navigate: NavigateFunction, onDon
     // the next surface to mount before the highlight lands.
     onNextClick: () => {
       const i = instance.getActiveIndex() ?? 0
-      if (i >= stops.length - 1) instance.destroy()
-      else goTo(i + 1)
+      reached = i
+      if (i >= stops.length - 1) {
+        completed = true
+        instance.destroy()
+      } else goTo(i + 1)
     },
     onPrevClick: () => {
       const i = instance.getActiveIndex() ?? 0
