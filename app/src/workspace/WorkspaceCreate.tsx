@@ -37,8 +37,8 @@ export function WorkspaceCreate() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center bg-base-200 p-6">
-      <div className="w-full max-w-[420px] rounded-lg border border-base-300 bg-base-100 p-8 shadow-lg">
+    <div className="flex flex-1 items-center justify-center bg-base-200 py-4 md:h-full md:p-6">
+      <div className="w-full max-w-[420px] rounded-lg border border-base-300 bg-base-100 p-5 shadow-lg md:p-8">
         <Logo className="mb-6 h-7 w-auto" />
         <h1 className="m-0 text-lg font-semibold tracking-tight text-base-content">
           {t('workspace.create.title')}
@@ -65,11 +65,19 @@ export function WorkspaceCreate() {
               className="w-full"
             />
           </label>
-          <div className="flex items-center gap-2">
-            <button type="submit" className="btn btn-primary btn-sm" disabled={!canSubmit}>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <button
+              type="submit"
+              className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+              disabled={!canSubmit}
+            >
               {t('workspace.create.submit')}
             </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void leaveOrg()}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+              onClick={() => void leaveOrg()}
+            >
               {t('workspace.create.back')}
             </button>
           </div>

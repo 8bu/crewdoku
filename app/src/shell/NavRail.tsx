@@ -15,12 +15,19 @@ const SURFACES = [
   { to: '/export', key: 'nav.export' },
 ] as const
 
+/**
+ * The desktop rail. Below `md` it stays mounted but hidden (`hidden md:flex`) —
+ * `Shell` offers the same surfaces through `BottomNav`, whose More sheet also
+ * hosts the rail's header, footer and device controls, so nothing here needs a
+ * second layout. Surfaces, labels and active treatment are the single source
+ * both navs agree on; above `md` this renders exactly as it always has.
+ */
 export function NavRail() {
   const t = useT()
   return (
     <nav
       aria-label={t('nav.aria')}
-      className="flex w-56 shrink-0 flex-col border-r border-base-300 bg-base-200"
+      className="hidden w-56 shrink-0 flex-col border-r border-base-300 bg-base-200 md:flex"
     >
       <OrgHeader />
       <WorkspaceSwitcher />

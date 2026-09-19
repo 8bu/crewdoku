@@ -2,6 +2,8 @@ import { ArrowRight } from '../../ui/icons'
 import { shiftLabel, type FairnessMovement, type PersonChangeGroup, type ProposalChange } from './proposal'
 import type { FairnessTotals } from '../fairness'
 import { useT } from '../../i18n/useT'
+import { BottomSheet } from '../../ui/BottomSheet'
+import { useIsNarrow } from '../../ui/useIsNarrow'
 
 export type ProposalPanelProps = {
   changes: ProposalChange[]
@@ -29,6 +31,12 @@ function deltaText(before: number, after: number): string | null {
  * floating overlay) so it never covers the grid it's explaining: every
  * change, one row each, grouped by person in roster order. Apply and
  * Discard are pinned in the header — reachable without scrolling past 300 rows.
+ *
+ * `--proposal-panel-w` is 400px, so under `md` the same review is a bottom
+ * sheet: title, summary, and the two decisions first (still pinned, now by
+ * being at the top of the sheet's own scroll), then the change list. Closing
+ * the sheet is Discard and nothing else — a proposal never wrote to the board,
+ * so dismissing the review is exactly what Discard already means.
  */
 export function ProposalPanel({
   changes,
@@ -42,6 +50,7 @@ export function ProposalPanel({
   onJumpTo,
 }: ProposalPanelProps) {
   const t = useT()
+  const isNarrow = useIsNarrow()
   const peopleCount = groups.length
   const summaryKey =
     changes.length === 1
@@ -51,6 +60,114 @@ export function ProposalPanel({
       : peopleCount === 1
         ? 'panels.proposal.summary_n_1'
         : 'panels.proposal.summary_n_m'
+
+  const actions = (
+    <div className="flex gap-2">
+      <button type="button" className="btn btn-ghost btn-sm min-h-11 flex-1 md:min-h-0 md:flex-none" onClick={onDiscard}>
+        {t('panels.proposal.discard')}
+      </button>
+      <button
+        type="button"
+        className="btn btn-sm min-h-11 flex-1 border-[var(--prop)] bg-[var(--prop)] text-[color:var(--text-inv)] hover:border-[var(--prop)] hover:bg-[var(--prop)] hover:opacity-90 md:min-h-0 md:flex-none"
+        onClick={onApply}
+      >
+        {t('panels.proposal.apply')}
+      </button>
+    </div>
+  )
+
+  const list = (
+    <div className={isNarrow ? undefined : 'flex-1 overflow-y-auto'}>
+      {groups.length === 0 ? (
+        <p className="p-4 text-sm text-[color:var(--text-faint)]">{t('panels.proposal.identical')}</p>
+      ) : (
+        groups.map(({ person, changes: personChanges }) => {
+          const m = movement.get(person.id)
+          const hoursDelta = m ? deltaText(m.hours.before, m.hours.after) : null
+          const nightsDelta = m ? deltaText(m.nights.before, m.nights.after) : null
+          const weekendsDelta = m ? deltaText(m.weekends.before, m.weekends.after) : null
+          return (
+            <section key={person.id} className="border-b border-base-300 px-4 py-2.5">
+              <header className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-semibold text-base-content">{person.name}</span>
+                <span className="font-mono text-2xs text-[color:var(--text-faint)]">{personChanges.length}</span>
+              </header>
+              {(hoursDelta || nightsDelta || weekendsDelta) && (
+                <p className="mt-0.5 flex gap-2 text-2xs font-semibold text-[color:var(--prop)]">
+                  {hoursDelta && <span>{t('panels.proposal.hoursDelta', { n: hoursDelta })}</span>}
+                  {nightsDelta && (
+                    <span>
+                      {t(
+                        Math.abs(Number(nightsDelta)) === 1
+                          ? 'panels.proposal.nightsDelta_one'
+                          : 'panels.proposal.nightsDelta_other',
+                        { n: nightsDelta }
+                      )}
+                    </span>
+                  )}
+                  {weekendsDelta && (
+                    <span>
+                      {t(
+                        Math.abs(Number(weekendsDelta)) === 1
+                          ? 'panels.proposal.weekendsDelta_one'
+                          : 'panels.proposal.weekendsDelta_other',
+                        { n: weekendsDelta }
+                      )}
+                    </span>
+                  )}
+                </p>
+              )}
+              <ul className="mt-1.5 flex list-none flex-col gap-px p-0">
+                {personChanges.map((change) => (
+                  <li key={change.dateIso}>
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-base-content transition-colors duration-150 hover:bg-base-200 md:min-h-0"
+                      onClick={() => onJumpTo(change.personId, change.dateIso)}
+                    >
+                      <span className="w-[84px] flex-none text-[color:var(--text-dim)]">{dateLabel(change.dateIso)}</span>
+                      <span className="flex-1 font-mono text-2xs text-[color:var(--text-faint)] line-through">
+                        {shiftLabel(change.from)}
+                      </span>
+                      <span className="flex-none text-[color:var(--text-faint)]" aria-hidden="true">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </span>
+                      <span
+                        className="flex-1 font-mono text-2xs font-semibold text-[color:var(--prop)]"
+                        data-shift={change.to.code}
+                      >
+                        {shiftLabel(change.to)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        })
+      )}
+    </div>
+  )
+
+  const footer = (
+    <footer className="border-t border-base-300 px-4 py-2.5 text-2xs text-[color:var(--text-faint)]">
+      {t('panels.proposal.periodTotal', { before: fairnessBefore.maxHours, after: fairnessAfter.maxHours })}
+    </footer>
+  )
+
+  if (isNarrow) {
+    return (
+      <BottomSheet open onClose={onDiscard} title={t('panels.proposal.title')} ariaLabel={t('panels.proposal.aria')}>
+        <p className="m-0 mb-3 text-xs text-[color:var(--text-faint)]">
+          {t(summaryKey, { n: changes.length, m: peopleCount })}
+        </p>
+        {actions}
+        <div className="mt-3 -mx-4">{list}</div>
+        {footer}
+      </BottomSheet>
+    )
+  }
+
   return (
     <div
       className="relative flex h-full w-[var(--proposal-panel-w)] flex-none flex-col overflow-y-auto border-l-2 border-[var(--prop)] bg-base-100 shadow-[var(--shadow-pane)]"
@@ -64,94 +181,12 @@ export function ProposalPanel({
             {t(summaryKey, { n: changes.length, m: peopleCount })}
           </div>
         </div>
-        <div className="flex flex-none gap-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onDiscard}>
-            {t('panels.proposal.discard')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm border-[var(--prop)] bg-[var(--prop)] text-[color:var(--text-inv)] hover:border-[var(--prop)] hover:bg-[var(--prop)] hover:opacity-90"
-            onClick={onApply}
-          >
-            {t('panels.proposal.apply')}
-          </button>
-        </div>
+        <div className="flex flex-none gap-2">{actions}</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {groups.length === 0 ? (
-          <p className="p-4 text-sm text-[color:var(--text-faint)]">{t('panels.proposal.identical')}</p>
-        ) : (
-          groups.map(({ person, changes: personChanges }) => {
-            const m = movement.get(person.id)
-            const hoursDelta = m ? deltaText(m.hours.before, m.hours.after) : null
-            const nightsDelta = m ? deltaText(m.nights.before, m.nights.after) : null
-            const weekendsDelta = m ? deltaText(m.weekends.before, m.weekends.after) : null
-            return (
-              <section key={person.id} className="border-b border-base-300 px-4 py-2.5">
-                <header className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-semibold text-base-content">{person.name}</span>
-                  <span className="font-mono text-2xs text-[color:var(--text-faint)]">{personChanges.length}</span>
-                </header>
-                {(hoursDelta || nightsDelta || weekendsDelta) && (
-                  <p className="mt-0.5 flex gap-2 text-2xs font-semibold text-[color:var(--prop)]">
-                    {hoursDelta && <span>{t('panels.proposal.hoursDelta', { n: hoursDelta })}</span>}
-                    {nightsDelta && (
-                      <span>
-                        {t(
-                          Math.abs(Number(nightsDelta)) === 1
-                            ? 'panels.proposal.nightsDelta_one'
-                            : 'panels.proposal.nightsDelta_other',
-                          { n: nightsDelta }
-                        )}
-                      </span>
-                    )}
-                    {weekendsDelta && (
-                      <span>
-                        {t(
-                          Math.abs(Number(weekendsDelta)) === 1
-                            ? 'panels.proposal.weekendsDelta_one'
-                            : 'panels.proposal.weekendsDelta_other',
-                          { n: weekendsDelta }
-                        )}
-                      </span>
-                    )}
-                  </p>
-                )}
-                <ul className="mt-1.5 flex list-none flex-col gap-px p-0">
-                  {personChanges.map((change) => (
-                    <li key={change.dateIso}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs text-base-content transition-colors duration-150 hover:bg-base-200"
-                        onClick={() => onJumpTo(change.personId, change.dateIso)}
-                      >
-                        <span className="w-[84px] flex-none text-[color:var(--text-dim)]">{dateLabel(change.dateIso)}</span>
-                        <span className="flex-1 font-mono text-2xs text-[color:var(--text-faint)] line-through">
-                          {shiftLabel(change.from)}
-                        </span>
-                        <span className="flex-none text-[color:var(--text-faint)]" aria-hidden="true">
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </span>
-                        <span
-                          className="flex-1 font-mono text-2xs font-semibold text-[color:var(--prop)]"
-                          data-shift={change.to.code}
-                        >
-                          {shiftLabel(change.to)}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )
-          })
-        )}
-      </div>
+      {list}
 
-      <footer className="border-t border-base-300 px-4 py-2.5 text-2xs text-[color:var(--text-faint)]">
-        {t('panels.proposal.periodTotal', { before: fairnessBefore.maxHours, after: fairnessAfter.maxHours })}
-      </footer>
+      {footer}
     </div>
   )
 }

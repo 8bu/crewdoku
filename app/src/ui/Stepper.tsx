@@ -76,7 +76,7 @@ export function Stepper({
         aria-hidden
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => bump(-1)}
-        className="cursor-pointer px-1.5 py-0.5 leading-none text-base-content/50 hover:text-base-content"
+        className="flex min-h-11 cursor-pointer items-center px-3 py-0.5 leading-none text-base-content/50 hover:text-base-content md:min-h-0 md:px-1.5"
       >
         <Minus className="h-3.5 w-3.5" />
       </button>
@@ -106,7 +106,7 @@ export function Stepper({
         aria-hidden
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => bump(1)}
-        className="cursor-pointer px-1.5 py-0.5 leading-none text-base-content/50 hover:text-base-content"
+        className="flex min-h-11 cursor-pointer items-center px-3 py-0.5 leading-none text-base-content/50 hover:text-base-content md:min-h-0 md:px-1.5"
       >
         <Plus className="h-3.5 w-3.5" />
       </button>

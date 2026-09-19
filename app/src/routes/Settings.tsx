@@ -278,20 +278,20 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-[880px] flex-col gap-5 px-4 py-5">
-          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
+          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
           <section className="flex flex-col gap-3">
             <div>
               <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.period.title')}</h2>
               <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('settings.period.desc')}</p>
             </div>
-            <div className="flex max-w-[520px] items-end gap-4">
+            <div className="flex max-w-[520px] flex-col gap-3 md:flex-row md:items-end md:gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.period.label')}</label>
                 <Input
                   type="text"
                   value={period.label}
                   onChange={(e) => handlePeriodField('label', e.target.value)}
-                  className="w-[180px]"
+                  className="w-full md:w-[180px]"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -314,7 +314,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
           </section>
           </div>
 
-          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
+          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
           <ShiftsTable
             shifts={shifts}
             onAdd={handleAddShift}
@@ -329,7 +329,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onOpenWizard={() => setWizardOpen(true)}
           />
           </div>
-          <div className="rounded-lg border border-base-300 bg-base-100 p-5">
+          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
           <CoverageTable
             shifts={shifts}
             table={coverage}
@@ -343,13 +343,13 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
           {/* No measurement ID means nothing is collected, so there is nothing
               to switch off — a dead control would be worse than none. */}
           {analyticsConfigured() && (
-            <div className="rounded-lg border border-base-300 bg-base-100 p-5">
+            <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
             <section className="flex flex-col gap-3">
               <div>
                 <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.privacy.title')}</h2>
                 <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('settings.privacy.desc')}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex min-h-11 items-center gap-2 md:min-h-0">
                 <input
                   type="checkbox"
                   id="analytics-enabled"

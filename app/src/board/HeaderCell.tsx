@@ -60,14 +60,23 @@ function HeaderCellImpl({ date, coverage, active, onBarClick }: HeaderCellProps)
         {bottom}
       </span>
       {coverage && (
+        // One button, two geometries: a 4px visual bar on desktop (unchanged)
+        // and a 24px-tall touch lane on a phone, where 4px is not a target.
+        // The painted bar is a child span on mobile so the button itself can
+        // stay transparent and taller without drawing a slab over the date.
         <button
           type="button"
-          className="cd-cov-bar absolute right-0 bottom-0 left-0 h-1 cursor-pointer border-0 bg-[var(--ok)] p-0 transition-[height,filter,background-color] duration-150 ease-out hover:brightness-110 data-[active]:h-1.5 data-[coverage=short]:bg-error data-[coverage=over]:bg-warning"
+          className="cd-cov-bar group absolute right-0 bottom-0 left-0 h-6 cursor-pointer border-0 bg-transparent p-0 md:h-1 md:bg-[var(--ok)] md:transition-[height,filter,background-color] md:duration-150 md:ease-out md:hover:brightness-110 md:data-[active]:h-1.5 md:data-[coverage=short]:bg-error md:data-[coverage=over]:bg-warning"
           data-coverage={coverage}
           data-active={active || undefined}
           aria-label={t('board.header.coverageAria', { date: `${top} ${bottom}`, coverage })}
           onClick={handleClick}
-        />
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-[var(--ok)] transition-[height,filter,background-color] duration-150 ease-out group-hover:brightness-110 group-data-[active]:h-1.5 group-data-[coverage=short]:bg-error group-data-[coverage=over]:bg-warning md:hidden"
+          />
+        </button>
       )}
     </div>
   )

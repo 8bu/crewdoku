@@ -1,4 +1,5 @@
 import { ChevronRight } from '../ui/icons'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import { useT } from '../i18n/useT'
 import { track, usePageView } from '../analytics'
 import { useCallback, useMemo, useState } from 'react'
@@ -136,6 +137,8 @@ const PREVIEW_TEXT_ROWS = 8
 const PREVIEW_JSON_RECORDS = 3
 const PREVIEW_PDF_ROWS = 8
 const PREVIEW_PDF_COLS = 10
+/** Below `md` the A4 sheet is a phone-wide miniature, so fewer, wider columns read better. */
+const PREVIEW_PDF_COLS_MOBILE = 6
 
 /**
  * Format-aware preview (8bu): a plain table only tells the truth for
@@ -169,7 +172,7 @@ function FormatPreview({ formatId, rows, title }: { formatId: ExportFormatId; ro
 function TextFilePreview({ text, more, noun }: { text: string; more: number; noun: string }) {
   const t = useT()
   return (
-    <div className="flex max-w-[720px] flex-col gap-1">
+    <div className="flex w-full max-w-full flex-col gap-1 md:max-w-[720px]">
       <pre className="m-0 overflow-x-auto rounded border border-base-300 bg-base-200/40 p-3 font-mono text-2xs leading-relaxed text-base-content/80">
         {text.trimEnd()}
       </pre>
@@ -190,15 +193,24 @@ function TextFilePreview({ text, more, noun }: { text: string; more: number; nou
  */
 function PdfPagePreview({ rows, title }: { rows: ExportCell[][]; title: string }) {
   const t = useT()
+  // A phone gets fewer columns inside the same A4 box: 10 columns across a
+  // ~330px sheet collapses into unreadable slivers, so mobile shows the first
+  // few the way a miniature sheet reads. The clipped-columns note below stays
+  // truthful because it counts whatever this branch actually drew.
+  const isNarrow = useIsNarrow()
+  const cols = isNarrow ? PREVIEW_PDF_COLS_MOBILE : PREVIEW_PDF_COLS
   const header = rows[0] ?? []
-  const headCells = header.slice(0, PREVIEW_PDF_COLS)
+  const headCells = header.slice(0, cols)
   const body = rows.slice(1, 1 + PREVIEW_PDF_ROWS).map((row) => headCells.map((_, i) => String(row[i] ?? '')))
-  const clippedCols = header.length > PREVIEW_PDF_COLS
+  const clippedCols = header.length > cols
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-1">
-      <div className="aspect-[297/210] w-full overflow-hidden rounded-sm border border-base-300 bg-white p-8 shadow-sm">
-        <div className="mb-3 text-sm font-semibold text-neutral-800">{title}</div>
+    <div className="flex w-full max-w-full flex-col gap-1 md:max-w-[720px]">
+      {/* The sheet is a picture, not a control: `max-w-full` + `overflow-hidden`
+          keep it inside the phone's width no matter how many columns the data
+          has, and the tighter padding/heading keep it legible at that size. */}
+      <div className="aspect-[297/210] w-full max-w-full overflow-hidden rounded-sm border border-base-300 bg-white p-2.5 shadow-sm md:p-8">
+        <div className="mb-2 text-2xs font-semibold text-neutral-800 md:mb-3 md:text-sm">{title}</div>
         <table className="w-full border-collapse text-[8px] leading-tight text-neutral-800">
           <thead>
             <tr>
@@ -224,7 +236,7 @@ function PdfPagePreview({ rows, title }: { rows: ExportCell[][]; title: string }
       </div>
       <span className="text-2xs tabular-nums text-base-content/40">
         {t('onbex.export.pdf.note')}
-        {clippedCols ? t('onbex.export.pdf.clipped', { count: PREVIEW_PDF_COLS, total: header.length }) : ''}
+        {clippedCols ? t('onbex.export.pdf.clipped', { count: cols, total: header.length }) : ''}
       </span>
     </div>
   )
@@ -448,14 +460,17 @@ function ExportWizard({
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
+      {/* Mobile: the title and the workspace buttons share the first row and the
+          breadcrumb drops to its own full-width row; `min-h-12` grows instead of
+          clipping once it wraps. From `md` up the original single 48px row. */}
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-base-300 px-4 py-1 md:h-12 md:flex-nowrap md:py-0">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('onbex.export.title')}</h1>
-        <div className="flex items-center gap-2">
+        <div className="order-last flex w-full items-center gap-2 md:order-none md:w-auto">
           {step > 1 ? (
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="cursor-pointer text-xs text-base-content/40 hover:text-base-content"
+              className="inline-flex min-h-11 cursor-pointer items-center px-1 text-xs text-base-content/40 hover:text-base-content md:min-h-0 md:px-0"
             >
               {t('onbex.export.step.period')}
             </button>
@@ -469,7 +484,7 @@ function ExportWizard({
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="cursor-pointer text-xs text-base-content/40 hover:text-base-content"
+              className="inline-flex min-h-11 cursor-pointer items-center px-1 text-xs text-base-content/40 hover:text-base-content md:min-h-0 md:px-0"
             >
               {t('onbex.export.step.template')}
             </button>
@@ -483,12 +498,12 @@ function ExportWizard({
             {t('onbex.export.step.preview')}
           </span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 md:gap-2">
           {workspaceFileMsg && <span className="text-2xs text-base-content/50">{workspaceFileMsg}</span>}
-          <button type="button" onClick={saveWorkspace} className="btn btn-ghost btn-xs">
+          <button type="button" onClick={saveWorkspace} className="btn btn-ghost btn-xs min-h-11 md:min-h-0">
             {t('onbex.export.saveWorkspace')}
           </button>
-          <label className="btn btn-ghost btn-xs">
+          <label className="btn btn-ghost btn-xs min-h-11 md:min-h-0">
             {t('onbex.export.loadWorkspace')}
             <input
               type="file"
@@ -528,7 +543,7 @@ function ExportWizard({
                             : 'border-base-300 hover:border-base-content/20'
                       }`}
                     >
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex min-w-0 flex-col gap-0.5">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-base-content">{p.label}</span>
                           <span
@@ -547,7 +562,7 @@ function ExportWizard({
                           {p.start} → {p.end}
                         </span>
                       </div>
-                      <span className="text-xs tabular-nums text-base-content/60">
+                      <span className="shrink-0 text-xs tabular-nums text-base-content/60">
                         {info.days} {info.days === 1 ? t('onbex.export.day') : t('onbex.export.days')}
                       </span>
                     </button>
@@ -561,19 +576,19 @@ function ExportWizard({
                     {t('onbex.export.empty.msg')}
                   </p>
                   <div>
-                    <Link to="/board" className="btn btn-primary btn-sm">
+                    <Link to="/board" className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto">
                       {t('onbex.export.empty.btn')}
                     </Link>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex flex-col gap-2 pt-2 md:flex-row md:items-center">
                 <button
                   type="button"
                   disabled={periodStatus[periodId]?.isEmpty ?? true}
                   onClick={() => setStep(2)}
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
                 >
                   {t('onbex.btn.next')}
                 </button>
@@ -583,7 +598,7 @@ function ExportWizard({
 
           {step === 2 && (
             <div className="flex max-w-[720px] flex-col gap-6">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 {EXPORT_TEMPLATES.map((tmpl) => {
                   const isSelected = tmpl.id === templateId
                   return (
@@ -602,11 +617,11 @@ function ExportWizard({
                   )
                 })}
               </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setStep(1)} className="btn btn-ghost btn-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <button type="button" onClick={() => setStep(1)} className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto">
                   {t('onbex.btn.back')}
                 </button>
-                <button type="button" onClick={() => setStep(3)} className="btn btn-primary btn-sm">
+                <button type="button" onClick={() => setStep(3)} className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto">
                   {t('onbex.btn.next')}
                 </button>
               </div>
@@ -616,7 +631,7 @@ function ExportWizard({
           {step === 3 && (
             <div className="flex flex-col gap-6">
               {/* Format selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {EXPORT_FORMATS.map((fmt) => {
                   const isSelected = fmt.id === formatId
                   return (
@@ -624,7 +639,7 @@ function ExportWizard({
                       key={fmt.id}
                       type="button"
                       onClick={() => setFormatId(fmt.id)}
-                      className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline'}`}
+                      className={`btn btn-sm grow min-h-11 md:grow-0 md:min-h-0 ${isSelected ? 'btn-primary' : 'btn-outline'}`}
                     >
                       {t(`onbex.export.format.${fmt.id}`)}
                     </button>
@@ -646,15 +661,15 @@ function ExportWizard({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setStep(2)} className="btn btn-ghost btn-sm">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <button type="button" onClick={() => setStep(2)} className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto">
                   {t('onbex.btn.back')}
                 </button>
                 <button
                   type="button"
                   disabled={rows.length === 0}
                   onClick={() => void handleDownload()}
-                  className="btn btn-primary btn-sm"
+                  className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
                 >
                   {t('onbex.export.download', { format: t(`onbex.export.format.${formatId}`) })}
                 </button>

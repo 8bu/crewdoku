@@ -1,6 +1,7 @@
-import { Upload, Plus } from '../ui/icons'
+import { Upload, Plus, ChevronLeft, ChevronRight } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useState } from 'react'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import { useAtomValue } from 'jotai'
 import { selectedPeriodAtom, type Period } from '../state/shell'
 import { UNASSIGNED_TEAM_ID, type Person } from '@crewdoku/domain'
@@ -45,12 +46,20 @@ export function Teams() {
 function TeamsPage({ period }: { period: Period }) {
   const t = useT()
   const c = useTeamsController(period)
+  const isNarrow = useIsNarrow()
   const sidebarTeams = [...c.teams, UNASSIGNED_TEAM]
   const [selectedId, setSelectedId] = useState(c.teams[0]?.id ?? UNASSIGNED_TEAM_ID)
+  // Below `md` the two panes can't sit side by side, so they become a
+  // master-detail pair: the list IS the page, and tapping a team swaps in its
+  // detail full-width behind a back row. Above `md` both panes render at once
+  // and this flag is never read — the grid is the layout.
+  const [detailOpen, setDetailOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const selected = sidebarTeams.find((t) => t.id === selectedId) ?? sidebarTeams[0]!
   const isUnassigned = selected.id === UNASSIGNED_TEAM_ID
   const pendingTeam = c.pendingDelete ? c.teams.find((t) => t.id === c.pendingDelete!.teamId) : null
+  const showList = !isNarrow || !detailOpen
+  const showDetail = !isNarrow || detailOpen
 
   const members = c.members(selected.id)
   const candidates = c.activePeople.filter((p) => p.teamId !== selected.id)
@@ -62,13 +71,13 @@ function TeamsPage({ period }: { period: Period }) {
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-2 md:h-12 md:flex-nowrap md:py-0">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.teams.title')}</h1>
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {c.teams.length === 1 ? t('rtc.teams.count.team', { count: c.teams.length }) : t('rtc.teams.count.teams', { count: c.teams.length })} · {c.activePeople.length === 1 ? t('rtc.teams.count.person', { count: c.activePeople.length }) : t('rtc.teams.count.people', { count: c.activePeople.length })}
         </span>
-        <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm gap-1.5">
+        <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto md:flex-nowrap">
+          <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm min-h-11 flex-1 gap-1.5 md:min-h-0 md:flex-initial">
             <Upload className="h-4 w-4" />
             {t('rtc.teams.import')}
           </button>
@@ -81,144 +90,175 @@ function TeamsPage({ period }: { period: Period }) {
               if (e.key === 'Enter') c.handleAdd()
             }}
             placeholder={t('rtc.teams.newTeamPlaceholder')}
-            className="w-48"
+            className="order-last w-full md:order-none md:w-48"
           />
-          <button type="button" onClick={c.handleAdd} disabled={!c.newName.trim()} className="btn btn-primary btn-sm gap-1.5">
+          <button type="button" onClick={c.handleAdd} disabled={!c.newName.trim()} className="btn btn-primary btn-sm min-h-11 flex-1 gap-1.5 md:min-h-0 md:flex-initial">
             <Plus className="h-4 w-4" />
             {t('rtc.teams.addTeam')}
           </button>
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr]">
-        <aside className="min-h-0 overflow-y-auto border-r border-base-300 p-2">
-          <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-            {sidebarTeams.map((team) => {
-              const count = c.countMembers(team.id)
-              const virtual = team.id === UNASSIGNED_TEAM_ID
-              return (
-                <li key={team.id}>
+      {/* Mobile: one pane at a time in a column (list, then the tapped team's
+          detail). `md:` restores today's 260px + fluid two-pane grid. */}
+      <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[260px_1fr]">
+        {showList && (
+          <aside className="min-h-0 flex-1 overflow-y-auto border-b border-base-300 p-2 md:border-b-0 md:border-r">
+            <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+              {sidebarTeams.map((team) => {
+                const count = c.countMembers(team.id)
+                const virtual = team.id === UNASSIGNED_TEAM_ID
+                return (
+                  <li key={team.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(team.id)
+                        // Touch has no hover to preview a pane: a tap opens
+                        // the team, a second tap never deselects it.
+                        if (isNarrow) setDetailOpen(true)
+                      }}
+                      className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-transparent bg-transparent px-3 py-1.5 text-left text-sm text-base-content transition-colors duration-150 hover:bg-base-200 data-[active]:border-primary/30 data-[active]:bg-primary/10 data-[active]:font-semibold data-[active]:text-primary data-[virtual]:text-base-content/60 data-[virtual]:italic md:min-h-0 md:px-2.5"
+                      data-active={team.id === selected.id || undefined}
+                      data-virtual={virtual || undefined}
+                    >
+                      <span className="truncate">{virtual ? t('rtc.common.unassigned') : (team.name || t('rtc.common.unnamed'))}</span>
+                      <span className="font-mono text-sm text-base-content/60">{count}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-base-content/30 md:hidden" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </aside>
+        )}
+
+        {showDetail && (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {isNarrow && (
+              <button
+                type="button"
+                onClick={() => setDetailOpen(false)}
+                className="sticky top-0 z-[2] flex min-h-11 w-full cursor-pointer items-center gap-1.5 border-b border-base-300 bg-base-100 px-4 text-left text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200"
+              >
+                <ChevronLeft className="h-5 w-5 shrink-0" />
+                {t('chrome.back')}
+              </button>
+            )}
+            <div className="flex max-w-[640px] flex-col gap-5 px-4 py-4 md:px-5">
+              {isUnassigned ? (
+                <p className="text-lg font-semibold tracking-tight">{t('rtc.common.unassigned')}</p>
+              ) : (
+                <Input
+                  type="text"
+                  value={selected.name}
+                  onChange={(e) => c.rename(selected.id, e.target.value)}
+                  className="max-w-[360px] text-lg font-semibold text-base-content"
+                />
+              )}
+
+              {!isUnassigned && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('rtc.teams.wants')}</h2>
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.shifts.map(({ code }) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className="inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-base-300 bg-base-100 px-3 py-1 text-2xs font-semibold text-base-content transition-colors duration-150 data-[active]:border-success data-[active]:bg-success data-[active]:text-success-content md:min-h-0 md:px-2.5"
+                          data-shift={code}
+                          data-active={selected.wants.includes(code) || undefined}
+                          onClick={() => c.toggleWant(selected.id, code)}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('rtc.teams.avoids')}</h2>
+                    <div className="flex flex-wrap gap-1.5">
+                      {c.shifts.map(({ code }) => (
+                        <button
+                          key={code}
+                          type="button"
+                          className="inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-base-300 bg-base-100 px-3 py-1 text-2xs font-semibold text-base-content transition-colors duration-150 data-[active]:border-error data-[active]:bg-error data-[active]:text-error-content md:min-h-0 md:px-2.5"
+                          data-shift={code}
+                          data-active={selected.avoids.includes(code) || undefined}
+                          onClick={() => c.toggleAvoid(selected.id, code)}
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+                  {t('rtc.teams.peopleHeader', { count: members.length })}
+                </h2>
+                {members.length === 0 ? (
+                  <p className="py-3.5 text-sm text-base-content/40">{t('rtc.teams.noOneHere')}</p>
+                ) : (
+                  <ul className="m-0 flex max-w-full list-none flex-col p-0 md:max-w-[420px]">
+                    {members.map((p) => (
+                      <li
+                        key={p.id}
+                        className="flex min-h-11 items-center justify-between gap-2 border-b border-base-300/60 py-1 pl-0 pr-0 text-sm transition-colors duration-150 hover:bg-base-200/40 md:min-h-0 md:pl-2.5 md:pr-1"
+                      >
+                        <span className="truncate">{p.name || t('rtc.common.unnamed')}</span>
+                        <Select
+                          // Ghost reads as inline text under a mouse; on a phone
+                          // the boxed `field` variant is the one that shows a
+                          // 44px target (`.cd-field` supplies the height).
+                          variant={isNarrow ? 'field' : 'ghost'}
+                          className="w-40 shrink-0 md:w-auto md:shrink"
+                          value={p.teamId}
+                          onChange={(v) => c.moveToTeam(p.id, v)}
+                          options={sidebarTeams.map((team) => ({ value: team.id, label: team.id === UNASSIGNED_TEAM_ID ? t('rtc.common.unassigned') : (team.name || t('rtc.common.unnamed')) }))}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {candidates.length > 0 ? (
+                  <AddMemberSearch
+                    key={selected.id}
+                    candidates={candidates}
+                    teamLabel={teamLabel}
+                    onAdd={(personId) => c.moveToTeam(personId, selected.id)}
+                  />
+                ) : (
+                  <p className="mt-1 text-xs text-base-content/40">{t('rtc.teams.everyoneHere')}</p>
+                )}
+              </div>
+
+              {!isUnassigned && (
+                <div className="flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedId(team.id)}
-                    className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-transparent bg-transparent px-2.5 py-1.5 text-left text-sm text-base-content transition-colors duration-150 hover:bg-base-200 data-[active]:border-primary/30 data-[active]:bg-primary/10 data-[active]:font-semibold data-[active]:text-primary data-[virtual]:text-base-content/60 data-[virtual]:italic"
-                    data-active={team.id === selected.id || undefined}
-                    data-virtual={virtual || undefined}
+                    onClick={(e) => c.startDelete(selected.id, e.currentTarget)}
+                    disabled={c.teams.length <= 1}
+                    title={c.teams.length <= 1 ? t('rtc.teams.cantDeleteLastTeam') : undefined}
+                    className="inline-flex min-h-11 cursor-pointer items-center self-start rounded-md border-none bg-transparent px-3 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:text-base-300 md:min-h-0 md:px-1"
                   >
-                    <span className="truncate">{virtual ? t('rtc.common.unassigned') : (team.name || t('rtc.common.unnamed'))}</span>
-                    <span className="font-mono text-sm text-base-content/60">{count}</span>
+                    {t('rtc.teams.deleteTeam')}
                   </button>
-                </li>
-              )
-            })}
-          </ul>
-        </aside>
-
-        <div className="min-h-0 overflow-y-auto">
-          <div className="flex max-w-[640px] flex-col gap-5 px-5 py-4">
-            {isUnassigned ? (
-              <p className="text-lg font-semibold tracking-tight">{t('rtc.common.unassigned')}</p>
-            ) : (
-              <Input
-                type="text"
-                value={selected.name}
-                onChange={(e) => c.rename(selected.id, e.target.value)}
-                className="max-w-[360px] text-lg font-semibold text-base-content"
-              />
-            )}
-
-            {!isUnassigned && (
-              <>
-                <div className="flex flex-col gap-2">
-                  <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('rtc.teams.wants')}</h2>
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.shifts.map(({ code }) => (
-                      <button
-                        key={code}
-                        type="button"
-                        className="cursor-pointer select-none rounded-md border border-base-300 bg-base-100 px-2.5 py-1 text-2xs font-semibold text-base-content transition-colors duration-150 data-[active]:border-success data-[active]:bg-success data-[active]:text-success-content"
-                        data-shift={code}
-                        data-active={selected.wants.includes(code) || undefined}
-                        onClick={() => c.toggleWant(selected.id, code)}
-                      >
-                        {code}
-                      </button>
-                    ))}
-                  </div>
+                  {/* A `title` never fires on touch — the why-won't-this-work
+                      answer has to be on the page itself below `md`. */}
+                  {c.teams.length <= 1 && (
+                    <p className="m-0 text-xs text-base-content/40 md:hidden">{t('rtc.teams.cantDeleteLastTeam')}</p>
+                  )}
                 </div>
-
-                <div className="flex flex-col gap-2">
-                  <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('rtc.teams.avoids')}</h2>
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.shifts.map(({ code }) => (
-                      <button
-                        key={code}
-                        type="button"
-                        className="cursor-pointer select-none rounded-md border border-base-300 bg-base-100 px-2.5 py-1 text-2xs font-semibold text-base-content transition-colors duration-150 data-[active]:border-error data-[active]:bg-error data-[active]:text-error-content"
-                        data-shift={code}
-                        data-active={selected.avoids.includes(code) || undefined}
-                        onClick={() => c.toggleAvoid(selected.id, code)}
-                      >
-                        {code}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <h2 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">
-                {t('rtc.teams.peopleHeader', { count: members.length })}
-              </h2>
-              {members.length === 0 ? (
-                <p className="py-3.5 text-sm text-base-content/40">{t('rtc.teams.noOneHere')}</p>
-              ) : (
-                <ul className="m-0 flex max-w-[420px] list-none flex-col p-0">
-                  {members.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between gap-2 border-b border-base-300/60 py-1 pl-2.5 pr-1 text-sm transition-colors duration-150 hover:bg-base-200/40"
-                    >
-                      <span className="truncate">{p.name || t('rtc.common.unnamed')}</span>
-                      <Select
-                        variant="ghost"
-                        value={p.teamId}
-                        onChange={(v) => c.moveToTeam(p.id, v)}
-                        options={sidebarTeams.map((team) => ({ value: team.id, label: team.id === UNASSIGNED_TEAM_ID ? t('rtc.common.unassigned') : (team.name || t('rtc.common.unnamed')) }))}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {candidates.length > 0 ? (
-                <AddMemberSearch
-                  key={selected.id}
-                  candidates={candidates}
-                  teamLabel={teamLabel}
-                  onAdd={(personId) => c.moveToTeam(personId, selected.id)}
-                />
-              ) : (
-                <p className="mt-1 text-xs text-base-content/40">{t('rtc.teams.everyoneHere')}</p>
               )}
             </div>
-
-            {!isUnassigned && (
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => c.startDelete(selected.id, e.currentTarget)}
-                  disabled={c.teams.length <= 1}
-                  title={c.teams.length <= 1 ? t('rtc.teams.cantDeleteLastTeam') : undefined}
-                  className="cursor-pointer self-start rounded-md border-none bg-transparent px-1 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:text-base-300"
-                >
-                  {t('rtc.teams.deleteTeam')}
-                </button>
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {c.pendingDelete && pendingTeam && (
           <DeleteTeamPopover
@@ -228,7 +268,12 @@ function TeamsPage({ period }: { period: Period }) {
             otherTeams={[...c.teams.filter((t) => t.id !== pendingTeam.id), UNASSIGNED_TEAM]}
             reassignToId={c.reassignToId}
             onReassignChange={c.setReassignToId}
-            onConfirm={c.confirmDelete}
+            onConfirm={() => {
+              c.confirmDelete()
+              // The team the detail pane was showing is gone; the list is the
+              // only honest place to land back on.
+              if (isNarrow) setDetailOpen(false)
+            }}
             onCancel={c.cancelDelete}
           />
         )}
@@ -297,7 +342,7 @@ function AddMemberSearch({
   const results = q ? candidates.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8) : []
 
   return (
-    <div className="relative mt-1 max-w-[420px]">
+    <div className="relative mt-1 w-full max-w-full md:max-w-[420px]">
       <Input
         type="text"
         value={query}
@@ -318,7 +363,7 @@ function AddMemberSearch({
                     onAdd(p.id)
                     setQuery('')
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border-none bg-transparent px-2 py-1.5 text-left text-sm text-base-content transition-colors duration-150 hover:bg-base-200"
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-md border-none bg-transparent px-2 py-1.5 text-left text-sm text-base-content transition-colors duration-150 hover:bg-base-200 md:min-h-0"
                 >
                   <span className="truncate">{p.name || t('rtc.common.unnamed')}</span>
                   <span className="shrink-0 text-2xs text-base-content/40">{teamLabel(p.teamId)}</span>

@@ -130,7 +130,7 @@ export function ShiftTimelineBar({
 
   return (
     <div className="flex flex-col gap-1">
-      <div ref={barRef} className="relative h-6 w-full select-none overflow-hidden rounded bg-base-300/60">
+      <div ref={barRef} className="relative h-9 w-full select-none overflow-hidden rounded bg-base-300/60 md:h-6">
         {shifts.map((shift, idx) => {
           const span = shiftSpan(shifts, shift.code)
           if (!span) return null
@@ -156,9 +156,9 @@ export function ShiftTimelineBar({
               >
                 {isFirst && (
                   <>
-                    {/* Head resize zone (left ~8px) */}
+                    {/* Head resize zone (left ~8px, wider under a fingertip) */}
                     <div
-                      className="pointer-events-auto absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize touch-none"
+                      className="pointer-events-auto absolute inset-y-0 left-0 z-10 w-3.5 cursor-ew-resize touch-none md:w-2"
                       onPointerDown={(e) => handlePointerDown(e, idx, 'head')}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
@@ -183,9 +183,9 @@ export function ShiftTimelineBar({
                 )}
 
                 {isLast && (
-                  /* Tail resize zone (right ~8px) — sits on the slice holding the end */
+                  /* Tail resize zone (right ~8px, wider under a fingertip) — sits on the slice holding the end */
                   <div
-                    className="pointer-events-auto absolute inset-y-0 right-0 z-20 w-2 cursor-ew-resize touch-none"
+                    className="pointer-events-auto absolute inset-y-0 right-0 z-20 w-3.5 cursor-ew-resize touch-none md:w-2"
                     onPointerDown={(e) => handlePointerDown(e, idx, 'tail')}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
@@ -218,6 +218,37 @@ export function ShiftTimelineBar({
         <span>18:00</span>
         <span>24:00</span>
       </div>
+      {/* The block labels live in `title` above, which a finger can never
+          read: the same code/span pairs are listed underneath on mobile. */}
+      <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-[10px] text-base-content/50 md:hidden">
+        {shifts.map((shift) => {
+          if (!shiftSpan(shifts, shift.code)) return null
+          return (
+            <li key={shift.code} className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 flex-none rounded-sm" style={{ backgroundColor: swatchBg(shift.color) }} />
+              <span className="font-semibold text-base-content/70">{shift.code}</span>
+              <span className="font-mono tabular-nums">
+                {toClock(shift.start)}–{toClock(shift.end)}
+              </span>
+            </li>
+          )
+        })}
+        {overlaps.map((o, idx) => (
+          <li key={`overlap-${idx}`} className="flex items-center gap-1">
+            <span
+              className="inline-block h-2 w-2 flex-none rounded-sm"
+              style={{
+                backgroundImage:
+                  'repeating-linear-gradient(45deg, rgba(0,0,0,0.4) 0, rgba(0,0,0,0.4) 2px, rgba(255,255,255,0.25) 2px, rgba(255,255,255,0.25) 5px)',
+              }}
+            />
+            <span className="font-semibold text-base-content/70">{overlapLabel}</span>
+            <span className="font-mono tabular-nums">
+              {fmtMinutes(o.start)}–{fmtMinutes(o.end)}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

@@ -85,7 +85,7 @@ export function ScheduleImportPanel({
   return (
     <div className="flex flex-col gap-4">
       <textarea
-        className="h-40 w-full resize-y rounded-md border border-base-300 bg-base-100 p-3 font-mono text-xs text-base-content outline-none transition-colors duration-150 focus:border-primary/50"
+        className="h-40 w-full resize-y rounded-md border border-base-300 bg-base-100 p-3 font-mono text-[16px] text-base-content outline-none transition-colors duration-150 focus:border-primary/50 md:text-xs"
         placeholder={`${exampleHeader}\nAlex Chen,Alpha,EARLY,OFF`}
         value={text}
         onChange={(e) => {
@@ -94,9 +94,9 @@ export function ScheduleImportPanel({
         }}
       />
 
-      <div className="flex items-center gap-2">
-        <label className="btn btn-ghost btn-xs rounded-md">
-          {fileName || t('onbex.import.chooseFile')}
+      <div className="flex min-w-0 items-center gap-2">
+        <label className="btn btn-ghost btn-xs min-h-11 min-w-0 max-w-full rounded-md md:min-h-0">
+          <span className="min-w-0 truncate">{fileName || t('onbex.import.chooseFile')}</span>
           <input
             ref={inputRef}
             type="file"
@@ -143,7 +143,7 @@ export function ScheduleImportPanel({
 
       <button
         type="button"
-        className="btn btn-primary self-start"
+        className="btn btn-primary min-h-11 w-full md:min-h-0 md:w-auto md:self-start"
         disabled={!canApply}
         onClick={() => preview && onApply({ people: preview.people, teams: preview.teams, assignments: preview.assignments })}
       >
@@ -194,7 +194,7 @@ export function ScheduleImportScreen({ period, initial }: { period: Period; init
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[720px] p-8">
+        <div className="mx-auto max-w-[720px] p-4 md:p-8">
           <div className="mb-5">
             <h1 className="text-xl font-semibold tracking-tight text-base-content">{t('onbex.import.title')}</h1>
             <p className="mt-1 text-sm text-base-content/60">
@@ -205,8 +205,12 @@ export function ScheduleImportScreen({ period, initial }: { period: Period; init
         </div>
       </div>
 
-      <div className="flex items-center justify-end border-t border-base-300 bg-base-100 px-6 py-3">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={handleSkip}>
+      <div className="flex items-center justify-end border-t border-base-300 bg-base-100 px-4 py-3 md:px-6">
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+          onClick={handleSkip}
+        >
           {t('onbex.import.skip')}
         </button>
       </div>

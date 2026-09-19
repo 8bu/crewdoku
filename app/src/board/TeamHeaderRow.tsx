@@ -12,7 +12,7 @@ type TeamHeaderRowProps = {
 function TeamHeaderRowImpl({ team, count, collapsed, onToggle }: TeamHeaderRowProps) {
   return (
     <div
-      className="cd-team-row col-span-full flex h-7 cursor-pointer items-center border-t border-b border-[var(--border)] bg-base-200 text-xs font-semibold select-none focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--sel)]"
+      className="cd-team-row col-span-full flex h-11 cursor-pointer items-center border-t border-b border-[var(--border)] bg-base-200 text-xs font-semibold select-none focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--sel)] md:h-7"
       role="button"
       tabIndex={0}
       aria-expanded={!collapsed}

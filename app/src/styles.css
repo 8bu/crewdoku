@@ -21,6 +21,16 @@
   --text-lg--line-height: 1.35;
   --text-xl: 20px;
   --text-xl--line-height: 1.3;
+
+  /*
+   * Adaptive breakpoint. `md` is redefined from Tailwind's default 768px to
+   * 1000px so phones AND tablets/phablets (< 1000px) get the touch layout,
+   * and only true desktops (>= 1000px) keep the dense docked chrome. This is
+   * the single source the `md:` prefix reads; `useIsNarrow()` and the mobile
+   * @media block below mirror it at 999.98px, keeping CSS, hooks, and utility
+   * classes in lockstep. One boundary, three mirrors.
+   */
+  --breakpoint-md: 1000px;
 }
 
 /*
@@ -182,6 +192,12 @@
 
   /* --- Proposal overlay (ticket 12) --- */
   --proposal-panel-w: 400px;
+
+  /* --- Mobile chrome ---
+     Height of the fixed bottom tab bar (mobile only). One token so the nav,
+     the shell's content padding, and any bottom-anchored floating control
+     share a single value. Unused above `md`. */
+  --mobile-nav-h: 56px;
 
   /* --- Chrome ---
      Aliased onto the daisyUI "console" theme's own vars (defined above) so
@@ -944,3 +960,73 @@ body {
   component's root element in JSX (a `closest('.cd-teams-delete-popover')`
   outside-click hook), it just no longer needs a CSS rule.
 */
+
+/* ==========================================================================
+   Mobile & tablet (< md / 1000px)
+   The app is desktop-dense by design; this is the single place that relaxes
+   its geometry for touch. Gated on the same 999.98px breakpoint as
+   `useIsNarrow()` and the `md:` utility prefix, so CSS, behaviour hooks, and
+   Tailwind stay in lockstep. One block, one owner.
+   ========================================================================== */
+
+/* Bottom sheet (ui/BottomSheet.tsx) — the mobile stand-in for docked panels
+   and floating popovers. Slide-up is the only motion this pass adds; both the
+   backdrop fade and the sheet slide are disabled under reduced-motion. Defined
+   unconditionally (the sheet only mounts on mobile anyway) so the keyframes
+   are available wherever a caller renders it. */
+.cd-sheet-root {
+  animation: cd-sheet-fade 160ms ease-out;
+}
+.cd-sheet {
+  animation: cd-sheet-rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes cd-sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cd-sheet-rise {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cd-sheet-root,
+  .cd-sheet {
+    animation: none;
+  }
+}
+
+@media (max-width: 999.98px) {
+  /* Inputs/selects: 16px kills iOS focus-zoom, 44px clears the touch-target
+     floor. Covers Input + Select outline/field variants (both wear .cd-field). */
+  .cd-field {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  /* Board + coverage grid geometry: taller rows and wider day columns so a
+     cell is a real tap target and its two lines (code over time) stay legible;
+     the label columns narrow to leave the schedule room on a phone. */
+  :root {
+    --row-h: 48px;
+    --col-w: 76px;
+    --name-col-w: 132px;
+    --fair-col-w: 56px;
+    --cell-pad-x: 6px;
+    --cov-col-w: 84px;
+    --cov-row-label-w: 120px;
+    --cov-row-h: 52px;
+  }
+
+  /* The board is the horizontal-scroll surface on mobile: let it pan on touch
+     without rubber-banding the page behind it. */
+  .cd-board-scroll {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* No hover on touch, and the start/end time is core schedule data — reveal
+     the cell time line permanently instead of on `:hover`. */
+  .cd-cell__time {
+    visibility: visible;
+  }
+}

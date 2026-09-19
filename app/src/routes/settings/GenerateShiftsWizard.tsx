@@ -151,7 +151,7 @@ export function GenerateShiftsWizard({
     >
       <div
         ref={modalRef}
-        className="cd-generate-shifts-wizard flex w-full max-w-[540px] flex-col gap-4 rounded-lg border border-base-300 bg-base-100 p-5 shadow-lg"
+        className="cd-generate-shifts-wizard flex max-h-[90dvh] w-full max-w-[540px] flex-col gap-4 overflow-y-auto overscroll-contain rounded-lg border border-base-300 bg-base-100 p-4 shadow-lg md:max-h-none md:overflow-visible md:p-5"
       >
         <div className="flex items-start justify-between gap-3 border-b border-base-300/80 pb-3">
           <div>
@@ -164,7 +164,7 @@ export function GenerateShiftsWizard({
             type="button"
             onClick={onCancel}
             aria-label={t('settings.wizard.cancel')}
-            className="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-base-content"
+            className="btn btn-ghost btn-xs btn-square min-h-11 min-w-11 text-base-content/40 hover:text-base-content md:min-h-6 md:min-w-6"
           >
             <X className="h-4 w-4" />
           </button>
@@ -175,7 +175,7 @@ export function GenerateShiftsWizard({
           <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/50">
             {t('settings.wizard.window')}
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex min-h-11 items-center gap-2 md:min-h-0">
             <input
               type="checkbox"
               id="wizard-24h"
@@ -293,63 +293,67 @@ export function GenerateShiftsWizard({
             overlapLabel={t('settings.wizard.preview.overlap')}
           />
 
-          {/* Resulting rows preview list */}
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-base-300 text-2xs uppercase text-base-content/40">
-                <th className="w-5 py-1"></th>
-                <th className="py-1 text-left">{t('settings.wizard.preview.code')}</th>
-                <th className="py-1 text-left">{t('settings.wizard.preview.duration')}</th>
-                <th className="py-1 text-left">{t('settings.wizard.preview.hours')}</th>
-                <th className="py-1 text-right">{t('settings.wizard.preview.paid')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shifts.map((shift, idx) => (
-                <tr key={shift.code} className="border-b border-base-300/40">
-                  <td className="py-1">
-                    <span
-                      className="block h-2.5 w-2.5 rounded-sm"
-                      style={{ background: swatchBg(shift.color) }}
-                    />
-                  </td>
-                  <td className="py-1 font-medium text-base-content">
-                    {shift.code} <span className="font-normal text-base-content/60">({shift.label})</span>
-                    {shift.isNight && (
-                      <span className="ml-1.5 rounded bg-navy/20 px-1 py-0.2 text-[10px] font-semibold text-navy">
-                        {t('settings.wizard.preview.night')}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-1">
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        min={0.25}
-                        step={0.25}
-                        value={durationMinutes(shift) / 60}
-                        aria-label={`${shift.code} ${t('settings.wizard.preview.duration')}`}
-                        onChange={(e) => {
-                          const hours = parseFloat(e.target.value)
-                          if (!Number.isNaN(hours) && hours >= 0.25) {
-                            setShifts(setDurationOne(shifts, idx, Math.round(hours * 60)))
-                          }
-                        }}
-                        className="w-14 font-mono tabular-nums"
-                      />
-                      <span className="text-2xs text-base-content/40">h</span>
-                    </div>
-                  </td>
-                  <td className="py-1 font-mono tabular-nums text-base-content/80">
-                    {toClock(shift.start)} – {toClock(shift.end)}
-                  </td>
-                  <td className="py-1 text-right font-mono font-medium tabular-nums text-base-content">
-                    {formatHours(paidHours(shifts, shift.code))}
-                  </td>
+          {/* Resulting rows preview list — five columns still need a little
+              more room than a 360px phone has, so it scrolls rather than
+              squeezing the duration field to nothing. */}
+          <div className="overflow-x-auto overscroll-x-contain">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-base-300 text-2xs uppercase text-base-content/40">
+                  <th className="w-5 py-1"></th>
+                  <th className="py-1 text-left">{t('settings.wizard.preview.code')}</th>
+                  <th className="py-1 text-left">{t('settings.wizard.preview.duration')}</th>
+                  <th className="py-1 text-left">{t('settings.wizard.preview.hours')}</th>
+                  <th className="py-1 text-right">{t('settings.wizard.preview.paid')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {shifts.map((shift, idx) => (
+                  <tr key={shift.code} className="border-b border-base-300/40">
+                    <td className="py-1">
+                      <span
+                        className="block h-2.5 w-2.5 rounded-sm"
+                        style={{ background: swatchBg(shift.color) }}
+                      />
+                    </td>
+                    <td className="py-1 font-medium text-base-content">
+                      {shift.code} <span className="font-normal text-base-content/60">({shift.label})</span>
+                      {shift.isNight && (
+                        <span className="ml-1.5 rounded bg-navy/20 px-1 py-0.2 text-[10px] font-semibold text-navy">
+                          {t('settings.wizard.preview.night')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-1">
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0.25}
+                          step={0.25}
+                          value={durationMinutes(shift) / 60}
+                          aria-label={`${shift.code} ${t('settings.wizard.preview.duration')}`}
+                          onChange={(e) => {
+                            const hours = parseFloat(e.target.value)
+                            if (!Number.isNaN(hours) && hours >= 0.25) {
+                              setShifts(setDurationOne(shifts, idx, Math.round(hours * 60)))
+                            }
+                          }}
+                          className="w-14 font-mono tabular-nums"
+                        />
+                        <span className="text-2xs text-base-content/40">h</span>
+                      </div>
+                    </td>
+                    <td className="py-1 font-mono tabular-nums text-base-content/80">
+                      {toClock(shift.start)} – {toClock(shift.end)}
+                    </td>
+                    <td className="py-1 text-right font-mono font-medium tabular-nums text-base-content">
+                      {formatHours(paidHours(shifts, shift.code))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Warning if current catalog is non-empty */}
@@ -360,11 +364,11 @@ export function GenerateShiftsWizard({
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center justify-end gap-2 border-t border-base-300/80 pt-3">
-          <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-base-300/80 pt-3">
+          <button type="button" onClick={onCancel} className="btn btn-ghost btn-sm min-h-11 flex-1 md:min-h-8 md:flex-none">
             {t('settings.wizard.cancel')}
           </button>
-          <button type="button" onClick={handleApply} className="btn btn-primary btn-sm">
+          <button type="button" onClick={handleApply} className="btn btn-primary btn-sm min-h-11 flex-1 md:min-h-8 md:flex-none">
             {t('settings.wizard.apply')}
           </button>
         </div>

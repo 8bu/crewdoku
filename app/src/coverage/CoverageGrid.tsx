@@ -81,7 +81,9 @@ export function CoverageGrid({ period }: { period: Period }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
+      {/* Mobile: title, status and the team lens stack instead of squeezing one
+          360px line; `md:` restores the single 48px strip unchanged. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-2 md:h-12 md:flex-nowrap md:gap-3 md:py-0">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.coverage.title')}</h1>
         {view.scoped ? (
           <span className="text-xs text-[color:var(--text-dim)]">
@@ -104,8 +106,8 @@ export function CoverageGrid({ period }: { period: Period }) {
             )}
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2 text-sm">
-          <label htmlFor="cov-team" className="text-[color:var(--text-dim)]">
+        <div className="flex w-full items-center gap-2 text-sm md:ml-auto md:w-auto">
+          <label htmlFor="cov-team" className="shrink-0 text-[color:var(--text-dim)]">
             {t('rtc.coverage.teamFilter')}
           </label>
           <Select
@@ -118,14 +120,23 @@ export function CoverageGrid({ period }: { period: Period }) {
               setTeamId(next)
             }}
             options={teamOptions}
+            className="flex-1 md:flex-initial"
           />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      {/* The grid pans on touch inside this box; `overscroll-contain` stops a
+          horizontal flick at the period's edge from rubber-banding the page
+          behind it (the same guard `styles.css` puts on `.cd-board-scroll`). */}
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
+        {/* `--cov-total-w` is this grid's own lane width: a phone drops the
+            sticky totals column to 72px so a full day column still fits beside
+            the 120px row label on a 360px screen; `md:` restores today's 96px.
+            The inline template reads it with a 96px fallback, so a missing
+            custom property degrades to the desktop track rather than none. */}
         <div
-          className="grid w-max content-start bg-base-100 [font-variant-numeric:tabular-nums]"
-          style={{ gridTemplateColumns: `var(--cov-row-label-w) repeat(${initial.dates.length}, var(--cov-col-w)) 96px` }}
+          className="grid w-max content-start bg-base-100 [--cov-total-w:72px] [font-variant-numeric:tabular-nums] md:[--cov-total-w:96px]"
+          style={{ gridTemplateColumns: `var(--cov-row-label-w) repeat(${initial.dates.length}, var(--cov-col-w)) var(--cov-total-w, 96px)` }}
         >
           <div className="cd-board__corner sticky top-0 left-0 z-[4] border-r border-b border-[var(--border-strong)] bg-base-100" />
           {initial.dates.map((date) => (

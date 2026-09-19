@@ -5,6 +5,8 @@ import { useSetAtom } from 'jotai'
 import type { Assignment, Person } from '@crewdoku/domain'
 import { eligibleFreePeople } from '../board/coverage'
 import { coverageDrillAtom } from '../state/coverageDrill'
+import { BottomSheet } from '../ui/BottomSheet'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import type { CoverageViewCell } from './coverageData'
 
 /**
@@ -13,9 +15,13 @@ import type { CoverageViewCell } from './coverageData'
  * that edits. A short cell's jump lands in ticket 06's drill-down with the
  * eligible fixers already lit (via `coverageDrillAtom`).
  *
- * `position: fixed` from the clicked cell's viewport rect, clamped to the
- * window — the same floating-popover move as `CellMenu`/`DeleteTeamPopover`,
- * never a layout reflow.
+ * Desktop: `position: fixed` from the clicked cell's viewport rect, clamped to
+ * the window — the same floating-popover move as `CellMenu`/`DeleteTeamPopover`,
+ * never a layout reflow. A phone gets the same body in a bottom sheet instead
+ * (`useIsNarrow`, ui/BottomSheet): the anchor is a cell inside a grid that pans
+ * horizontally, so a fixed 260px box would open half off-screen and its
+ * `btn-xs` action would sit under the touch-target floor — the sheet is full
+ * width, safe-area aware, and gives that action a 44px row.
  */
 
 const POPOVER_W = 260
@@ -44,7 +50,13 @@ export function CoveragePopover({ cell, rect, allPeople, getAssignment, onClose 
     [cell, allPeople, getAssignment],
   )
 
+  const isNarrow = useIsNarrow()
+
   useEffect(() => {
+    // The sheet dismisses itself (backdrop, Escape, close button) and portals
+    // outside this component, so a window-level "click outside" would close it
+    // on every tap of its own chrome. Desktop popover only.
+    if (isNarrow) return
     const closeIfOutside = (e: MouseEvent) => {
       const el = e.target as HTMLElement | null
       if (el?.closest('.cd-covview-popover')) return
@@ -59,10 +71,8 @@ export function CoveragePopover({ cell, rect, allPeople, getAssignment, onClose 
       window.removeEventListener('mousedown', closeIfOutside)
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [onClose])
+  }, [onClose, isNarrow])
 
-  const left = Math.max(8, Math.min(rect.left + rect.width / 2 - POPOVER_W / 2, window.innerWidth - POPOVER_W - 8))
-  const openUp = rect.top > window.innerHeight * 0.6
   const statusLabel = cell.status ? t(`rtc.coverage.status.${cell.status}`) : null
 
   const showOnBoard = () => {
@@ -71,11 +81,8 @@ export function CoveragePopover({ cell, rect, allPeople, getAssignment, onClose 
     navigate('/board')
   }
 
-  return (
-    <div
-      className="cd-covview-popover fixed z-30 rounded-lg border border-[var(--border-strong)] bg-base-100 p-2 shadow-[var(--shadow-pane)]"
-      style={{ left, width: POPOVER_W, ...(openUp ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.top + rect.height + 4 }) }}
-    >
+  const body = (
+    <>
       <div className="mb-1 flex items-baseline justify-between gap-2">
         <span className="text-xs font-semibold">
           {cell.shift.code} · {cell.date.iso}
@@ -88,7 +95,10 @@ export function CoveragePopover({ cell, rect, allPeople, getAssignment, onClose 
         {cell.status === 'short' && ` · ${t('rtc.coverage.popover.eligibleFree', { count: freeCount })}`}
       </div>
       {cell.people.length > 0 ? (
-        <ul className="m-0 mb-1.5 max-h-44 list-none overflow-y-auto p-0">
+        // The desktop popover caps the roster list and scrolls it inside its
+        // own 260px box; the sheet already scrolls its body, so the cap would
+        // only nest a second scrollbar inside it on a phone.
+        <ul className={`m-0 mb-1.5 list-none overflow-y-auto p-0 ${isNarrow ? '' : 'max-h-44'}`}>
           {cell.people.map((p) => (
             <li key={p.id} className="cd-text-trim py-1 text-xs">
               {p.name}
@@ -98,9 +108,36 @@ export function CoveragePopover({ cell, rect, allPeople, getAssignment, onClose 
       ) : (
         <div className="mb-1.5 py-1 text-xs text-[color:var(--text-faint)]">{t('rtc.coverage.popover.noOne')}</div>
       )}
-      <button type="button" className="btn btn-primary btn-xs w-full" onClick={showOnBoard}>
+      <button type="button" className="btn btn-primary btn-xs min-h-11 w-full md:min-h-0" onClick={showOnBoard}>
         {cell.status === 'short' ? t('rtc.coverage.popover.showFixers', { count: freeCount }) : t('rtc.coverage.popover.showOnBoard')}
       </button>
+    </>
+  )
+
+  if (isNarrow) {
+    return (
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={t('rtc.coverage.title')}
+        // Deliberately the status-free label: under a team lens `status` is
+        // null, so the "with status" variant would have to invent one.
+        ariaLabel={t('rtc.coverage.cell.aria', { shift: cell.shift.code, date: cell.date.iso, count: cell.count })}
+      >
+        {body}
+      </BottomSheet>
+    )
+  }
+
+  const left = Math.max(8, Math.min(rect.left + rect.width / 2 - POPOVER_W / 2, window.innerWidth - POPOVER_W - 8))
+  const openUp = rect.top > window.innerHeight * 0.6
+
+  return (
+    <div
+      className="cd-covview-popover fixed z-30 rounded-lg border border-[var(--border-strong)] bg-base-100 p-2 shadow-[var(--shadow-pane)]"
+      style={{ left, width: POPOVER_W, ...(openUp ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.top + rect.height + 4 }) }}
+    >
+      {body}
     </div>
   )
 }

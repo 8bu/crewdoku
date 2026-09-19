@@ -1,6 +1,7 @@
 import { ChevronUp, ChevronDown } from '../../ui/icons'
 import { useState } from 'react'
 import { Input } from '../../ui/Input'
+import { useIsNarrow } from '../../ui/useIsNarrow'
 import type { DragEvent } from 'react'
 import { HARD_RULES } from '../../state/solveSettings'
 import type { HardRuleSettings, SoftGoalId } from '@crewdoku/domain'
@@ -12,7 +13,10 @@ import { useT } from '../../i18n/useT'
  * to get a good schedule (the map's "easy by default, robust on demand").
  * Soft goals rank by drag order, not a weight number (ticket 15, Q4, 8bu's
  * pick over segmented levels/dot scale) — up/down buttons give the same
- * reorder without a mouse.
+ * reorder without a mouse. On a phone those buttons are the *only* reorder
+ * path (HTML5 drag-and-drop has no touch support anywhere), so they become
+ * the primary control there: `draggable` is off below `md` and the buttons
+ * grow to a 44px tap target.
  */
 export function AdvancedRules({
   hardRules,
@@ -34,6 +38,7 @@ export function AdvancedRules({
   onToggleSoftGoal: (id: SoftGoalId) => void
 }) {
   const t = useT()
+  const isNarrow = useIsNarrow()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   function move(index: number, delta: number) {
@@ -56,7 +61,7 @@ export function AdvancedRules({
 
   return (
     <details className="group overflow-hidden rounded-lg border border-base-300 bg-base-100">
-      <summary className="flex list-none cursor-pointer select-none items-center justify-between px-4 py-3 text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 list-none cursor-pointer select-none items-center justify-between px-4 py-3 text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 md:min-h-0 [&::-webkit-details-marker]:hidden">
         <span>{t('settings.advanced.title')}</span>
         <span
           className="text-base-content/40 transition-transform duration-150 group-open:rotate-90"
@@ -80,13 +85,13 @@ export function AdvancedRules({
                   onChange={() => onToggleHardRule(rule.id)}
                 />
                 <div className="min-w-0 flex-1">
-                  <label htmlFor={`hard-${rule.id}`} className={`flex w-fit items-center gap-2 text-sm font-semibold text-base-content ${rule.locked ? 'cursor-default' : 'cursor-pointer'}`}>
+                  <label htmlFor={`hard-${rule.id}`} className={`flex min-h-11 w-fit items-center gap-2 text-sm font-semibold text-base-content md:min-h-0 ${rule.locked ? 'cursor-default' : 'cursor-pointer'}`}>
                     {rule.id} — {t(`settings.rule.${rule.id}.label`)}
                     {rule.locked && <span className="text-2xs font-normal text-base-content/40">{t('settings.advanced.alwaysOn')}</span>}
                   </label>
                   <p className="mt-0.5 text-xs text-base-content/60">{t(`settings.rule.${rule.id}.desc`)}</p>
                   {rule.id === 'H2' && (
-                    <label className="mt-1.5 flex items-center gap-1.5 text-xs text-base-content/70">
+                    <label className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-base-content/70">
                       {t('settings.advanced.cap')}
                       <Input
                         type="number"
@@ -99,7 +104,7 @@ export function AdvancedRules({
                     </label>
                   )}
                   {rule.id === 'H3' && (
-                    <label className="mt-1.5 flex items-center gap-1.5 text-xs text-base-content/70">
+                    <label className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-base-content/70">
                       {t('settings.advanced.minimum')}
                       <Input
                         type="number"
@@ -128,13 +133,15 @@ export function AdvancedRules({
               return (
                 <li
                   key={id}
-                  draggable
-                  onDragStart={() => setDragIndex(i)}
+                  draggable={!isNarrow}
+                  onDragStart={() => {
+                    if (!isNarrow) setDragIndex(i)
+                  }}
                   onDragOver={(e: DragEvent) => e.preventDefault()}
                   onDrop={() => handleDrop(i)}
-                  className="flex cursor-grab items-center gap-2.5 rounded-md border border-base-300 bg-base-100 px-2.5 py-2 transition-colors duration-150 hover:bg-base-200 active:cursor-grabbing"
+                  className="flex items-center gap-2.5 rounded-md border border-base-300 bg-base-100 px-2.5 py-2 transition-colors duration-150 md:cursor-grab md:hover:bg-base-200 md:active:cursor-grabbing"
                 >
-                  <span className="w-4 flex-none text-center text-xs text-base-content/30" aria-hidden="true">
+                  <span className="hidden w-4 flex-none text-center text-xs text-base-content/30 md:block" aria-hidden="true">
                     ≡
                   </span>
                   <span className="w-5 flex-none font-mono text-xs text-base-content/40">{i + 1}</span>
@@ -150,7 +157,7 @@ export function AdvancedRules({
                       aria-label={t('settings.advanced.moveUp', { name: goalLabel })}
                       onClick={() => move(i, -1)}
                       disabled={i === 0}
-                      className="cursor-pointer border-none bg-transparent px-1 text-xs text-base-content/50 transition-colors duration-150 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300"
+                      className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-base-content/50 transition-colors duration-150 hover:bg-base-200 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300 md:h-3.5 md:w-[22px] md:rounded-none md:hover:bg-transparent"
                     >
                       <ChevronUp className="h-3.5 w-3.5" />
                     </button>
@@ -159,12 +166,12 @@ export function AdvancedRules({
                       aria-label={t('settings.advanced.moveDown', { name: goalLabel })}
                       onClick={() => move(i, 1)}
                       disabled={i === softGoalOrder.length - 1}
-                      className="cursor-pointer border-none bg-transparent px-1 text-xs text-base-content/50 transition-colors duration-150 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300"
+                      className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-base-content/50 transition-colors duration-150 hover:bg-base-200 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300 md:h-3.5 md:w-[22px] md:rounded-none md:hover:bg-transparent"
                     >
                       <ChevronDown className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <label className="flex h-8 w-8 flex-none cursor-pointer items-center justify-center">
+                  <label className="flex h-11 w-11 flex-none cursor-pointer items-center justify-center md:h-8 md:w-8">
                     <input
                       type="checkbox"
                       className="checkbox checkbox-primary"

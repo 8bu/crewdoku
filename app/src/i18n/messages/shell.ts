@@ -10,6 +10,9 @@ export const shell = {
     'nav.teams': 'Teams',
     'nav.settings': 'Settings',
     'nav.export': 'Export',
+    /* Titles the period manager's mobile sheet (its desktop surface is a
+       trigger-anchored popover with no header of its own). */
+    'period.title': 'Periods',
     'locale.aria': 'UI language',
     'theme.aria': 'Appearance',
     'theme.system': 'System',
@@ -24,6 +27,7 @@ export const shell = {
     'nav.teams': 'Phòng/ban',
     'nav.settings': 'Cài đặt',
     'nav.export': 'Xuất dữ liệu',
+    'period.title': 'Các kỳ',
     'locale.aria': 'Ngôn ngữ giao diện',
     'theme.aria': 'Giao diện',
     'theme.system': 'Theo hệ thống',

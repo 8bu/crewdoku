@@ -54,7 +54,7 @@ function BandControl({
     )
   }
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 md:flex-nowrap">
       <span className="text-2xs text-base-content/50">{t('settings.coverage.need')}</span>
       {min}
       <span className="text-2xs text-base-content/50">{t('settings.coverage.upTo')}</span>
@@ -121,8 +121,8 @@ export function CoverageTable({
         {shifts.map((shift, i) => {
           const mode = modeOf(shift.code)
           return (
-            <div key={shift.code} className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 ${i > 0 ? 'border-t border-base-300/60' : ''}`}>
-              <div className="flex w-24 flex-none items-center gap-2">
+            <div key={shift.code} className={`flex flex-wrap items-center gap-x-3 gap-y-3 px-2 py-2.5 md:gap-x-4 md:gap-y-2 md:px-3 ${i > 0 ? 'border-t border-base-300/60' : ''}`}>
+              <div className="flex w-20 flex-none items-center gap-2 md:w-24">
                 <Dot shift={shift} />
                 <span className="font-mono text-sm font-semibold">{shift.code}</span>
               </div>
@@ -132,12 +132,12 @@ export function CoverageTable({
               )}
 
               {mode === 'weekend' && (
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 md:gap-x-5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="w-11 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.weekdays')}</span>
                     <BandControl band={bandOf(shift.code, 1)} onChange={(b) => onSetBandDays(WEEKDAYS, shift.code, b)} />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="w-11 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.weekend')}</span>
                     <BandControl band={bandOf(shift.code, 6)} onChange={(b) => onSetBandDays(WEEKEND, shift.code, b)} />
                   </div>
@@ -145,7 +145,7 @@ export function CoverageTable({
               )}
 
               {mode === 'perDay' && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-x-2 gap-y-2 md:gap-x-1.5">
                   {WEEKDAY_ORDER.map((dow) => (
                     <div key={dow} className="flex flex-col items-center gap-1">
                       <span className="text-[10px] font-semibold uppercase text-base-content/40">{t(`settings.coverage.dow.${dow}`)}</span>
@@ -155,13 +155,13 @@ export function CoverageTable({
                 </div>
               )}
 
-              <div className="ml-auto flex overflow-hidden rounded-md border border-base-300 text-2xs">
+              <div className="ml-auto flex w-full overflow-hidden rounded-md border border-base-300 text-2xs md:w-auto">
                 {MODES.map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setModes((x) => ({ ...x, [shift.code]: m }))}
-                    className={`px-2.5 py-1 font-medium transition-colors ${mode === m ? 'bg-primary/10 text-primary' : 'text-base-content/50 hover:bg-base-200'}`}
+                    className={`min-h-11 flex-1 px-2.5 py-1 font-medium transition-colors md:min-h-0 md:flex-none ${mode === m ? 'bg-primary/10 text-primary' : 'text-base-content/50 hover:bg-base-200'}`}
                   >
                     {t(`settings.coverage.mode.${m}`)}
                   </button>
@@ -176,11 +176,11 @@ export function CoverageTable({
         <h3 className="m-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.overridesTitle')}</h3>
         {overrideDates.length === 0 && <p className="text-xs text-base-content/40">{t('settings.coverage.noOverrides')}</p>}
         {overrideDates.map((iso) => (
-          <div key={iso} className="flex flex-wrap items-center gap-3 rounded-md border border-base-300 bg-base-200/40 px-2.5 py-2">
+          <div key={iso} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-base-300 bg-base-200/40 px-2.5 py-2">
             <span className="w-[92px] flex-none font-mono text-xs font-semibold">{iso}</span>
             <div className="flex flex-1 flex-wrap gap-3">
               {shifts.map((shift) => (
-                <div key={shift.code} className="flex items-center gap-1.5">
+                <div key={shift.code} className="flex flex-wrap items-center gap-1.5">
                   <span className="font-mono text-2xs text-base-content/50">{shift.code}</span>
                   <BandControl
                     band={table.dateOverrides[iso]?.[shift.code] ?? UNCONSTRAINED_BAND}
@@ -192,13 +192,13 @@ export function CoverageTable({
             <button
               type="button"
               onClick={() => onRemoveOverride(iso)}
-              className="cursor-pointer border-none bg-transparent p-0 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors hover:text-error"
+              className="min-h-11 cursor-pointer border-none bg-transparent px-2 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors hover:text-error md:min-h-0 md:px-0"
             >
               {t('settings.coverage.removeOverride')}
             </button>
           </div>
         ))}
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1">
             <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.addOverrideFor')}</label>
             <Input type="date" value={newOverrideDate} onChange={(e) => setNewOverrideDate(e.target.value)} />
@@ -210,7 +210,7 @@ export function CoverageTable({
               onAddOverride(newOverrideDate)
               setNewOverrideDate('')
             }}
-            className="btn btn-outline btn-sm gap-1.5"
+            className="btn btn-outline btn-sm min-h-11 gap-1.5 md:min-h-8"
           >
             <Plus className="h-4 w-4" />
             {t('settings.coverage.addOverride')}

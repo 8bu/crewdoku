@@ -33,6 +33,7 @@ export const board = {
     'board.cell.pinnedTitle': 'Pinned — press U to release',
 
     // Cell context menu
+    'board.menu.title': 'Set shift',
     'board.menu.dayOff': 'Day off',
     'board.menu.releasePin': 'Release pin',
 
@@ -49,6 +50,7 @@ export const board = {
     'board.person.removedBadge': 'Removed',
     'board.person.closeAria': 'Close',
     'board.person.sectionPeriod': 'This period',
+    'board.person.sectionIssues': 'Issues',
     'board.person.hours': 'Hours',
     'board.person.mostLoaded': ' · most-loaded',
     'board.person.nights': 'Nights',
@@ -109,6 +111,7 @@ export const board = {
     'board.cell.pinnedTitle': 'Đã ghim — nhấn U để bỏ ghim',
 
     // Cell context menu
+    'board.menu.title': 'Đặt ca',
     'board.menu.dayOff': 'Ngày nghỉ',
     'board.menu.releasePin': 'Bỏ ghim',
 
@@ -125,6 +128,7 @@ export const board = {
     'board.person.removedBadge': 'Đã xóa',
     'board.person.closeAria': 'Đóng',
     'board.person.sectionPeriod': 'Kỳ này',
+    'board.person.sectionIssues': 'Vấn đề',
     'board.person.hours': 'Giờ',
     'board.person.mostLoaded': ' · nhiều giờ nhất',
     'board.person.nights': 'Đêm',

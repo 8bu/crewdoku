@@ -31,9 +31,14 @@ function bandLabel(cell: CoverageViewCell): string {
 function CoverageCellImpl({ cell, active, onOpen }: CoverageCellProps) {
   const t = useT()
   return (
+    /* `--cov-row-h` is 52px on a phone (48px desktop), so the cell is a real
+       tap target either way; `min-h-11` pins the 44px floor the token happens
+       to clear, and `md:min-h-0` keeps the desktop track's own sizing intact.
+       `touch-manipulation` drops the double-tap-zoom wait on a tap (pinch
+       still zooms); v4 already gates `hover:` behind `(hover: hover)`. */
     <button
       type="button"
-      className={`flex h-[var(--cov-row-h)] cursor-pointer flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--border)] border-l-[var(--grid-line)] p-0 transition-colors duration-150 hover:brightness-95 data-[active]:outline-2 data-[active]:-outline-offset-2 data-[active]:outline-[var(--sel)] ${tone(cell)}`}
+      className={`flex h-[var(--cov-row-h)] min-h-11 cursor-pointer touch-manipulation flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--border)] border-l-[var(--grid-line)] p-0 transition-colors duration-150 hover:brightness-95 md:min-h-0 data-[active]:outline-2 data-[active]:-outline-offset-2 data-[active]:outline-[var(--sel)] ${tone(cell)}`}
       data-active={active || undefined}
       data-status={cell.status ?? undefined}
       aria-label={

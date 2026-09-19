@@ -2,6 +2,8 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { useAtom } from 'jotai'
 import { LOCALES, LOCALE_STORAGE_KEY, localeAtom, type LocaleId } from '../state/locale'
 import { Select } from '../ui/Select'
+import { SheetSelect } from '../ui/SheetSelect'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import { useT } from '../i18n/useT'
 import { track } from '../analytics'
 
@@ -42,10 +44,15 @@ const FLAGS: Record<LocaleId, ReactNode> = { en: <FlagGB />, vi: <FlagVN /> }
 /**
  * The app-wide locale control. The choice lives in `localeAtom`, drives `useT`
  * everywhere, and is mirrored onto `<html lang>` so the document tells the
- * truth. Layout-neutral: it renders only the select, so each host (the nav-rail
- * footer, the pre-shell entry overlay) owns its own spacing and muted tone.
+ * truth. Layout-neutral: it renders only the control, so each host (the
+ * nav-rail footer, the pre-shell entry overlay) owns its own spacing and muted
+ * tone.
+ *
+ * Only the surface forks on touch, exactly as in `ThemeSwitcher`: a desktop
+ * dropdown above `md`, a chip that opens a full-width bottom-sheet list of the
+ * endonyms below it.
  */
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ className }: { className?: string }) {
   const [locale, setLocale] = useAtom(localeAtom)
   const t = useT()
 
@@ -54,18 +61,33 @@ export function LocaleSwitcher() {
     if (typeof localStorage !== 'undefined') localStorage.setItem(LOCALE_STORAGE_KEY, locale)
   }, [locale])
 
+  const isNarrow = useIsNarrow()
   const options = useMemo(() => LOCALES.map((l) => ({ ...l, icon: FLAGS[l.value] })), [])
+  function handleChange(v: string) {
+    const next = LOCALES.find((l) => l.value === v)
+    if (next) {
+      setLocale(next.value)
+      track('locale_changed', { locale: next.value })
+    }
+  }
+
+  if (isNarrow) {
+    return (
+      <SheetSelect
+        value={locale}
+        onChange={handleChange}
+        options={options}
+        title={t('locale.aria')}
+        ariaLabel={t('locale.aria')}
+        className={className}
+      />
+    )
+  }
 
   return (
     <Select
       value={locale}
-      onChange={(v) => {
-        const next = LOCALES.find((l) => l.value === v)
-        if (next) {
-          setLocale(next.value)
-          track('locale_changed', { locale: next.value })
-        }
-      }}
+      onChange={handleChange}
       options={options}
       size="xs"
       variant="ghost"

@@ -29,6 +29,10 @@ export const chrome = {
     'chrome.period.duration.biweek': '2 weeks',
     'chrome.period.duration.month': '1 month',
     'chrome.stub.message': 'Empty. Built by wayfinder ticket {tickets}.',
+    'chrome.close': 'Close',
+    'chrome.back': 'Back',
+    'chrome.menu': 'Menu',
+    'chrome.more': 'More',
   },
   vi: {
     'chrome.select.placeholder': 'Chọn…',
@@ -57,5 +61,9 @@ export const chrome = {
     'chrome.period.duration.biweek': '2 tuần',
     'chrome.period.duration.month': '1 tháng',
     'chrome.stub.message': 'Trống. Được xây dựng bởi wayfinder ticket {tickets}.',
+    'chrome.close': 'Đóng',
+    'chrome.back': 'Quay lại',
+    'chrome.menu': 'Menu',
+    'chrome.more': 'Thêm',
   },
 } satisfies AreaCatalog

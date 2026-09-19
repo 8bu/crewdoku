@@ -1,5 +1,7 @@
 import type { ConflictCoreItem, RelaxationOption } from '../../engine/types'
 import { useT } from '../../i18n/useT'
+import { BottomSheet } from '../../ui/BottomSheet'
+import { useIsNarrow } from '../../ui/useIsNarrow'
 
 export type InfeasiblePanelProps = {
   conflictCore: ConflictCoreItem[]
@@ -24,9 +26,13 @@ export type InfeasiblePanelProps = {
  * phase Cancel. A relaxation button rebuilds the rules and re-solves; a
  * feasible result lands in the normal proposal-review flow, never applied
  * straight to the board.
+ *
+ * Under `md` the same explanation arrives as a bottom sheet rather than a
+ * 400px docked lane, with Dismiss available as the sheet's own close.
  */
 export function InfeasiblePanel({ conflictCore, relaxations, onRelax, onDismiss }: InfeasiblePanelProps) {
   const t = useT()
+  const isNarrow = useIsNarrow()
 
   const people = (n: number): string =>
     t(n === 1 ? 'panels.noun.person_one' : 'panels.noun.person_other', { n })
@@ -102,47 +108,69 @@ export function InfeasiblePanel({ conflictCore, relaxations, onRelax, onDismiss 
         return option.label
     }
   }
+  const header = (
+    <div className="sticky top-0 z-1 flex items-start justify-between gap-3 border-b border-base-300 bg-base-100 px-4 py-3.5">
+      <div>
+        <div className="text-base font-semibold text-base-content">{t('panels.infeasible.title')}</div>
+        <div className="mt-0.5 text-xs text-[color:var(--text-faint)]">{t('panels.infeasible.subtitle')}</div>
+      </div>
+      <div className="flex flex-none gap-2">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onDismiss}>
+          {t('panels.infeasible.dismiss')}
+        </button>
+      </div>
+    </div>
+  )
+
+  const body = (
+    <div className={isNarrow ? undefined : 'flex-1 overflow-y-auto'}>
+      <ul className="m-0 flex list-none flex-col gap-1.5 border-b border-base-300 px-4 py-3.5 text-sm text-base-content">
+        {conflictCore.map((item) => (
+          <li key={item.id}>{conflictText(item)}</li>
+        ))}
+      </ul>
+
+      {relaxations.length > 0 && (
+        <div className="flex flex-col gap-2 px-4 py-3.5">
+          <div className="text-2xs text-[color:var(--text-faint)]">{t('panels.infeasible.relaxationsPrompt')}</div>
+          {relaxations.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className="btn btn-outline btn-sm min-h-11 justify-start text-left font-normal md:min-h-0"
+              onClick={() => onRelax(option)}
+            >
+              {relaxText(option)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  if (isNarrow) {
+    return (
+      <BottomSheet
+        open
+        onClose={onDismiss}
+        title={t('panels.infeasible.title')}
+        ariaLabel={t('panels.infeasible.aria')}
+      >
+        <p className="m-0 mb-2 text-xs text-[color:var(--text-faint)]">{t('panels.infeasible.subtitle')}</p>
+        <div className="-mx-4">{body}</div>
+      </BottomSheet>
+    )
+  }
+
   return (
     <div
       className="relative flex h-full w-[var(--proposal-panel-w)] flex-none flex-col overflow-y-auto border-l-2 border-error bg-base-100 shadow-[var(--shadow-pane)]"
       role="dialog"
       aria-label={t('panels.infeasible.aria')}
     >
-      <div className="sticky top-0 z-1 flex items-start justify-between gap-3 border-b border-base-300 bg-base-100 px-4 py-3.5">
-        <div>
-          <div className="text-base font-semibold text-base-content">{t('panels.infeasible.title')}</div>
-          <div className="mt-0.5 text-xs text-[color:var(--text-faint)]">{t('panels.infeasible.subtitle')}</div>
-        </div>
-        <div className="flex flex-none gap-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onDismiss}>
-            {t('panels.infeasible.dismiss')}
-          </button>
-        </div>
-      </div>
+      {header}
 
-      <div className="flex-1 overflow-y-auto">
-        <ul className="m-0 flex list-none flex-col gap-1.5 border-b border-base-300 px-4 py-3.5 text-sm text-base-content">
-          {conflictCore.map((item) => (
-            <li key={item.id}>{conflictText(item)}</li>
-          ))}
-        </ul>
-
-        {relaxations.length > 0 && (
-          <div className="flex flex-col gap-2 px-4 py-3.5">
-            <div className="text-2xs text-[color:var(--text-faint)]">{t('panels.infeasible.relaxationsPrompt')}</div>
-            {relaxations.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="btn btn-outline btn-sm justify-start text-left font-normal"
-                onClick={() => onRelax(option)}
-              >
-                {relaxText(option)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {body}
     </div>
   )
 }

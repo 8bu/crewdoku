@@ -29,6 +29,12 @@ type StartMode = PeriodSetup
  * empty roster — no single verb owns this popover, so list and create form
  * share one floating surface anchored to the header trigger, same
  * convention as `routes/teams/DeleteTeamPopover.tsx`.
+ *
+ * This is the desktop anchoring only; the surface itself is
+ * `PeriodManagerBody`, which is also what a phone gets inside a bottom sheet
+ * (`PeriodSelector` picks). 340px of list stays clear of the trigger in the
+ * header's left corner on any desktop width; on a 360px screen it would be the
+ * whole viewport, so it never gets the chance.
  */
 export function PeriodManagerPopover({
   rect,
@@ -37,18 +43,6 @@ export function PeriodManagerPopover({
   rect: { left: number; bottom: number }
   onClose: () => void
 }) {
-  const t = useT()
-  const periods = useAtomValue(periodsAtom)
-  const selectedId = useAtomValue(selectedPeriodIdAtom)
-  const setSelectedId = useSetAtom(selectedPeriodIdAtom)
-  const addPeriod = useSetAtom(addPeriodAtom)
-  const updatePeriod = useSetAtom(updatePeriodAtom)
-  const deletePeriod = useSetAtom(deletePeriodAtom)
-
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
-
   useEffect(() => {
     function closeIfOutside(e: MouseEvent) {
       if ((e.target as HTMLElement | null)?.closest('.cd-period-manager-popover')) return
@@ -65,9 +59,44 @@ export function PeriodManagerPopover({
     }
   }, [onClose])
 
-  const sortedPeriods = [...periods].sort((a, b) => a.start.localeCompare(b.start))
   const left = Math.min(rect.left, window.innerWidth - POPOVER_WIDTH - 12)
 
+  return (
+    <div
+      className="cd-period-manager-popover fixed z-20 flex w-[340px] flex-col gap-3 rounded-lg border border-base-300 bg-base-100 p-4 shadow-lg"
+      style={{ left, top: rect.bottom + 6 }}
+    >
+      <PeriodManagerBody onClose={onClose} />
+    </div>
+  )
+}
+
+/**
+ * The manager's contents: the period list, each row's switch/rename/delete,
+ * and the create form. Host-agnostic — the desktop popover's positioning and
+ * dismissal live one level up, as does the mobile sheet's.
+ *
+ * Touch hosts get the verbs unconditionally: a row's Edit and Delete are a
+ * hover reveal on desktop, and there is no hover on a phone, so below `md`
+ * they sit in the row at the 44px minimum instead of waiting to be revealed.
+ * The date range drops to its own line there for the same reason — the verbs
+ * need the width more than the range needs to be beside the label, and the
+ * range stays readable.
+ */
+export function PeriodManagerBody({ onClose }: { onClose: () => void }) {
+  const t = useT()
+  const periods = useAtomValue(periodsAtom)
+  const selectedId = useAtomValue(selectedPeriodIdAtom)
+  const setSelectedId = useSetAtom(selectedPeriodIdAtom)
+  const addPeriod = useSetAtom(addPeriodAtom)
+  const updatePeriod = useSetAtom(updatePeriodAtom)
+  const deletePeriod = useSetAtom(deletePeriodAtom)
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const sortedPeriods = [...periods].sort((a, b) => a.start.localeCompare(b.start))
 
   function handleCreate(label: string, start: string, duration: PeriodDuration, setup: PeriodSetup) {
     const period = createPeriod(label, start, duration, setup)
@@ -79,10 +108,7 @@ export function PeriodManagerPopover({
   }
 
   return (
-    <div
-      className="cd-period-manager-popover fixed z-20 flex w-[340px] flex-col gap-3 rounded-lg border border-base-300 bg-base-100 p-4 shadow-lg"
-      style={{ left, top: rect.bottom + 6 }}
-    >
+    <div className="flex flex-col gap-3">
       <ul className="m-0 flex max-h-64 list-none flex-col gap-0.5 overflow-y-auto p-0">
         {sortedPeriods.map((period) =>
           editingId === period.id ? (
@@ -128,7 +154,11 @@ export function PeriodManagerPopover({
         {creating ? (
           <CreatePeriodForm periods={sortedPeriods} onCreate={handleCreate} onCancel={() => setCreating(false)} />
         ) : (
-          <button type="button" className="btn btn-ghost btn-xs gap-1 rounded-md" onClick={() => setCreating(true)}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs min-h-11 gap-1 rounded-md md:min-h-0"
+            onClick={() => setCreating(true)}
+          >
             <Plus className="h-3.5 w-3.5" />
             {t('chrome.periodManager.newPeriod')}
           </button>
@@ -163,19 +193,21 @@ function PeriodRow({
   if (isConfirmingDelete) {
     return (
       <li className="flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5">
-        <span className="truncate text-sm text-base-content/60">{t('chrome.periodManager.deleteConfirm', { label: period.label })}</span>
+        <span className="min-w-0 truncate text-sm text-base-content/60">
+          {t('chrome.periodManager.deleteConfirm', { label: period.label })}
+        </span>
         <div className="flex shrink-0 gap-1">
           <button
             type="button"
             onClick={onCancelDelete}
-            className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content"
+            className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent px-3 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content md:min-h-0 md:px-1.5 md:py-0.5"
           >
             {t('chrome.periodManager.cancel')}
           </button>
           <button
             type="button"
             onClick={onConfirmDelete}
-            className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-error transition-colors duration-150 hover:bg-error/10"
+            className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent px-3 text-2xs font-semibold uppercase tracking-wide text-error transition-colors duration-150 hover:bg-error/10 md:min-h-0 md:px-1.5 md:py-0.5"
           >
             {t('chrome.periodManager.delete')}
           </button>
@@ -189,33 +221,35 @@ function PeriodRow({
       <button
         type="button"
         onClick={onSwitch}
-        className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md border-none bg-transparent px-2.5 py-1.5 text-left"
+        className="flex min-h-11 min-w-0 flex-1 cursor-pointer flex-col items-start justify-center gap-0.5 rounded-md border-none bg-transparent px-2.5 py-1 text-left md:min-h-0 md:flex-row md:items-center md:justify-start md:gap-2 md:py-1.5"
       >
-        <span className="w-3 shrink-0 text-primary">{isSelected && <Check className="h-3.5 w-3.5" />}</span>
-        <span className="truncate text-sm font-semibold text-base-content">{period.label}</span>
-        <span className="ml-auto shrink-0 text-xs tabular-nums text-base-content/60 transition-opacity duration-150 group-focus-within:opacity-0 group-hover:opacity-0">
+        <span className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+          <span className="w-3 shrink-0 text-primary">{isSelected && <Check className="h-3.5 w-3.5" />}</span>
+          <span className="truncate text-sm font-semibold text-base-content">{period.label}</span>
+        </span>
+        <span className="shrink-0 text-xs tabular-nums text-base-content/60 md:ml-auto md:transition-opacity md:duration-150 md:group-focus-within:opacity-0 md:group-hover:opacity-0">
           {period.start} → {period.end}
         </span>
       </button>
-        <div className="absolute right-1 top-1/2 flex -translate-y-1/2 gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={onStartEdit}
-            title={t('chrome.periodManager.editPeriod')}
-            className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content"
-          >
-            {t('chrome.periodManager.edit')}
-          </button>
-          <button
-            type="button"
-            onClick={onStartDelete}
-            disabled={isOnly}
-            title={isOnly ? t('chrome.periodManager.cannotDeleteOnly') : t('chrome.periodManager.deletePeriod')}
-            className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-xs text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:opacity-30"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+      <div className="flex shrink-0 items-center gap-0.5 pr-1 md:absolute md:right-1 md:top-1/2 md:-translate-y-1/2 md:pr-0 md:opacity-0 md:transition-opacity md:duration-150 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={onStartEdit}
+          title={t('chrome.periodManager.editPeriod')}
+          className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent px-1.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content md:min-h-0 md:min-w-0 md:py-0.5"
+        >
+          {t('chrome.periodManager.edit')}
+        </button>
+        <button
+          type="button"
+          onClick={onStartDelete}
+          disabled={isOnly}
+          title={isOnly ? t('chrome.periodManager.cannotDeleteOnly') : t('chrome.periodManager.deletePeriod')}
+          className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-xs text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:opacity-30 md:block md:h-auto md:w-auto md:px-1.5 md:py-0.5"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </li>
   )
 }
@@ -223,8 +257,8 @@ function PeriodRow({
 /**
  * The row's Edit affordance grown out of inline rename: label, start, and
  * end are all editable after creation (dates used to be create-time only).
- * Escape cancels the edit without closing the whole popover — the form
- * swallows the keydown before the popover's window-level listener sees it.
+ * Escape cancels the edit without closing the whole surface — the form
+ * swallows the keydown before the outside handler's window listener sees it.
  */
 function EditPeriodForm({
   period,
@@ -280,11 +314,16 @@ function EditPeriodForm({
         <button
           type="button"
           onClick={onCancel}
-          className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content"
+          className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent px-3 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content md:min-h-0 md:px-1.5 md:py-0.5"
         >
           {t('chrome.periodManager.cancel')}
         </button>
-        <button type="button" disabled={!valid} onClick={() => onSave(trimmedLabel, start, end)} className="btn btn-primary btn-xs">
+        <button
+          type="button"
+          disabled={!valid}
+          onClick={() => onSave(trimmedLabel, start, end)}
+          className="btn btn-primary btn-xs min-h-11 md:min-h-0"
+        >
           {t('chrome.periodManager.save')}
         </button>
       </div>
@@ -308,7 +347,7 @@ function StartModeOption({
   children?: ReactNode
 }) {
   return (
-    <label className="flex cursor-pointer flex-col gap-1 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-base-200">
+    <label className="flex min-h-11 cursor-pointer flex-col justify-center gap-1 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-base-200 md:min-h-0">
       <span className="flex items-center gap-2">
         <input type="radio" name={name} checked={checked} onChange={onSelect} className="radio radio-xs" />
         <span className="text-sm text-base-content">{label}</span>
@@ -362,7 +401,9 @@ function CreatePeriodForm({
       <p className="text-sm font-semibold text-base-content">{t('chrome.periodManager.createTitle')}</p>
 
       <div className="flex flex-col gap-1">
-        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.labelField')}</label>
+        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+          {t('chrome.periodManager.labelField')}
+        </label>
         <Input
           type="text"
           autoFocus
@@ -373,16 +414,16 @@ function CreatePeriodForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.startsField')}</label>
-        <Input
-          type="date"
-          value={start}
-          onChange={(e) => setStart(e.target.value)}
-        />
+        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+          {t('chrome.periodManager.startsField')}
+        </label>
+        <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.lengthField')}</label>
+        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+          {t('chrome.periodManager.lengthField')}
+        </label>
         <Select
           className="w-full"
           value={duration}
@@ -392,7 +433,9 @@ function CreatePeriodForm({
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('chrome.periodManager.startWithField')}</label>
+        <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+          {t('chrome.periodManager.startWithField')}
+        </label>
         <StartModeOption
           name="period-start-mode"
           label={t('chrome.periodManager.modeReadyLabel')}
@@ -413,11 +456,16 @@ function CreatePeriodForm({
         <button
           type="button"
           onClick={onCancel}
-          className="cursor-pointer rounded-md border-none bg-transparent px-1.5 py-1 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content"
+          className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent px-3 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-base-content md:min-h-0 md:px-1.5 md:py-0.5"
         >
           {t('chrome.periodManager.cancel')}
         </button>
-        <button type="button" disabled={!trimmedLabel} onClick={handleCreate} className="btn btn-primary btn-xs">
+        <button
+          type="button"
+          disabled={!trimmedLabel}
+          onClick={handleCreate}
+          className="btn btn-primary btn-xs min-h-11 md:min-h-0"
+        >
           {t('chrome.periodManager.create')}
         </button>
       </div>

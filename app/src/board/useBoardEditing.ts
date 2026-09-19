@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, ClipboardEvent as ReactClipboardEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type {
+  MouseEvent as ReactMouseEvent,
+  ClipboardEvent as ReactClipboardEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
   assignmentKey,
   OFF_ASSIGNMENT,
@@ -11,6 +16,7 @@ import {
 } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 import { isEligible } from './eligibility'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import { useBoardOverrides } from '../state/boardOverrides'
 import { track } from '../analytics'
 import {
@@ -49,6 +55,16 @@ function buildCodeKeys(shifts: ShiftDef[]): Record<string, ShiftCode> {
   return keys
 }
 
+/**
+ * How long a finger has to rest on a cell before the shift picker opens
+ * (mobile). Long enough that a deliberate tap-tap or a pan never trips it,
+ * short enough to feel like a press rather than a wait.
+ */
+const LONG_PRESS_MS = 450
+
+/** How far a finger may drift before a pending long-press is treated as a pan. */
+const LONG_PRESS_SLOP_PX = 10
+
 const ARROW_DIRS: Record<string, ArrowDir> = {
   ArrowUp: 'up',
   ArrowDown: 'down',
@@ -81,6 +97,7 @@ export function useBoardEditing(
   /** True while a proposal is up for review (ticket 12) — every mutating path becomes a no-op. */
   locked = false,
 ) {
+  const isNarrow = useIsNarrow()
   const [overrides, setOverrides] = useBoardOverrides(periodId)
   const historyRef = useRef<EditHistory>(emptyHistory)
   const [selection, setSelection] = useState<SelectionRange | null>(null)
@@ -127,8 +144,23 @@ export function useBoardEditing(
   }, [bounds])
 
   useEffect(() => {
+    // Desktop affordance only. On a phone this focus pops the soft keyboard
+    // over the board the moment the route opens, for an input the planner
+    // never types into — mobile edits go through tap → picker instead.
+    if (isNarrow) return
     editorRef.current?.focus({ preventScroll: true })
-  }, [])
+  }, [isNarrow])
+
+  /**
+   * The one place that refocuses the hidden editor. Every caller wants the
+   * board to keep receiving keystrokes on desktop; none of them want the
+   * keyboard on a phone, so the mobile check lives here rather than at each
+   * call site.
+   */
+  const focusEditor = useCallback(() => {
+    if (isNarrow) return
+    editorRef.current?.focus({ preventScroll: true })
+  }, [isNarrow])
 
   const getAssignment = useCallback(
     (personId: string, dateIso: string): Assignment => {
@@ -377,10 +409,14 @@ export function useBoardEditing(
 
   const handleBoardMouseDown = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
+      // A phone's tap produces mouse events too, and this path would both
+      // preventDefault the synthesized click and pop the soft keyboard.
+      // Mobile uses `handleBoardTap` + the long-press timer below instead.
+      if (isNarrow) return
       const coord = cellFromEvent(e.target)
       if (!coord) return
       e.preventDefault()
-      editorRef.current?.focus({ preventScroll: true })
+      focusEditor()
 
       // Clicking the already-selected single cell again opens the same
       // dropdown as a double-click (ticket "click to pick a shift"): the
@@ -416,7 +452,7 @@ export function useBoardEditing(
       window.addEventListener('mousemove', handleMove)
       window.addEventListener('mouseup', handleUp)
     },
-    [cellFromEvent, selection, openMenuForCoord],
+    [isNarrow, cellFromEvent, selection, openMenuForCoord, focusEditor],
   )
 
   // Mouse-only path (ticket 05 follow-up): a keyboard isn't guaranteed, so
@@ -435,20 +471,101 @@ export function useBoardEditing(
     [cellFromEvent, openMenuForCoord],
   )
 
+  /**
+   * The touch half of ticket 05's editing. A phone has no double-click, so:
+   * one tap selects a cell, and a tap on the cell that is already the sole
+   * selection — the same `reselecting` re-click path a mouse uses — opens the
+   * picker. Returns true when this tap actually opened the picker, so
+   * `BoardGrid` can tell "the planner asked to edit" apart from "the planner
+   * pointed at a cell": only the latter may reveal that cell's explanation.
+   */
+  const handleBoardTap = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>): boolean => {
+      const coord = cellFromEvent(e.target)
+      if (!coord) return false
+      const el = e.target instanceof HTMLElement ? e.target.closest<HTMLElement>('.cd-cell[data-person-id]') : null
+      const alreadySelected =
+        selection !== null &&
+        selection.anchor.row === coord.row &&
+        selection.anchor.col === coord.col &&
+        selection.focus.row === coord.row &&
+        selection.focus.col === coord.col
+      setSelection({ anchor: coord, focus: coord })
+      if (!alreadySelected || !el || locked) return false
+      openMenuForCoord(coord, el)
+      return true
+    },
+    [cellFromEvent, selection, locked, openMenuForCoord],
+  )
+
+  // Long-press is the second way onto the picker (mobile): a planner who has
+  // not selected the cell yet shouldn't have to tap twice. A timer armed on
+  // `pointerdown` and cancelled by any real finger movement, so panning the
+  // board never opens it.
+  const longPressTimerRef = useRef<number | null>(null)
+  const longPressOriginRef = useRef<{ x: number; y: number } | null>(null)
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+    longPressOriginRef.current = null
+  }, [])
+
+  useEffect(() => cancelLongPress, [cancelLongPress])
+
+  const handleBoardPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      // Pointer events cover the mouse too; the desktop paths are the mouse
+      // handlers above, deliberately untouched.
+      if (!isNarrow || e.pointerType === 'mouse') return
+      const coord = cellFromEvent(e.target)
+      const el = e.target instanceof HTMLElement ? e.target.closest<HTMLElement>('.cd-cell[data-person-id]') : null
+      if (!coord || !el) return
+      cancelLongPress()
+      longPressOriginRef.current = { x: e.clientX, y: e.clientY }
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressTimerRef.current = null
+        longPressOriginRef.current = null
+        setSelection({ anchor: coord, focus: coord })
+        if (!locked) openMenuForCoord(coord, el)
+      }, LONG_PRESS_MS)
+    },
+    [isNarrow, cellFromEvent, cancelLongPress, locked, openMenuForCoord],
+  )
+
+  const handleBoardPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const origin = longPressOriginRef.current
+      if (!origin) return
+      if (Math.abs(e.clientX - origin.x) > LONG_PRESS_SLOP_PX || Math.abs(e.clientY - origin.y) > LONG_PRESS_SLOP_PX) {
+        cancelLongPress()
+      }
+    },
+    [cancelLongPress],
+  )
+
+  /** The picker's own close button / backdrop (mobile BottomSheet). */
+  const closeMenu = useCallback(() => {
+    setMenu(null)
+    focusEditor()
+  }, [focusEditor])
+
   const chooseMenuOption = useCallback(
     (code: ShiftCode) => {
       commitCode(code)
       setMenu(null)
-      editorRef.current?.focus({ preventScroll: true })
+      focusEditor()
     },
-    [commitCode],
+    [commitCode, focusEditor],
   )
 
   const releasePinFromMenu = useCallback(() => {
     releasePin()
     setMenu(null)
-    editorRef.current?.focus({ preventScroll: true })
-  }, [releasePin])
+    focusEditor()
+  }, [releasePin, focusEditor])
 
   // Jump-to-cell for the problem list (ticket 07): select it and scroll it
   // into view. Returns false when the person isn't in the current visible
@@ -461,7 +578,7 @@ export function useBoardEditing(
       if (row === undefined || col === undefined) return false
       const coord: Coord = { row, col }
       setSelection({ anchor: coord, focus: coord })
-      editorRef.current?.focus({ preventScroll: true })
+      focusEditor()
       const board = boardRef.current
       const person = visiblePeople[row]
       const date = dates[col]
@@ -473,18 +590,23 @@ export function useBoardEditing(
       }
       return true
     },
-    [rowIndex, colIndex, visiblePeople, dates, boardRef],
+    [rowIndex, colIndex, visiblePeople, dates, boardRef, focusEditor],
   )
 
   useEffect(() => {
-    if (!menu) return
+    // Desktop only: this dismissal is a mousedown outside the absolutely-
+    // positioned popover. On a phone the picker is a BottomSheet that closes
+    // itself (backdrop / Escape / its own close button), and a stray window
+    // listener would unmount it on the mousedown that precedes an option's
+    // click — swallowing the choice.
+    if (!menu || isNarrow) return
     const closeIfOutside = (e: MouseEvent) => {
       if ((e.target as HTMLElement | null)?.closest('.cd-cell-menu')) return
       setMenu(null)
     }
     window.addEventListener('mousedown', closeIfOutside)
     return () => window.removeEventListener('mousedown', closeIfOutside)
-  }, [menu])
+  }, [menu, isNarrow])
 
   useLayoutEffect(() => {
     const board = boardRef.current
@@ -530,9 +652,15 @@ export function useBoardEditing(
     onEditorPaste: handlePaste,
     onBoardMouseDown: handleBoardMouseDown,
     onBoardDoubleClick: handleBoardDoubleClick,
+    onBoardTap: handleBoardTap,
+    onBoardPointerDown: handleBoardPointerDown,
+    onBoardPointerMove: handleBoardPointerMove,
+    onBoardPointerUp: cancelLongPress,
+    onBoardPointerCancel: cancelLongPress,
     menu,
     keyHintByCode,
     chooseMenuOption,
+    closeMenu,
     releasePinFromMenu,
     selectByIds,
     applyPatch,

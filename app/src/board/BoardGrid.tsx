@@ -1,6 +1,8 @@
-import { TriangleAlert } from '../ui/icons'
+import { TriangleAlert, WarningTriangleIcon } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import {
   assignmentKey,
   DEFAULT_SHIFTS,
@@ -105,6 +107,7 @@ function useScrollEdges(
 
 export function BoardGrid({ periodId, initial }: BoardGridProps) {
   const t = useT()
+  const isNarrow = useIsNarrow()
   const data = initial
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
   const rootRef = useRef<HTMLDivElement>(null)
@@ -392,6 +395,20 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     [violations, people, data.dates],
   )
 
+  // Mobile/tablet summary of the same violations, keyed by person: the pinned
+  // right column is hidden below `md`, so a person's rule breaks surface as a
+  // warning triangle in their name cell and as the person sheet's Issues list
+  // instead (the desktop cell's red dot + hover tip stays the desktop surface).
+  const violationsByPerson = useMemo(() => {
+    const m = new Map<string, Violation[]>()
+    for (const v of violations) {
+      const arr = m.get(v.personId)
+      if (arr) arr.push(v)
+      else m.set(v.personId, [v])
+    }
+    return m
+  }, [violations])
+
   // Filled-vs-needed per shift per day, live off the same overrides as
   // violations — an edit that fills a hole updates the bar the same render
   // it updates the cell (ticket 06: "typing into a lit cell updates the bar
@@ -513,14 +530,26 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
 
   // One shared tooltip node for the whole board (never one per cell — 4200
   // of those would flood the DOM), repositioned on hover via delegation, the
-  // same pattern as the selection overlay and the cell menu.
+  // same pattern as the selection overlay and the cell menu. On a phone there
+  // is no hover, so the same resolver runs off a tap instead (see
+  // `handleBoardTap`) and `ViolationTip` presents it as a fixed strip.
   const [tip, setTip] = useState<ViolationTipState>(HIDDEN_TIP)
 
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) return
+  const hideTip = useCallback(() => {
+    setTip((prev) => (prev.visible ? { ...prev, visible: false } : prev))
+  }, [])
 
-    const showForTarget = (target: EventTarget | null) => {
+  /**
+   * Resolve the one shared tip for whatever the pointer or finger landed on.
+   * Returns true when it actually showed something — that is how the mobile
+   * tap handler tells "this tap revealed an explanation" apart from "this tap
+   * landed on something with nothing to say".
+   */
+  const showTipForTarget = useCallback(
+    (target: EventTarget | null): boolean => {
+      const root = rootRef.current
+      if (!root) return false
+
       // SVG icons dispatch from their <path>/<circle>, not an HTMLElement.
       // `Element.closest` keeps delegation working no matter which part of
       // the drawn icon the pointer is actually over.
@@ -549,7 +578,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           // its own is informational, not a problem (8bu's call).
           kind: hasViolationMsg ? 'violation' : 'proposal',
         })
-        return
+        return true
       }
 
       const fairEl = targetEl?.closest<HTMLElement>('.cd-fair-cell[data-person-id]') ?? null
@@ -568,7 +597,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           alignEnd: true,
           kind: 'violation',
         })
-        return
+        return true
       }
 
       const fairHeaderEl = targetEl?.closest<HTMLElement>('.cd-fair-header') ?? null
@@ -583,7 +612,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           below: true,
           kind: 'violation',
         })
-        return
+        return true
       }
 
       // The holiday dot (ticket 04/02) — native `title` on the header cell
@@ -602,22 +631,52 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           below: true,
           kind: 'holiday',
         })
-        return
+        return true
       }
 
       setTip((prev) => (prev.visible ? { ...prev, visible: false } : prev))
-    }
+      return false
+    },
+    [rootRef, violationPlacement, proposalChangeMessages, t],
+  )
 
-    const handleOver = (e: MouseEvent) => showForTarget(e.target)
-    const handleLeave = () => setTip((prev) => (prev.visible ? { ...prev, visible: false } : prev))
+  useEffect(() => {
+    // Desktop only: this is the hover half of the shared tip. Mobile runs the
+    // same resolver from a tap instead (`handleBoardTap` below) — a phone
+    // still synthesizes mouseover on touch, which would double-fire it.
+    const root = rootRef.current
+    if (!root || isNarrow) return
+
+    const handleOver = (e: MouseEvent) => {
+      showTipForTarget(e.target)
+    }
 
     root.addEventListener('mouseover', handleOver)
-    root.addEventListener('mouseleave', handleLeave)
+    root.addEventListener('mouseleave', hideTip)
     return () => {
       root.removeEventListener('mouseover', handleOver)
-      root.removeEventListener('mouseleave', handleLeave)
+      root.removeEventListener('mouseleave', hideTip)
     }
-  }, [rootRef, violationPlacement, proposalChangeMessages])
+  }, [rootRef, showTipForTarget, hideTip, isNarrow])
+
+  /**
+   * The touch half of the board's pointer story: a tap selects the cell it
+   * landed on (and, on the second tap of that same cell, opens the shift
+   * picker — see `useBoardEditing.handleBoardTap`). When the tap did NOT ask
+   * to edit, the same tap is what reveals a cell's rule break, the fairness
+   * column's message, or a holiday's name: hover simply does not exist here.
+   */
+  const handleBoardTap = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      if (!isNarrow) return
+      if (editing.onBoardTap(e)) {
+        hideTip()
+        return
+      }
+      showTipForTarget(e.target)
+    },
+    [isNarrow, editing, hideTip, showTipForTarget],
+  )
 
   function toggleTeam(teamId: string) {
     setCollapsed((prev) => {
@@ -790,13 +849,20 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     return eligibleFreePeople(people, covDate, covDrillShift, editing.getAssignment)
   }, [covDate, covDrillShift, people, editing.getAssignment])
 
+  // The one place that closes the coverage breakdown, so the header bar, the
+  // sheet's own dismissals, and the board's click-outside all agree on
+  // clearing the drill-down with it.
+  const closeCoverage = useCallback(() => {
+    setCovDate(null)
+    setCovDrillShift(null)
+  }, [])
+
   const handleBarClick = useCallback((dateIso: string, target: HTMLElement) => {
     const root = rootRef.current
     const headerCell = target.closest<HTMLElement>('.cd-header-cell')
     if (!root || !headerCell) return
     if (covDate === dateIso) {
-      setCovDate(null)
-      setCovDrillShift(null)
+      closeCoverage()
       return
     }
     const boardBox = root.getBoundingClientRect()
@@ -809,7 +875,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     })
     setCovDate(dateIso)
     setCovDrillShift(null)
-  }, [covDate])
+  }, [covDate, closeCoverage])
 
   const handleShiftClick = useCallback(
     (shift: string) => {
@@ -853,20 +919,22 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   }, [covDrillShift, covDate, freePeople])
 
   useEffect(() => {
-    if (!covDate) return
+    // Desktop only. On a phone the breakdown is a BottomSheet that dismisses
+    // itself, and this listener would fire on the mousedown that precedes a
+    // short shift's click — closing the panel the drill-down was about to
+    // happen in.
+    if (!covDate || isNarrow) return
     const closeIfOutside = (e: MouseEvent) => {
       const el = e.target as HTMLElement | null
       // A click on a board cell is a normal edit, not a dismissal — typing
       // into a lit cell needs the panel to stay open so its count updates
       // live (ticket 06). Only a click truly outside board and panel closes it.
       if (el?.closest('.cd-cov-panel') || el?.closest('.cd-cov-bar') || el?.closest('.cd-cell')) return
-      setCovDate(null)
-      setCovDrillShift(null)
+      closeCoverage()
     }
     const closeOnEscape = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      setCovDate(null)
-      setCovDrillShift(null)
+      closeCoverage()
     }
     window.addEventListener('mousedown', closeIfOutside)
     window.addEventListener('keydown', closeOnEscape)
@@ -874,7 +942,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       window.removeEventListener('mousedown', closeIfOutside)
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [covDate])
+  }, [covDate, isNarrow, closeCoverage])
 
   const covPanel: CoveragePanelState | null =
     covDate && covRect && covDay
@@ -925,12 +993,37 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
         >
         <div
           ref={rootRef}
-          className="cd-board relative grid w-max content-start bg-base-100 [font-variant-numeric:tabular-nums] data-[generating]:shadow-[inset_0_2px_0_0_var(--sel)]"
+          className="cd-board relative grid w-max content-start touch-manipulation bg-base-100 [font-variant-numeric:tabular-nums] data-[generating]:shadow-[inset_0_2px_0_0_var(--sel)]"
           style={{
-            gridTemplateColumns: `var(--name-col-w) repeat(${data.dates.length}, var(--col-w))${showIssues ? ' var(--fair-col-w)' : ''}`,
+            gridTemplateColumns: `var(--name-col-w) repeat(${data.dates.length}, var(--col-w))${showIssues && !isNarrow ? ' var(--fair-col-w)' : ''}`,
+            // Touch affordances for the grid. A long press must not raise
+            // iOS' selection callout over the cell that is about to open the
+            // picker; scoped to the grid's own subtree and only under the
+            // mobile breakpoint, so desktop text selection (names, dates) is
+            // untouched. The companion piece is `touch-manipulation` on the
+            // element itself: without it, the tap-tap edit gesture is read as
+            // a double-tap zoom. `touch-action` only ever applies to touch
+            // input, so the mouse is unaffected either way.
+            ...(isNarrow ? { WebkitTouchCallout: 'none' as const, userSelect: 'none' as const } : null),
           }}
           onMouseDown={editing.onBoardMouseDown}
           onDoubleClick={editing.onBoardDoubleClick}
+          onClick={handleBoardTap}
+          onPointerDown={editing.onBoardPointerDown}
+          onPointerMove={editing.onBoardPointerMove}
+          onPointerUp={editing.onBoardPointerUp}
+          onPointerCancel={editing.onBoardPointerCancel}
+          onContextMenu={
+            isNarrow
+              ? (e) => {
+                  // Long-pressing a cell must not raise iOS' selection
+                  // callout. Sheets render through a portal but still bubble
+                  // here, and their own content (a date field, a long list)
+                  // keeps every right to the native menu.
+                  if (!(e.target as HTMLElement).closest('.cd-sheet-root')) e.preventDefault()
+                }
+              : undefined
+          }
         >
           <input
             ref={editing.editorRef}
@@ -942,7 +1035,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
             value=""
           />
           <SelectionOverlay rect={editing.overlayRect} />
-          <ViolationTip {...tip} />
+          <ViolationTip {...tip} onDismiss={hideTip} />
           {editing.menu && (
             <CellMenu
               menu={editing.menu}
@@ -950,6 +1043,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
               keyHints={editing.keyHintByCode}
               onChoose={editing.chooseMenuOption}
               onReleasePin={editing.releasePinFromMenu}
+              onClose={editing.closeMenu}
             />
           )}
           <ProblemList
@@ -960,7 +1054,14 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
             showIssues={showIssues}
             onToggleIssues={() => setShowIssues((v) => !v)}
           />
-          {covPanel && <CoveragePanel panel={covPanel} shifts={shifts} onShiftClick={handleShiftClick} />}
+          {covPanel && (
+            <CoveragePanel
+              panel={covPanel}
+              shifts={shifts}
+              onShiftClick={handleShiftClick}
+              onClose={closeCoverage}
+            />
+          )}
           <div className="cd-board__corner cd-text-trim sticky top-0 left-0 z-[4] flex h-[var(--row-h)] items-center border-r border-b border-[var(--border-strong)] bg-base-100 px-[var(--cell-pad-x)] text-2xs text-[color:var(--text-dim)]">
             {t('board.corner.name')}
           </div>
@@ -973,7 +1074,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
               onBarClick={handleBarClick}
             />
           ))}
-          {showIssues && <FairnessHeaderCell />}
+          {showIssues && !isNarrow && <FairnessHeaderCell />}
 
           {boardTeams.map((team) => {
             const teamPeople = peopleByTeam.get(team.id) ?? []
@@ -1022,6 +1123,12 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
                         <span className="cd-board__name-text min-w-0 overflow-hidden text-ellipsis group-data-[removed]:text-[color:var(--text-faint)] group-data-[removed]:line-through">
                           {person.name}
                         </span>
+                        {isNarrow && showIssues && (violationsByPerson.get(person.id)?.length ?? 0) > 0 && (
+                          <WarningTriangleIcon
+                            className="ml-1 h-3.5 w-3.5 shrink-0 text-[var(--viol)]"
+                            aria-hidden="true"
+                          />
+                        )}
                         {person.removed && (
                           <span className="cd-board__name-flag ml-1.5 border border-[var(--viol)] px-1 text-2xs font-medium whitespace-nowrap text-[color:var(--viol)]">
                             {t('board.name.removedBadge')}
@@ -1042,7 +1149,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
                           />
                         )
                       })}
-                      {showIssues && (
+                      {showIssues && !isNarrow && (
                         <FairnessCell personId={person.id} violations={violationPlacement.otherByPerson.get(person.id) ?? []} />
                       )}
                     </Fragment>
@@ -1063,6 +1170,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           hoursCap={fairness.hoursCap}
           isMaxHours={selectedFairness.hours === fairness.maxHours && fairness.maxHours > 0}
           hasHoursViolation={violations.some((v) => v.personId === selectedPerson.id && v.kind === 'hours')}
+          violations={violationsByPerson.get(selectedPerson.id) ?? []}
           dates={data.dates}
           onClose={() => setSelectedPersonId(null)}
           onUpdate={(patch) => updatePerson(selectedPerson.id, patch)}

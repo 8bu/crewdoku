@@ -117,7 +117,7 @@ function RosterTable({ period }: { period: Period }) {
 
   return (
     <section className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-3 border-b border-base-300 px-4">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-2 md:h-12 md:flex-nowrap md:py-0">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.roster.title')}</h1>
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {filtered
@@ -128,12 +128,12 @@ function RosterTable({ period }: { period: Period }) {
               ? t('rtc.roster.count.person', { count: active.length })
               : t('rtc.roster.count.people', { count: active.length })}
         </span>
-        <div className="ml-auto flex items-center gap-2">
-          <button type="button" onClick={handleOpenImport} className="btn btn-ghost btn-sm gap-1.5">
+        <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto md:flex-nowrap">
+          <button type="button" onClick={handleOpenImport} className="btn btn-ghost btn-sm min-h-11 flex-1 gap-1.5 md:min-h-0 md:flex-initial">
             <Upload className="h-4 w-4" />
             {t('rtc.roster.import')}
           </button>
-          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm gap-1.5">
+          <button type="button" onClick={handleAddAndFocusNext} className="btn btn-primary btn-sm min-h-11 flex-1 gap-1.5 md:min-h-0 md:flex-initial">
             <Plus className="h-4 w-4" />
             {t('rtc.roster.addPerson')}
           </button>
@@ -145,9 +145,10 @@ function RosterTable({ period }: { period: Period }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t('rtc.roster.filterPlaceholder')}
-          className="w-56"
+          className="w-full md:w-56"
         />
         <Select
+          className="w-full md:w-auto"
           value={teamFilterId}
           onChange={setTeamFilterId}
           options={[
@@ -163,7 +164,7 @@ function RosterTable({ period }: { period: Period }) {
               setQuery('')
               setTeamFilterId('all')
             }}
-            className="link link-hover text-xs text-base-content/60 transition-colors duration-150 hover:text-base-content"
+            className="link link-hover inline-flex min-h-11 items-center text-xs text-base-content/60 transition-colors duration-150 hover:text-base-content md:min-h-0"
           >
             {t('rtc.roster.clearFilter')}
           </button>
@@ -184,15 +185,20 @@ function RosterTable({ period }: { period: Period }) {
         ) : (
           <div className="max-w-[880px] px-4 py-4">
             {rows.length === 0 && <p className="m-0 py-3.5 text-sm text-base-content/40">{t('rtc.roster.noMatch')}</p>}
-            <table className="w-full border-collapse text-sm">
+            {/* Below `md` the fixed-width cells (184/168/160px) would blow
+                past a 390px viewport, so the same markup restacks: each row
+                becomes a self-contained card (name, team, eligibility, delete)
+                and every editor keeps its own control. `md:` restores the
+                dense table exactly as it was. */}
+            <table className="block w-full border-collapse text-sm md:table">
               {groups.map((group) => (
-                <tbody key={group.id}>
-                  <tr>
+                <tbody key={group.id} className="block md:table-row-group">
+                  <tr className="block md:table-row">
                     {/* Opaque flatten of base-200/50 over base-100 — a translucent
                         sticky header would let scrolled rows bleed through it. */}
                     <th
                       colSpan={4}
-                      className="sticky top-0 z-[1] border-b border-base-300 bg-[color-mix(in_oklch,var(--color-base-200)_50%,var(--color-base-100))] px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+                      className="sticky top-0 z-[1] block w-full border-b border-base-300 bg-[color-mix(in_oklch,var(--color-base-200)_50%,var(--color-base-100))] px-0 py-2 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40 md:table-cell md:w-auto md:px-2 md:py-1.5"
                     >
                       {group.name}
                       <span className="ml-2 font-normal tabular-nums normal-case tracking-normal">
@@ -203,9 +209,9 @@ function RosterTable({ period }: { period: Period }) {
                   {group.members.map((person) => (
                     <tr
                       key={person.id}
-                      className="h-10 border-b border-base-300/60 transition-colors duration-150 hover:bg-base-200/40"
+                      className="flex flex-col gap-2 border-b border-base-300/60 py-3 transition-colors duration-150 hover:bg-base-200/40 md:table-row md:h-10 md:gap-0 md:py-0"
                     >
-                      <td className="w-[184px] px-2 py-1">
+                      <td className="w-full px-0 py-0 md:table-cell md:w-[184px] md:px-2 md:py-1">
                         <Input
                           ref={person.id === lastRowId ? lastNameInputRef : undefined}
                           type="text"
@@ -215,13 +221,14 @@ function RosterTable({ period }: { period: Period }) {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddAndFocusNext()
                           }}
-                          className="w-[168px]"
+                          className="w-full md:w-[168px]"
                         />
                       </td>
-                      <td className="w-[160px] px-2 py-1">
+                      <td className="w-full px-0 py-0 md:table-cell md:w-[160px] md:px-2 md:py-1">
                         {/* Field select keeps a person movable across groups from any row. */}
                         <Select
                           variant="field"
+                          className="w-full md:w-auto"
                           value={person.teamId}
                           onChange={(v) => setPeople((prev) => setPersonTeam(prev, person.id, v))}
                           options={[
@@ -230,7 +237,7 @@ function RosterTable({ period }: { period: Period }) {
                           ]}
                         />
                       </td>
-                      <td className="px-2 py-1">
+                      <td className="w-full px-0 py-0 md:table-cell md:px-2 md:py-1">
                         <div className="flex flex-wrap gap-1.5 py-1">
                           {shifts.map((shift) => {
                             const eligible = !person.ineligible.includes(shift.code)
@@ -240,7 +247,7 @@ function RosterTable({ period }: { period: Period }) {
                                 type="button"
                                 data-shift={shift.code}
                                 onClick={() => setPeople((prev) => toggleShiftEligibility(prev, person.id, shift.code))}
-                                className={`cursor-pointer select-none rounded-md border border-transparent px-2.5 py-1 text-2xs font-semibold transition-colors duration-150 ${
+                                className={`inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-transparent px-3 py-1 text-2xs font-semibold transition-colors duration-150 md:min-h-0 md:px-2.5 ${
                                   eligible ? 'text-base-content' : 'bg-base-200 text-base-content/40 line-through'
                                 }`}
                                 style={eligible ? { background: swatchBgMuted(shift.color) } : undefined}
@@ -251,12 +258,12 @@ function RosterTable({ period }: { period: Period }) {
                           })}
                         </div>
                       </td>
-                      <td className="w-10 px-2 py-1 text-right">
+                      <td className="w-full px-0 py-0 text-right md:table-cell md:w-10 md:px-2 md:py-1">
                         <button
                           type="button"
                           aria-label={person.name.trim() ? t('rtc.roster.removePerson', { name: person.name.trim() }) : t('rtc.roster.removeUnnamed')}
                           onClick={() => setPeople((prev) => removePerson(prev, person.id))}
-                          className="btn btn-ghost btn-xs btn-square text-base-content/40 transition-colors duration-150 hover:text-error"
+                          className="btn btn-ghost btn-xs btn-square min-h-11 min-w-11 text-base-content/40 transition-colors duration-150 hover:text-error md:min-h-0 md:min-w-0"
                         >
                           <X className="h-4 w-4" />
                         </button>

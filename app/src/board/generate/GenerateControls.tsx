@@ -37,6 +37,11 @@ export type GenerateControlsProps = {
  * exact same pixel row as the board's own sticky date-header underneath it,
  * covering it rather than displacing it). It now pushes `.cd-board-scroll`
  * down by its own height instead.
+ *
+ * On a phone the FAB has one more thing under it than desktop does: the
+ * Shell's fixed bottom nav (`--mobile-nav-h`, plus the home-indicator inset).
+ * It lifts by both and grows to a 44px+ target; `md:` restores the original
+ * `bottom-6` corner exactly.
  */
 export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onImport }: GenerateControlsProps) {
   const t = useT()
@@ -49,7 +54,7 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
   return (
     <>
       {showBanner && (
-        <div className="flex items-center gap-2.5 border-b border-base-300 bg-base-200 px-3.5 py-[7px] text-xs text-base-content">
+        <div className="flex items-center gap-2.5 border-b border-base-300 bg-base-200 px-3.5 py-1.5 text-xs text-base-content md:py-[7px]">
           {solving ? (
             <>
               <span className="loading loading-spinner loading-xs text-primary" aria-hidden="true" />
@@ -62,7 +67,7 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
                   {lastLog}
                 </span>
               )}
-              <button type="button" className="btn btn-outline btn-xs ml-auto" onClick={onCancel}>
+              <button type="button" className="btn btn-outline btn-xs min-h-11 ml-auto md:min-h-0" onClick={onCancel}>
                 {t('panels.generate.cancel')}
               </button>
             </>
@@ -70,7 +75,7 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
             <>
               <span>{t('panels.generate.noSchedule')}</span>
               {onImport && (
-                <button type="button" className="btn btn-ghost btn-xs ml-auto rounded-md" onClick={onImport}>
+                <button type="button" className="btn btn-ghost btn-xs ml-auto min-h-11 rounded-md md:min-h-0" onClick={onImport}>
                   {t('panels.generate.import')}
                 </button>
               )}
@@ -80,7 +85,7 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
       )}
       <button
         type="button"
-        className="btn btn-primary fixed right-6 bottom-6 z-9 rounded-full px-6 shadow-[var(--shadow-pane)]"
+        className="btn btn-primary fixed right-6 bottom-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom)_+_0.5rem)] z-9 min-h-12 rounded-full px-6 shadow-[var(--shadow-pane)] md:bottom-6 md:min-h-0"
         onClick={onGenerate}
         disabled={solving}
         aria-label={hasSchedule ? t('panels.generate.regenerateAria') : t('panels.generate.generateAria')}

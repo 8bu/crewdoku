@@ -39,7 +39,16 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
       >
         {done ? <Check className="h-3 w-3" /> : n}
       </span>
-      <span className={`text-sm font-medium ${active ? 'text-base-content' : 'text-base-content/50'}`}>{label}</span>
+      {/* Below `md` only the current step is named: three labels plus their
+          dots cannot fit a 360px bar, and the dots alone already say where you
+          are. `md:` restores every label exactly as it was. */}
+      <span
+        className={`whitespace-nowrap text-xs font-medium md:text-sm ${
+          active ? 'text-base-content' : 'hidden text-base-content/50 md:inline'
+        }`}
+      >
+        {label}
+      </span>
     </div>
   )
 }
@@ -54,7 +63,7 @@ function ShapeCard({ tmpl, selected, onPick }: { tmpl: WorkspaceTemplate; select
     <button
       type="button"
       onClick={onPick}
-      className={`flex flex-col gap-2.5 rounded-lg border p-4 text-left transition-colors duration-150 ${
+      className={`flex flex-col gap-2.5 rounded-lg border p-3 text-left transition-colors duration-150 md:p-4 ${
         selected ? 'border-primary bg-primary/5' : 'border-base-300 bg-base-100 hover:border-primary/50'
       }`}
     >
@@ -154,17 +163,17 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-12 items-center gap-4 border-b border-base-300 bg-base-100 px-6">
+      <div className="flex h-12 items-center gap-2 border-b border-base-300 bg-base-100 px-4 md:gap-4 md:px-6">
         {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-4">
-            {i > 0 && <div className="h-px w-8 flex-none bg-base-300" />}
+          <div key={s.key} className="flex items-center gap-2 md:gap-4">
+            {i > 0 && <div className="h-px w-4 flex-none bg-base-300 md:w-8" />}
             <StepDot n={i + 1} label={t(`onbex.step.${s.key}`)} active={step === s.key} done={i < stepIndex} />
           </div>
         ))}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[720px] p-8">
+        <div className="mx-auto max-w-[720px] p-4 md:p-8">
           {step === 'shape' && (
             <div className="flex flex-col gap-5">
               <div>
@@ -192,7 +201,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
               </div>
 
               <textarea
-                className="textarea textarea-bordered h-52 w-full font-mono text-sm leading-relaxed"
+                className="textarea textarea-bordered h-52 w-full font-mono text-[16px] leading-relaxed md:text-sm"
                 placeholder={t('onbex.people.placeholder')}
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
@@ -207,7 +216,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 </ul>
               )}
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-base-content/70">
                   {rows.length === 0 ? (
                     t('onbex.people.empty')
@@ -225,9 +234,9 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                     </>
                   )}
                 </p>
-                <label className="btn btn-ghost btn-xs gap-1.5">
+                <label className="btn btn-ghost btn-xs min-h-11 gap-1.5 md:min-h-0">
                   <Upload className="h-3.5 w-3.5" />
-                  {t('onbex.people.fromFile')}
+                  <span className="truncate">{t('onbex.people.fromFile')}</span>
                   <input
                     ref={fileRef}
                     type="file"
@@ -246,11 +255,20 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 <p className="flex items-start gap-1.5 text-xs text-warning"><TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{t(`onbex.template.${template.id}.hint`)}</span></p>
               )}
 
-              <div className="flex items-center gap-3">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep('shape')}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  onClick={() => setStep('shape')}
+                >
                   {t('onbex.btn.back')}
                 </button>
-                <button type="button" className="btn btn-primary btn-sm" disabled={rows.length === 0} onClick={() => setStep('ready')}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  disabled={rows.length === 0}
+                  onClick={() => setStep('ready')}
+                >
                   {t('onbex.btn.continue')}
                 </button>
               </div>
@@ -288,14 +306,26 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep('people')}>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  onClick={() => setStep('people')}
+                >
                   {t('onbex.btn.back')}
                 </button>
-                <button type="button" className="btn btn-primary" onClick={() => finish(rows, true)}>
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-11 w-full md:min-h-0 md:w-auto"
+                  onClick={() => finish(rows, true)}
+                >
                   {t('onbex.ready.generate')}
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => finish(rows, false)}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  onClick={() => finish(rows, false)}
+                >
                   {t('onbex.ready.skip')}
                 </button>
               </div>

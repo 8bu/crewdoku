@@ -163,7 +163,7 @@ export function ShiftsTable({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex max-w-[880px] items-center justify-between">
+      <div className="flex max-w-[880px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.shifts.title')}</h2>
           <p className="m-0 mt-0.5 text-xs text-base-content/60">
@@ -174,7 +174,7 @@ export function ShiftsTable({
           <button
             type="button"
             onClick={onOpenWizard}
-            className="btn btn-ghost btn-sm text-xs font-medium text-primary hover:bg-primary/10"
+            className="btn btn-ghost btn-sm min-h-11 shrink-0 self-end text-xs font-medium text-primary hover:bg-primary/10 md:min-h-8 md:self-auto"
           >
             {t('settings.shifts.generate')}
           </button>
@@ -189,64 +189,87 @@ export function ShiftsTable({
         />
       </div>
 
-      <table className="w-max border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className="w-6 border-b border-base-300 px-2 py-1.5"></th>
-            <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
-              {t('settings.shifts.col.code')}
-            </th>
-            <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
-              {t('settings.shifts.col.label')}
-            </th>
-            <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
-              {t('settings.shifts.col.start')}
-            </th>
-            <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
-              {t('settings.shifts.col.end')}
-            </th>
-            <th
-              className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40"
-              title={t('settings.shifts.col.breakTitle')}
-            >
-              {t('settings.shifts.col.break')}
-            </th>
-            <th
-              className="border-b border-base-300 px-2 py-1.5 text-right text-2xs font-semibold uppercase tracking-wide text-base-content/40"
-              title={t('settings.shifts.col.paidTitle')}
-            >
-              {t('settings.shifts.col.paid')}
-            </th>
-            <th
-              className="border-b border-base-300 px-2 py-1.5 text-center text-2xs font-semibold uppercase tracking-wide text-base-content/40"
-              title={t('settings.shifts.col.nightTitle')}
-            >
-              {t('settings.shifts.col.night')}
-            </th>
-            <th className="w-10 border-b border-base-300 px-2 py-1.5"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {shifts.map((shift) => (
-            <ShiftRow
-              key={shift.code}
-              shift={shift}
-              shifts={shifts}
-              otherCodes={codes.filter((c) => c !== shift.code)}
-              onRename={(next) => onRename(shift.code, next)}
-              onSetLabel={(label) => onSetLabel(shift.code, label)}
-              onSetTimes={(start, end) => onSetTimes(shift.code, start, end)}
-              onSetBreak={(minutes) => onSetBreak(shift.code, minutes)}
-              onColorSwatchClick={(e) => startColorPick(shift.code, e.currentTarget)}
-              onToggleNight={() => onToggleNight(shift.code)}
-              onDeleteClick={(e) => startDelete(shift.code, e.currentTarget)}
-              deleteDisabled={shifts.length <= 1}
-            />
-          ))}
-        </tbody>
-      </table>
+      {/* A phone has no hover, so the abbreviated Break/Paid/Night headers
+          would keep their meaning inside a `title` nobody can read: the same
+          copy is spelled out here as a legend, mobile only. */}
+      <dl className="m-0 flex flex-wrap gap-x-4 gap-y-1 text-2xs text-base-content/50 md:hidden">
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-semibold uppercase tracking-wide text-base-content/70">{t('settings.shifts.col.break')}</dt>
+          <dd className="m-0">{t('settings.shifts.col.breakTitle')}</dd>
+        </div>
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-semibold uppercase tracking-wide text-base-content/70">{t('settings.shifts.col.paid')}</dt>
+          <dd className="m-0">{t('settings.shifts.col.paidTitle')}</dd>
+        </div>
+        <div className="flex flex-wrap gap-x-1.5">
+          <dt className="font-semibold uppercase tracking-wide text-base-content/70">{t('settings.shifts.col.night')}</dt>
+          <dd className="m-0">{t('settings.shifts.col.nightTitle')}</dd>
+        </div>
+      </dl>
 
-      <div className="flex max-w-[640px] items-end gap-3">
+      {/* Nine fixed columns never fit a phone: the table keeps its shape and
+          scrolls sideways instead of clipping (`overscroll-x-contain` keeps a
+          horizontal swipe from also moving the page behind it). */}
+      <div className="overflow-x-auto overscroll-x-contain">
+        <table className="w-max border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className="w-6 border-b border-base-300 px-2 py-1.5"></th>
+              <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+                {t('settings.shifts.col.code')}
+              </th>
+              <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+                {t('settings.shifts.col.label')}
+              </th>
+              <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+                {t('settings.shifts.col.start')}
+              </th>
+              <th className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40">
+                {t('settings.shifts.col.end')}
+              </th>
+              <th
+                className="border-b border-base-300 px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+                title={t('settings.shifts.col.breakTitle')}
+              >
+                {t('settings.shifts.col.break')}
+              </th>
+              <th
+                className="border-b border-base-300 px-2 py-1.5 text-right text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+                title={t('settings.shifts.col.paidTitle')}
+              >
+                {t('settings.shifts.col.paid')}
+              </th>
+              <th
+                className="border-b border-base-300 px-2 py-1.5 text-center text-2xs font-semibold uppercase tracking-wide text-base-content/40"
+                title={t('settings.shifts.col.nightTitle')}
+              >
+                {t('settings.shifts.col.night')}
+              </th>
+              <th className="w-10 border-b border-base-300 px-2 py-1.5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {shifts.map((shift) => (
+              <ShiftRow
+                key={shift.code}
+                shift={shift}
+                shifts={shifts}
+                otherCodes={codes.filter((c) => c !== shift.code)}
+                onRename={(next) => onRename(shift.code, next)}
+                onSetLabel={(label) => onSetLabel(shift.code, label)}
+                onSetTimes={(start, end) => onSetTimes(shift.code, start, end)}
+                onSetBreak={(minutes) => onSetBreak(shift.code, minutes)}
+                onColorSwatchClick={(e) => startColorPick(shift.code, e.currentTarget)}
+                onToggleNight={() => onToggleNight(shift.code)}
+                onDeleteClick={(e) => startDelete(shift.code, e.currentTarget)}
+                deleteDisabled={shifts.length <= 1}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex max-w-[640px] flex-col gap-3 md:flex-row md:items-end">
         <div className="flex flex-col gap-1">
           <label className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.shifts.newCode')}</label>
           <Input
@@ -257,7 +280,7 @@ export function ShiftsTable({
               setAddError(null)
             }}
             placeholder={t('settings.shifts.newCodePlaceholder')}
-            className="w-[120px]"
+            className="w-full md:w-[120px]"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -267,10 +290,15 @@ export function ShiftsTable({
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
             placeholder={t('settings.shifts.newLabelPlaceholder')}
-            className="w-[160px]"
+            className="w-full md:w-[160px]"
           />
         </div>
-        <button type="button" onClick={handleAdd} disabled={!newCode.trim()} className="btn btn-primary btn-sm gap-1.5">
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!newCode.trim()}
+          className="btn btn-primary btn-sm min-h-11 gap-1.5 md:min-h-8"
+        >
           <Plus className="h-4 w-4" />
           {t('settings.shifts.addShift')}
         </button>
@@ -295,6 +323,7 @@ export function ShiftsTable({
       {pendingColorPick && (
         <ShiftColorPopover
           rect={pendingColorPick.rect}
+          shiftCode={pendingColorPick.code}
           selected={shifts.find((s) => s.code === pendingColorPick.code)?.color}
           onSelect={(color) => onSetColor(pendingColorPick.code, color)}
           onClose={() => setPendingColorPick(null)}
@@ -357,9 +386,10 @@ function ShiftRow({
           title={t('settings.shifts.colorTitle', { code: shift.code })}
           aria-label={t('settings.shifts.changeColor', { code: shift.code })}
           onClick={onColorSwatchClick}
-          className="block h-3 w-3 flex-none cursor-pointer rounded-sm border-0 p-0 transition-transform duration-150 hover:scale-125"
-          style={{ background: swatchBg(shift.color) }}
-        />
+          className="flex h-11 w-11 flex-none cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-transform duration-150 md:h-3 md:w-3 md:rounded-sm md:hover:scale-125"
+        >
+          <span className="block h-3 w-3 rounded-sm" style={{ background: swatchBg(shift.color) }} />
+        </button>
       </td>
       <td className="px-2 py-1">
         <Input
@@ -411,7 +441,7 @@ function ShiftRow({
         {formatHours(paidHours(shifts, shift.code))}
       </td>
       <td className="px-2 py-1 text-center">
-        <label className="mx-auto flex h-8 w-8 cursor-pointer items-center justify-center">
+        <label className="mx-auto flex h-11 w-11 cursor-pointer items-center justify-center md:h-8 md:w-8">
           <input type="checkbox" className="checkbox checkbox-primary" checked={!!shift.isNight} onChange={onToggleNight} aria-label={t('settings.shifts.col.night')} />
         </label>
       </td>
@@ -422,7 +452,7 @@ function ShiftRow({
           disabled={deleteDisabled}
           aria-label={t('settings.shifts.deleteShift', { code: shift.code })}
           title={deleteDisabled ? t('settings.shifts.cantDeleteLast') : undefined}
-          className="btn btn-ghost btn-xs btn-square text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed"
+          className="btn btn-ghost btn-xs btn-square min-h-11 min-w-11 text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed md:min-h-6 md:min-w-6"
         >
           <X className="h-4 w-4" />
         </button>

@@ -2,6 +2,8 @@ import { useEffect, type ReactNode } from 'react'
 import { useAtom } from 'jotai'
 import { THEMES, THEME_STORAGE_KEY, applyTheme, resolveTheme, themeAtom, type ThemeId } from '../state/theme'
 import { Select } from '../ui/Select'
+import { SheetSelect } from '../ui/SheetSelect'
+import { useIsNarrow } from '../ui/useIsNarrow'
 import { Monitor, Moon, Sun } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { track } from '../analytics'
@@ -18,10 +20,14 @@ const THEME_ICONS: Record<ThemeId, ReactNode> = {
  * The app-wide appearance control. The choice lives in `themeAtom`, is mirrored
  * onto `<html data-theme>`, and is saved to localStorage. On 'system' it also
  * follows the OS live, so a laptop that switches at dusk switches the app with
- * it. Layout-neutral: like `LocaleSwitcher` it renders only the select, so each
- * host owns its own spacing and muted tone.
+ * it. Layout-neutral: like `LocaleSwitcher` it renders only the control, so
+ * each host owns its own spacing and muted tone.
+ *
+ * Only the surface forks on touch: the desktop dropdown needs a pointer and a
+ * 1280px of room to hang a menu in; on mobile the same options open as
+ * full-width rows in a `SheetSelect`'s bottom sheet, under the thumb.
  */
-export function ThemeSwitcher() {
+export function ThemeSwitcher({ className }: { className?: string }) {
   const [pref, setPref] = useAtom(themeAtom)
   const t = useT()
 
@@ -35,17 +41,34 @@ export function ThemeSwitcher() {
     return () => media.removeEventListener('change', onChange)
   }, [pref])
 
+  const isNarrow = useIsNarrow()
+  const options = THEMES.map((th) => ({ value: th.value, label: t(th.labelKey), icon: THEME_ICONS[th.value] }))
+  function handleChange(v: string) {
+    const next = THEMES.find((th) => th.value === v)
+    if (next) {
+      setPref(next.value)
+      track('theme_changed', { theme: next.value })
+    }
+  }
+
+  if (isNarrow) {
+    return (
+      <SheetSelect
+        value={pref}
+        onChange={handleChange}
+        options={options}
+        title={t('theme.aria')}
+        ariaLabel={t('theme.aria')}
+        className={className}
+      />
+    )
+  }
+
   return (
     <Select
       value={pref}
-      onChange={(v) => {
-        const next = THEMES.find((th) => th.value === v)
-        if (next) {
-          setPref(next.value)
-          track('theme_changed', { theme: next.value })
-        }
-      }}
-      options={THEMES.map((th) => ({ value: th.value, label: t(th.labelKey), icon: THEME_ICONS[th.value] }))}
+      onChange={handleChange}
+      options={options}
       size="xs"
       variant="ghost"
       className="w-full"
