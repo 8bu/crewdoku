@@ -86,6 +86,7 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
       <button
         type="button"
         className="btn btn-primary fixed right-6 bottom-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom)_+_0.5rem)] z-9 min-h-12 rounded-full px-6 shadow-[var(--shadow-pane)] md:bottom-6 md:min-h-0"
+        data-tour="generate"
         onClick={onGenerate}
         disabled={solving}
         aria-label={hasSchedule ? t('panels.generate.regenerateAria') : t('panels.generate.generateAria')}

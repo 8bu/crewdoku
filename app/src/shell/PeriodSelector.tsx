@@ -34,6 +34,7 @@ export function PeriodSelector() {
         type="button"
         aria-haspopup="dialog"
         aria-expanded={openRect !== null}
+        data-tour="period"
         className="btn btn-ghost btn-xs min-h-11 min-w-0 max-w-full gap-1.5 rounded-md md:min-h-0"
         onClick={() => {
           const rect = triggerRef.current?.getBoundingClientRect()

@@ -58,6 +58,7 @@ export function BottomNav() {
       <nav
         aria-label={t('nav.aria')}
         className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom))] border-t border-base-300 bg-base-200 pb-[env(safe-area-inset-bottom)] md:hidden"
+        data-tour="nav"
       >
         {PRIMARY.map(({ to, key, Icon }) => (
           <NavLink

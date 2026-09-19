@@ -7,11 +7,13 @@ export const onbex = {
     'onbex.btn.back': 'Back',
     'onbex.btn.continue': 'Continue',
     'onbex.btn.next': 'Next',
+    'onbex.btn.skipSetup': 'Skip setup',
 
     // Onboarding wizard - Steps
     'onbex.step.shape': 'Company shape',
     'onbex.step.people': 'People',
     'onbex.step.ready': 'Generate',
+    'onbex.nav.aria': 'Setup steps',
 
     // Onboarding - Shape step
     'onbex.shape.title': 'How does your company work?',
@@ -42,6 +44,8 @@ export const onbex = {
     'onbex.people.team': 'team',
     'onbex.people.teams': 'teams',
     'onbex.people.fromFile': 'From a CSV or Excel file',
+    'onbex.people.previewMore': '+{count} more',
+    'onbex.people.useSample': 'Use sample data',
 
     // Onboarding - Ready step
     'onbex.ready.title': 'Ready to generate',
@@ -121,11 +125,13 @@ export const onbex = {
     'onbex.btn.back': 'Quay lại',
     'onbex.btn.continue': 'Tiếp tục',
     'onbex.btn.next': 'Tiếp theo',
+    'onbex.btn.skipSetup': 'Bỏ qua thiết lập',
 
     // Onboarding wizard - Steps
     'onbex.step.shape': 'Mô hình công ty',
     'onbex.step.people': 'Nhân sự',
     'onbex.step.ready': 'Tạo lịch',
+    'onbex.nav.aria': 'Các bước thiết lập',
 
     // Onboarding - Shape step
     'onbex.shape.title': 'Công ty của bạn hoạt động như thế nào?',
@@ -156,6 +162,8 @@ export const onbex = {
     'onbex.people.team': 'phòng/ban',
     'onbex.people.teams': 'phòng/ban',
     'onbex.people.fromFile': 'Từ tệp CSV hoặc Excel',
+    'onbex.people.previewMore': '+{count} người nữa',
+    'onbex.people.useSample': 'Dùng dữ liệu mẫu',
 
     // Onboarding - Ready step
     'onbex.ready.title': 'Sẵn sàng tạo lịch',

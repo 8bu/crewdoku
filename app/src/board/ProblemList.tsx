@@ -78,7 +78,10 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
     )
 
   const buttonRow = (
-    <div className="flex items-stretch overflow-hidden rounded-lg border border-[var(--border-strong)] bg-base-100 shadow-[var(--shadow-pane)]">
+    <div
+      className="flex items-stretch overflow-hidden rounded-lg border border-[var(--border-strong)] bg-base-100 shadow-[var(--shadow-pane)]"
+      data-tour="diagnostics"
+    >
       <button
         type="button"
         className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2.5 text-xs font-semibold transition-colors duration-150 md:min-h-0 md:py-1.5 ${

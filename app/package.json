@@ -15,6 +15,7 @@
     "@crewdoku/domain": "workspace:*",
     "@crewdoku/persistence": "workspace:*",
     "@crewdoku/solver": "workspace:*",
+    "driver.js": "^1.8.0",
     "highs": "^1.15.2",
     "jotai": "^2.20.2",
     "jspdf": "^4.2.1",

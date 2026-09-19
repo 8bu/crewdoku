@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { Info } from '../ui/icons'
+import { tourReplayRequestedAtom } from '../onboarding/tour/productTour'
 import { periodsAtom, selectedPeriodAtom } from '../state/shell'
 import { updatePeriodAtom } from '../state/periodOps'
 import { useRosterPeople } from '../state/roster'
@@ -85,6 +88,8 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
 
   const [wizardOpen, setWizardOpen] = useState(false)
   const analyticsOn = useAnalyticsEnabled()
+  const navigate = useNavigate()
+  const requestTourReplay = useSetAtom(tourReplayRequestedAtom)
 
   // The shared board schedule and any hand-edit overrides are themselves a
   // reference to a shift code (ticket 15) — a rename/delete rewrites them
@@ -375,6 +380,28 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onReorderSoftGoals={handleReorderSoftGoals}
             onToggleSoftGoal={handleToggleSoftGoal}
           />
+
+          {/* The tour runs on the board, so this only raises the request and
+              sends the person there; the board's own hook consumes it. */}
+          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+            <section className="flex flex-col gap-3">
+              <div>
+                <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('tour.done.title')}</h2>
+                <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('tour.done.body')}</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm w-fit min-h-11 gap-2 md:min-h-0"
+                onClick={() => {
+                  requestTourReplay(true)
+                  navigate('/board')
+                }}
+              >
+                <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {t('tour.replay')}
+              </button>
+            </section>
+          </div>
         </div>
 
           {wizardOpen && (

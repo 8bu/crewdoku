@@ -1,10 +1,11 @@
-import { Check, TriangleAlert, Upload } from '../ui/icons'
+import { Check, Sparkles, TriangleAlert, Upload } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { csvErrorText } from '../i18n/csvErrors'
 import { track } from '../analytics'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { activeWorkspaceIdAtom } from '../state/orgStore'
 import type { Period } from '../state/shell'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
@@ -16,6 +17,10 @@ import { applyCsvImport, parsePastedRoster, employeeRowsToLines, type CsvRow } f
 import { readEmployeeFile } from '../board/roster/xlsxImport'
 import type { BoardData } from '../board/mockBoard'
 import { WORKSPACE_TEMPLATES, type WorkspaceTemplate } from './templates'
+import { clearWizardProgress, loadWizardProgress, saveWizardProgress, type WizardProgress } from './wizardProgress'
+import { sampleRosterText } from './sampleRoster'
+import { useWizardCoach } from './tour/wizardCoach'
+import { tourReplayRequestedAtom } from './tour/productTour'
 
 type Step = 'shape' | 'people' | 'ready'
 
@@ -25,9 +30,14 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'ready', label: 'Generate' },
 ]
 
+/** People-step rows echoed back to the manager; past this the count carries it. */
+const PREVIEW_ROWS = 8
+
 function StepDot({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
   return (
-    <div className="flex items-center gap-2">
+    // `aria-current` names the step the wizard is on, so the dot row reads as
+    // progress rather than three unrelated labels.
+    <div className="flex items-center gap-2" aria-current={active ? 'step' : undefined}>
       <span
         className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-xs font-semibold ${
           done
@@ -41,9 +51,11 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
       </span>
       {/* Below `md` only the current step is named: three labels plus their
           dots cannot fit a 360px bar, and the dots alone already say where you
-          are. `md:` restores every label exactly as it was. */}
+          are. `md:` restores every label exactly as it was. `truncate` lets
+          that one label give way (rather than push the Skip setup button off
+          the bar) on a phone in a longer locale. */}
       <span
-        className={`whitespace-nowrap text-xs font-medium md:text-sm ${
+        className={`truncate text-xs font-medium md:text-sm ${
           active ? 'text-base-content' : 'hidden text-base-content/50 md:inline'
         }`}
       >
@@ -55,6 +67,25 @@ function StepDot({ n, label, active, done }: { n: number; label: string; active:
 
 function toClock(hhmm: string): string {
   return `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`
+}
+
+/** The template a saved progress entry points at; null when it names none or
+ *  names one this build no longer ships. */
+function restoredTemplate(saved: WizardProgress | null): WorkspaceTemplate | null {
+  if (!saved?.templateId) return null
+  return WORKSPACE_TEMPLATES.find((t) => t.id === saved.templateId) ?? null
+}
+
+/**
+ * The step to reopen on. The People and Generate steps render only inside
+ * `template &&`, so a saved step whose template is missing (an entry from an
+ * older build, a cleared template catalog) must fall back to the shape step
+ * that can pick one instead of restoring a blank screen.
+ */
+function restoredStep(saved: WizardProgress | null, template: WorkspaceTemplate | null): Step {
+  const match = STEPS.find((s) => s.key === saved?.step)
+  if (!match || match.key === 'shape') return 'shape'
+  return template ? match.key : 'shape'
 }
 
 function ShapeCard({ tmpl, selected, onPick }: { tmpl: WorkspaceTemplate; selected: boolean; onPick: () => void }) {
@@ -104,12 +135,37 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
   const setSolveSettings = useSetAtom(solveSettingsAtom)
   const markAutoGenerate = useMarkAutoGenerateOnMount()
   const markWorkspaceOnboarded = useMarkWorkspaceOnboarded()
+  const requestTour = useSetAtom(tourReplayRequestedAtom)
 
-  const [step, setStep] = useState<Step>('shape')
-  const [template, setTemplate] = useState<WorkspaceTemplate | null>(null)
-  const [pasteText, setPasteText] = useState('')
+  const wsId = useAtomValue(activeWorkspaceIdAtom)
+
+  // Restore the resumable progress once, on mount: a later render must never
+  // re-read it over the manager's own edits. Each piece of state then lazily
+  // restores from that one snapshot, so the three values can never disagree.
+  const [savedProgress] = useState(() => loadWizardProgress(wsId))
+  const [template, setTemplate] = useState<WorkspaceTemplate | null>(() => restoredTemplate(savedProgress))
+  const [step, setStep] = useState<Step>(() => restoredStep(savedProgress, template))
+  const [pasteText, setPasteText] = useState(() => savedProgress?.pasteText ?? '')
   const [csvErrors, setCsvErrors] = useState<string[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+
+  // Every change is remembered, so a reload mid-setup reopens this exact
+  // screen. Three short strings per workspace: cheap enough to write on each
+  // keystroke. `finish` clears it again when the wizard is done with.
+  useEffect(() => {
+    saveWizardProgress(wsId, { step, templateId: template?.id ?? null, pasteText })
+  }, [wsId, step, template, pasteText])
+
+  // A step is a page: moving focus to its heading is what tells a screen
+  // reader which page it landed on.
+  useEffect(() => {
+    headingRef.current?.focus()
+  }, [step])
+
+  // The wizard's own coach-marks (driver.js), one popover per step, once per
+  // device; the coach repositions itself as `step` advances.
+  useWizardCoach(step)
 
   const rows = useMemo(() => parsePastedRoster(pasteText), [pasteText])
   const teamNames = useMemo(() => {
@@ -141,16 +197,36 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
     }
   }
 
+  function handleUseSample() {
+    // Append, same as the file import, so it adds to anything already typed
+    // rather than clobbering it; the parser reads the merged text.
+    setPasteText((prev) => {
+      const sample = sampleRosterText()
+      return prev.trim() ? `${prev.trimEnd()}\n${sample}` : sample
+    })
+  }
+
   function finish(rosterRows: CsvRow[], generate: boolean) {
     const result = applyCsvImport(people, teams, rosterRows)
     setTeams(() => result.teams)
     setPeople(() => result.people)
-    if (generate) markAutoGenerate(period.id)
+    if (generate) {
+      markAutoGenerate(period.id)
+      // Launch the board's product tour once they land on their freshly
+      // generated board. Requested outright, not gated on hasSeenTour: the
+      // tour's own first-visit trigger is usually already spent by the org
+      // picker's sample board, so a real onboarding would otherwise finish
+      // with no guide at all. Settings can still replay it later.
+      requestTour(true)
+    }
     markWorkspaceOnboarded()
-    // The wizard's only exit, so both "generate my first schedule" and "go to
-    // the board" reach it — their difference is reported by the solve events.
-    // Counts are the post-apply roster, not the rows just pasted: rows merge
-    // into whatever the workspace already had.
+    // The wizard's single exit, reached by all three endings - generate, skip
+    // at the last step, and Skip setup from any step - so forgetting the saved
+    // progress here covers them all: a finished wizard can never be replayed
+    // by a later reload. The difference between those endings is reported by
+    // the solve events, and the counts are the post-apply roster, not the rows
+    // just pasted: rows merge into whatever the workspace already had.
+    clearWizardProgress(wsId)
     track('onboarding_completed', {
       people: result.people.length,
       teams: result.teams.length,
@@ -163,13 +239,29 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-12 items-center gap-2 border-b border-base-300 bg-base-100 px-4 md:gap-4 md:px-6">
+      <div
+        className="flex h-12 items-center gap-2 border-b border-base-300 bg-base-100 px-4 md:gap-4 md:px-6"
+        role="group"
+        aria-label={t('onbex.nav.aria')}
+      >
         {STEPS.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2 md:gap-4">
+          <div key={s.key} className="flex min-w-0 items-center gap-2 md:gap-4">
             {i > 0 && <div className="h-px w-4 flex-none bg-base-300 md:w-8" />}
             <StepDot n={i + 1} label={t(`onbex.step.${s.key}`)} active={step === s.key} done={i < stepIndex} />
           </div>
         ))}
+        {/* Skippable from every step, not only the last one: a manager who
+            wants to look around first lands on an empty board with the
+            workspace's default shifts and can fill in Roster, Teams, and
+            Settings whenever they like. */}
+        <button
+          type="button"
+          data-tour="wizard-skip"
+          className="btn btn-ghost btn-xs ml-auto min-h-11 shrink-0 md:min-h-0"
+          onClick={() => finish([], false)}
+        >
+          {t('onbex.btn.skipSetup')}
+        </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -177,12 +269,18 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
           {step === 'shape' && (
             <div className="flex flex-col gap-5">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-base-content">{t('onbex.shape.title')}</h2>
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-lg font-semibold tracking-tight text-base-content focus:outline-none"
+                >
+                  {t('onbex.shape.title')}
+                </h2>
                 <p className="mt-1 text-sm text-base-content/60">
                   {t('onbex.shape.subtitle')}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3" data-tour="wizard-shapes">
                 {WORKSPACE_TEMPLATES.map((tmpl) => (
                   <ShapeCard key={tmpl.id} tmpl={tmpl} selected={template?.id === tmpl.id} onPick={() => pickShape(tmpl)} />
                 ))}
@@ -191,21 +289,29 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
           )}
 
           {step === 'people' && template && (
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5" data-tour="wizard-people">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-base-content">{t('onbex.people.title')}</h2>
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-lg font-semibold tracking-tight text-base-content focus:outline-none"
+                >
+                  {t('onbex.people.title')}
+                </h2>
                 <p className="mt-1 text-sm text-base-content/60">
                   {t('onbex.people.subtitlePrefix')} <span className="font-mono text-xs">Name, Team</span>
                   {t('onbex.people.subtitleSuffix')}
                 </p>
               </div>
 
+              {/* No `autoFocus`: the step heading takes focus instead, so a
+                  screen reader announces the step and a phone does not open
+                  its keyboard before the manager has read what to paste. */}
               <textarea
                 className="textarea textarea-bordered h-52 w-full font-mono text-[16px] leading-relaxed md:text-sm"
                 placeholder={t('onbex.people.placeholder')}
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                autoFocus
               />
 
               {csvErrors.length > 0 && (
@@ -216,39 +322,70 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 </ul>
               )}
 
-              <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-base-content/70">
-                  {rows.length === 0 ? (
-                    t('onbex.people.empty')
-                  ) : (
-                    <>
-                      <span className="font-semibold text-base-content">{rows.length}</span>{' '}
-                      {rows.length === 1 ? t('onbex.people.person') : t('onbex.people.people')}
-                      {teamNames.size > 0 && (
-                        <>
-                          {' · '}
-                          <span className="font-semibold text-base-content">{teamNames.size}</span>{' '}
-                          {teamNames.size === 1 ? t('onbex.people.team') : t('onbex.people.teams')}
-                        </>
-                      )}
-                    </>
-                  )}
-                </p>
-                <label className="btn btn-ghost btn-xs min-h-11 gap-1.5 md:min-h-0">
-                  <Upload className="h-3.5 w-3.5" />
-                  <span className="truncate">{t('onbex.people.fromFile')}</span>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".csv,.xlsx"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) void handleImportFile(file)
-                      e.target.value = ''
-                    }}
-                  />
-                </label>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center md:justify-between">
+                  <p className="text-sm text-base-content/70">
+                    {rows.length === 0 ? (
+                      t('onbex.people.empty')
+                    ) : (
+                      <>
+                        <span className="font-semibold text-base-content">{rows.length}</span>{' '}
+                        {rows.length === 1 ? t('onbex.people.person') : t('onbex.people.people')}
+                        {teamNames.size > 0 && (
+                          <>
+                            {' · '}
+                            <span className="font-semibold text-base-content">{teamNames.size}</span>{' '}
+                            {teamNames.size === 1 ? t('onbex.people.team') : t('onbex.people.teams')}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </p>
+                  <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs min-h-11 gap-1.5 md:min-h-0"
+                      onClick={handleUseSample}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span className="truncate">{t('onbex.people.useSample')}</span>
+                    </button>
+                    <label className="btn btn-ghost btn-xs min-h-11 gap-1.5 md:min-h-0">
+                      <Upload className="h-3.5 w-3.5" />
+                      <span className="truncate">{t('onbex.people.fromFile')}</span>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".csv,.xlsx"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) void handleImportFile(file)
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* What the parser actually read, so a paste that dropped its
+                    team column, kept a header row, or split a name is visible
+                    here rather than on a board full of strangers. Capped: the
+                    count above already says how many there are. */}
+                {rows.length > 0 && (
+                  <ul className="flex flex-col gap-0.5 text-xs text-base-content/60">
+                    {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
+                      <li key={i} className="truncate">
+                        {row.team ? `${row.name} - ${row.team}` : row.name}
+                      </li>
+                    ))}
+                    {rows.length > PREVIEW_ROWS && (
+                      <li className="text-base-content/50">
+                        {t('onbex.people.previewMore', { count: rows.length - PREVIEW_ROWS })}
+                      </li>
+                    )}
+                  </ul>
+                )}
               </div>
 
               {rows.length > 0 && rows.length < template.minPeople && template.peopleHint && (
@@ -276,9 +413,15 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
           )}
 
           {step === 'ready' && template && (
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-5" data-tour="wizard-generate">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight text-base-content">{t('onbex.ready.title')}</h2>
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-lg font-semibold tracking-tight text-base-content focus:outline-none"
+                >
+                  {t('onbex.ready.title')}
+                </h2>
                 <p className="mt-1 text-sm text-base-content/60">
                   {t('onbex.ready.subtitle')}
                 </p>

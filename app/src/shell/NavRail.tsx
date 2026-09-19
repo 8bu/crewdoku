@@ -28,6 +28,7 @@ export function NavRail() {
     <nav
       aria-label={t('nav.aria')}
       className="hidden w-56 shrink-0 flex-col border-r border-base-300 bg-base-200 md:flex"
+      data-tour="nav"
     >
       <OrgHeader />
       <WorkspaceSwitcher />

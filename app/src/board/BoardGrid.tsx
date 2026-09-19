@@ -58,6 +58,7 @@ import {
 } from './proposal/proposal'
 import { ProposalPanel } from './proposal/ProposalPanel'
 import { ScheduleImportPanel } from '../onboarding/ScheduleImport'
+import { useProductTour } from '../onboarding/tour/productTour'
 
 const HIDDEN_TIP: ViolationTipState = { left: 0, top: 0, message: '', visible: false }
 
@@ -107,6 +108,9 @@ function useScrollEdges(
 
 export function BoardGrid({ periodId, initial }: BoardGridProps) {
   const t = useT()
+  // The board is the real post-onboarding surface, so this is where the
+  // first-visit product tour (and Settings' replay) runs.
+  useProductTour()
   const isNarrow = useIsNarrow()
   const data = initial
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
@@ -994,6 +998,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
         <div
           ref={rootRef}
           className="cd-board relative grid w-max content-start touch-manipulation bg-base-100 [font-variant-numeric:tabular-nums] data-[generating]:shadow-[inset_0_2px_0_0_var(--sel)]"
+          data-tour="board"
           style={{
             gridTemplateColumns: `var(--name-col-w) repeat(${data.dates.length}, var(--col-w))${showIssues && !isNarrow ? ' var(--fair-col-w)' : ''}`,
             // Touch affordances for the grid. A long press must not raise

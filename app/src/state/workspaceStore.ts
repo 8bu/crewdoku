@@ -25,8 +25,9 @@ import { scheduleByPeriodAtom, type ScheduleState } from './schedule'
 import { overridesByPeriodAtom } from './boardOverrides'
 import { orgsAtom, workspaceMetasAtom, activeOrgIdAtom, activeWorkspaceIdAtom } from './orgStore'
 import { autoGenerateOnMountAtom, onboardedPeriodsAtom, workspaceOnboardedAtom } from './onboarding'
-import { applyCsvImport, type CsvRow } from '../board/roster/csvImport'
+import { applyCsvImport } from '../board/roster/csvImport'
 import { WORKSPACE_TEMPLATES } from '../onboarding/templates'
+import { SAMPLE_ROWS } from '../onboarding/sampleRoster'
 
 /**
  * The persistence seam (app ticket 02, extended for multi-workspace). The jotai
@@ -330,22 +331,6 @@ export async function createWorkspace(orgId: string, name: string): Promise<Work
   await storageRef.saveRegistry(readRegistry(store))
   return meta
 }
-
-/** A small, believable sample roster for the one-click demo workspace. */
-const SAMPLE_ROWS: CsvRow[] = [
-  { name: 'Ava Bennett', team: 'Front of house' },
-  { name: 'Liam Carter', team: 'Front of house' },
-  { name: 'Sofia Delgado', team: 'Front of house' },
-  { name: 'Noah Fischer', team: 'Front of house' },
-  { name: 'Mia Okafor', team: 'Front of house' },
-  { name: 'Ethan Reyes', team: 'Front of house' },
-  { name: 'Hana Sato', team: 'Kitchen' },
-  { name: 'Omar Haddad', team: 'Kitchen' },
-  { name: 'Lucas Moreau', team: 'Kitchen' },
-  { name: 'Priya Nair', team: 'Kitchen' },
-  { name: 'Chloe Martin', team: 'Kitchen' },
-  { name: 'Diego Alvarez', team: 'Kitchen' },
-]
 
 /**
  * One-click sample (org picker "see a sample schedule"): a fully seeded org +

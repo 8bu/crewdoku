@@ -43,7 +43,7 @@ export function Shell() {
             {isNarrow && <div id="board-header-slot" className="ml-auto flex shrink-0 items-center" />}
           </header>
         )}
-        <main className="min-h-0 flex-1 overflow-auto bg-base-100 pb-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom))] md:pb-0">
+        <main data-tour="surface" className="min-h-0 flex-1 overflow-auto bg-base-100 pb-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
       </div>
