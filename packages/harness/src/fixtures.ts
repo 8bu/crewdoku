@@ -1,5 +1,5 @@
 /**
- * Deterministic test fixtures for harness end-to-end and perf tests.
+ * Deterministic test fixtures for the harness end-to-end test.
  */
 import type {
   CoverageRow,

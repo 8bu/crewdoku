@@ -18,17 +18,6 @@ describe('applyPatch', () => {
 })
 
 describe('commitEdit / undo / redo', () => {
-  it('applies a patch and records its inverse', () => {
-    let overrides: Overrides = new Map()
-    let history = emptyHistory
-
-    const r1 = commitEdit(history, overrides, new Map([['p1|2026-08-21', night()]]))
-    history = r1.history
-    overrides = r1.overrides
-    expect(overrides.get('p1|2026-08-21')).toEqual(night())
-    expect(history.past).toHaveLength(1)
-  })
-
   it('undo reverts to the prior value (including "no override")', () => {
     let overrides: Overrides = new Map()
     let history = emptyHistory

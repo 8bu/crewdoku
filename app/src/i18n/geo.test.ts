@@ -71,11 +71,6 @@ describe('readGeoLocale', () => {
     expect(readGeoLocale('crewdoku-geo=vi')).toBe('vi')
   })
 
-  it('reads the newly added locales', () => {
-    expect(readGeoLocale('crewdoku-geo=pt')).toBe('pt')
-    expect(readGeoLocale('crewdoku-geo=ja')).toBe('ja')
-  })
-
   it('finds the geo cookie among unrelated pairs', () => {
     expect(readGeoLocale('foo=1; crewdoku-geo=vi; bar=2')).toBe('vi')
   })

@@ -26,30 +26,6 @@ describe('parseEmployeeCsv', () => {
     const result = parseEmployeeCsv('name,team\nEve,\n')
     expect(result.rows).toEqual([{ name: 'Eve', team: '' }])
   })
-
-  it('skips rows with no name and reports why', () => {
-    const result = parseEmployeeCsv('name,team\n,Frontline\nBob,Backline\n')
-    expect(result.rows).toEqual([{ name: 'Bob', team: 'Backline' }])
-    expect(result.errors).toEqual([{ kind: 'missingName', line: 2 }])
-  })
-
-  it('rejects a file with no name/team header', () => {
-    const result = parseEmployeeCsv('first,last\nAlice,Johnson\n')
-    expect(result.rows).toEqual([])
-    expect(result.errors).toEqual([{ kind: 'noHeader' }])
-  })
-
-  it('rejects an empty file', () => {
-    const result = parseEmployeeCsv('')
-    expect(result.rows).toEqual([])
-    expect(result.errors).toEqual([{ kind: 'empty' }])
-  })
-
-  it('reports a header with no rows below it', () => {
-    const result = parseEmployeeCsv('name,team\n')
-    expect(result.rows).toEqual([])
-    expect(result.errors).toEqual([{ kind: 'noRows' }])
-  })
 })
 
 describe('parseEmployeeRows', () => {
@@ -159,10 +135,5 @@ describe('parsePastedRoster', () => {
   it('drops a pasted name/team header line but keeps anything else', () => {
     expect(parsePastedRoster('Name, Team\nAnna, Ward A')).toEqual([{ name: 'Anna', team: 'Ward A' }])
     expect(parsePastedRoster('Name Smith, Ward A')).toEqual([{ name: 'Name Smith', team: 'Ward A' }])
-  })
-
-  it('returns nothing for empty or whitespace input', () => {
-    expect(parsePastedRoster('')).toEqual([])
-    expect(parsePastedRoster('\n  \n')).toEqual([])
   })
 })

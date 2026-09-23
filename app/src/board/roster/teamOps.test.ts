@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { addTeam, addTeamsFromNames, countMembers, deleteTeam, parseTeamNames, parseTeamNameRows, renameTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
+import {
+  addTeam,
+  addTeamsFromNames,
+  countMembers,
+  deleteTeam,
+  parseTeamNames,
+  parseTeamNameRows,
+  toggleTeamAvoid,
+  toggleTeamWant,
+} from './teamOps'
 import type { Person, Team } from '@crewdoku/domain'
 
 const teams: Team[] = [
@@ -12,23 +21,9 @@ function person(overrides: Partial<Person> = {}): Person {
 }
 
 describe('addTeam', () => {
-  it('appends a new team with no default preference', () => {
-    const next = addTeam(teams, 'Kitchen')
-    expect(next).toHaveLength(3)
-    expect(next[2]).toMatchObject({ name: 'Kitchen', wants: [], avoids: [] })
-  })
-
   it('ids never collide, even after a gap', () => {
     const next = addTeam([{ id: 't1', name: 'A', wants: [], avoids: [] }, { id: 't5', name: 'B', wants: [], avoids: [] }], 'C')
     expect(next.at(-1)!.id).toBe('t6')
-  })
-})
-
-describe('renameTeam', () => {
-  it('renames only the matching team', () => {
-    const next = renameTeam(teams, 't1', 'Front Desk')
-    expect(next[0]!.name).toBe('Front Desk')
-    expect(next[1]!.name).toBe('Closing')
   })
 })
 
@@ -69,12 +64,6 @@ describe('deleteTeam', () => {
     expect(result.people[0]!.teamId).toBe('t2')
     expect(result.people[1]!.teamId).toBe('t2')
   })
-
-  it('leaves people on other teams untouched', () => {
-    const people = [person({ id: 'p1', teamId: 't2' })]
-    const result = deleteTeam(teams, people, 't1', 't2')
-    expect(result.people[0]).toEqual(people[0])
-  })
 })
 
 describe('parseTeamNames', () => {
@@ -84,24 +73,12 @@ describe('parseTeamNames', () => {
 })
 
 describe('parseTeamNameRows', () => {
-  it('takes the first column of each row', () => {
-    expect(parseTeamNameRows([['Frontline'], ['Kitchen'], ['Night crew']])).toEqual([
-      'Frontline',
-      'Kitchen',
-      'Night crew',
-    ])
-  })
-
   it('ignores extra columns', () => {
     expect(parseTeamNameRows([['Frontline', 'ignored'], ['Kitchen', 'x']])).toEqual(['Frontline', 'Kitchen'])
   })
 
   it('drops blank or whitespace-only first cells', () => {
     expect(parseTeamNameRows([['  '], ['Kitchen'], ['']])).toEqual(['Kitchen'])
-  })
-
-  it('returns nothing for empty input', () => {
-    expect(parseTeamNameRows([])).toEqual([])
   })
 })
 

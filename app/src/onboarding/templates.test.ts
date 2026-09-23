@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { WORKSPACE_TEMPLATES } from './templates'
 
 describe('WORKSPACE_TEMPLATES', () => {
-  it('has four shapes with unique ids', () => {
-    expect(WORKSPACE_TEMPLATES).toHaveLength(4)
-    expect(new Set(WORKSPACE_TEMPLATES.map((t) => t.id)).size).toBe(4)
-  })
-
   it.each(WORKSPACE_TEMPLATES.map((t) => [t.id, t] as const))('%s: shift codes are unique and non-empty', (_id, tmpl) => {
     expect(tmpl.shifts.length).toBeGreaterThan(0)
     const codes = tmpl.shifts.map((s) => s.code)

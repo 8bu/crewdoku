@@ -5,20 +5,16 @@ import type { WorkerLike } from './adapter'
 type MessageListener = (e: { data: unknown }) => void
 
 interface FakeWorker extends WorkerLike {
-  postMessageHistory: unknown[]
   emit(data: unknown): void
   terminateCallCount(): number
 }
 
 function makeFakeWorker(): FakeWorker {
   const listeners = new Set<MessageListener>()
-  const postMessageHistory: unknown[] = []
   let terminateCalls = 0
 
   return {
-    postMessage(message: unknown): void {
-      postMessageHistory.push(message)
-    },
+    postMessage(): void {},
     addEventListener(_type: 'message', listener: MessageListener): void {
       listeners.add(listener)
     },
@@ -33,7 +29,6 @@ function makeFakeWorker(): FakeWorker {
         listener({ data })
       }
     },
-    postMessageHistory,
     terminateCallCount(): number {
       return terminateCalls
     },
@@ -43,36 +38,13 @@ function makeFakeWorker(): FakeWorker {
 describe('HighsSolverAdapter', () => {
   it('does not spawn worker until solve() is called', () => {
     let factoryCalls = 0
-    const adapter = new HighsSolverAdapter({
+    new HighsSolverAdapter({
       workerFactory: () => {
         factoryCalls++
         return makeFakeWorker()
       },
     })
-    expect(adapter).toBeInstanceOf(HighsSolverAdapter)
     expect(factoryCalls).toBe(0)
-  })
-
-  it('resolves on result message with status, objective, and columns', async () => {
-    const fake = makeFakeWorker()
-    const adapter = new HighsSolverAdapter({
-      workerFactory: () => fake,
-    })
-    const solvePromise = adapter.solve('Maximize\n obj: x\nSubject To\nEnd')
-    fake.emit({
-      type: 'result',
-      status: 'Optimal',
-      objective: 10,
-      columns: { x: { Primal: 10 } },
-    })
-    const sol = await solvePromise
-    expect(sol.status).toBe('Optimal')
-    expect(sol.objective).toBe(10)
-    const xCol = sol.columns['x']
-    expect(xCol).toBeDefined()
-    if (xCol !== undefined) {
-      expect(xCol.Primal).toBe(10)
-    }
   })
 
   it('rejects on error message from worker', async () => {

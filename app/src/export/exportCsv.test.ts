@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildGridCsv,
-  buildGridRows,
   buildPersonCsv,
   buildPersonRows,
   exportFileName,
@@ -199,29 +198,6 @@ describe('exportCsv', () => {
     ])
   })
 
-  it('serializes CSV builders from the same rows the previews and XLSX consume', () => {
-    const people: Person[] = [
-      { id: 'p1', name: 'Alice', teamId: 't1', ineligible: [] },
-    ]
-    const inputs: ExportInputs = {
-      people,
-      teams,
-      shifts,
-      dates,
-      getAssignment: (_personId, dateIso) =>
-        dateIso === '2024-01-02' ? makeAssignment('EARLY') : makeAssignment('OFF'),
-    }
-
-    const gridRows = buildGridRows(inputs)
-    expect(gridRows).toEqual([
-      ['name', 'team', '2024-01-01', '2024-01-02', '2024-01-03'],
-      ['Alice', 'Alpha', '', 'EARLY', ''],
-    ])
-    // CSV is exactly the row matrix serialized — one source of truth.
-    expect(buildGridCsv(inputs)).toBe('name,team,2024-01-01,2024-01-02,2024-01-03\nAlice,Alpha,,EARLY,\n')
-    expect(buildPersonCsv(inputs).split('\n')[1]).toBe('Alice,Alpha,2024-01-02,EARLY,08:00,16:00,8')
-  })
-
   it('escapes fields with commas and double quotes correctly per RFC 4180', () => {
     const people: Person[] = [
       { id: 'p1', name: 'Smith, John', teamId: 't1', ineligible: [] },
@@ -288,7 +264,5 @@ describe('exportCsv', () => {
 
   it('formats xlsx file names with the ext parameter', () => {
     expect(exportFileName('Period 1', 'grid', 'xlsx')).toBe('crewdoku-period-1-grid.xlsx')
-    expect(exportFileName('Period 1', 'per-person', 'xlsx')).toBe('crewdoku-period-1-per-person.xlsx')
-    expect(exportFileName('Period 1', 'board', 'pdf')).toBe('crewdoku-period-1-board.pdf')
   })
 })

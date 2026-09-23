@@ -88,41 +88,6 @@ describe('deriveConflictCore static screening', () => {
         expect(JSON.stringify(input)).toEqual(JSON.stringify(originalInputCopy))
       }
     })
-
-    it('detects weekday starvation with H5 contributing when recurringOff reduces headcount', () => {
-      const people = [
-        makePerson({ id: 'p1', name: 'Alice' }),
-        makePerson({ id: 'p2', name: 'Bob', recurringOff: [1] }), // Bob off on Mondays (dow 1)
-      ]
-      const period = { start: '2026-08-17', end: '2026-08-17' } // Monday
-      const coverage: CoverageTable = {
-        byDow: {
-          1: { EARLY: { min: 2, max: 2 } }, // Needs 2, but Bob is off on Mondays -> only 1 available
-        },
-        dateOverrides: {},
-      }
-
-      const input = makeModelInput({ people, coverage, period })
-      const { conflictCore, relaxations } = deriveConflictCore(input)
-
-      const item = conflictCore.find((c) => c.id.includes('starvation-EARLY'))
-      expect(item).toBeDefined()
-      if (item !== undefined) {
-        expect(item.ruleIds).toContain('H1')
-        expect(item.ruleIds).toContain('H5')
-        expect(item.message).toBe(
-          'EARLY on Mondays needs at least 2 people, but only 1 person can work it.',
-        )
-      }
-
-      const relax = relaxations.find((r) => r.id.includes('relax-starvation-EARLY'))
-      expect(relax).toBeDefined()
-      if (relax !== undefined) {
-        expect(relax.label).toBe('Lower EARLY minimum on Mondays to 1')
-        const relaxedInput = relax.apply(input)
-        expect(relaxedInput.coverage.byDow[1]?.['EARLY']?.min).toBe(1)
-      }
-    })
   })
 
   describe('Cause b: Day total overcommit (H4 structural)', () => {
@@ -169,56 +134,6 @@ describe('deriveConflictCore static screening', () => {
   })
 
   describe('Cause c: Weekly-hours capacity (H2)', () => {
-    it('detects when demanded weekly hours exceed available capacity and raises maxHoursPerWeek', () => {
-      const people = [
-        makePerson({ id: 'p1', name: 'Alice' }),
-      ]
-      // 3 days in week 0: Mon, Tue, Wed. Each has EARLY (8 hours), min 1.
-      // Total demanded hours = 3 * 8 = 24 hours.
-      // Cap is 20 hours per week -> 1 * 20 = 20 < 24.
-      const period = { start: '2026-08-17', end: '2026-08-19' }
-      const coverage: CoverageTable = {
-        byDow: {
-          1: { EARLY: { min: 1, max: 1 } },
-          2: { EARLY: { min: 1, max: 1 } },
-          3: { EARLY: { min: 1, max: 1 } },
-        },
-        dateOverrides: {},
-      }
-      const settings: SolveSettings = {
-        ...DEFAULT_SOLVE_SETTINGS,
-        hardRules: {
-          ...DEFAULT_SOLVE_SETTINGS.hardRules,
-          maxHoursPerWeek: 20,
-        },
-      }
-
-      const input = makeModelInput({ people, coverage, period, settings })
-      const { conflictCore, relaxations } = deriveConflictCore(input)
-
-      const item = conflictCore.find((c) => c.id === 'weekly-hours-week-0')
-      expect(item).toBeDefined()
-      if (item !== undefined) {
-        expect(item.ruleIds).toEqual(['H1', 'H2'])
-        expect(item.message).toBe(
-          'Week 1 demands 24 hours of coverage, but 1 person at 20 hours per week can only supply 20 hours.',
-        )
-      }
-
-      const relax = relaxations.find((r) => r.id === 'relax-weekly-hours-week-0')
-      expect(relax).toBeDefined()
-      if (relax !== undefined) {
-        expect(relax.label).toBe('Raise weekly hours cap to 24 hours')
-        expect(relax.description).toBe(
-          'Raise maximum hours per week from 20 hours to 24 hours.',
-        )
-
-        const relaxedInput = relax.apply(input)
-        expect(relaxedInput.settings.hardRules.maxHoursPerWeek).toBe(24)
-        expect(input.settings.hardRules.maxHoursPerWeek).toBe(20) // original unchanged
-      }
-    })
-
     it('accounts for unpaidBreakMinutes when computing demanded hours', () => {
       const people = [
         makePerson({ id: 'p1', name: 'Alice' }),

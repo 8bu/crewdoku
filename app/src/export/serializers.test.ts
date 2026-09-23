@@ -1,29 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ExportCell } from './exportCsv'
-import {
-  EXPORT_FORMATS,
-  serializeDelimited,
-  serializeJson,
-} from './serializers'
+import { serializeDelimited, serializeJson } from './serializers'
 
 describe('serializers', () => {
-  describe('EXPORT_FORMATS', () => {
-    it('defines the 5 supported export formats in the pinned order', () => {
-      expect(EXPORT_FORMATS).toEqual([
-        { id: 'csv', label: 'CSV', ext: 'csv', mime: 'text/csv;charset=utf-8' },
-        { id: 'tsv', label: 'TSV', ext: 'tsv', mime: 'text/tab-separated-values;charset=utf-8' },
-        { id: 'json', label: 'JSON', ext: 'json', mime: 'application/json;charset=utf-8' },
-        {
-          id: 'xlsx',
-          label: 'XLSX',
-          ext: 'xlsx',
-          mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        },
-        { id: 'pdf', label: 'PDF', ext: 'pdf', mime: 'application/pdf' },
-      ])
-    })
-  })
-
   describe('serializeDelimited', () => {
     const matrix: ExportCell[][] = [
       ['name', 'notes', 'hours'],

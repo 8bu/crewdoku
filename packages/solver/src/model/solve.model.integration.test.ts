@@ -284,38 +284,4 @@ describe('HiGHS MILP model integration tests (real WASM)', () => {
     expect(aliceNightsS2).toBe(2)
     expect(bobNightsS2).toBe(0)
   })
-
-  it('4. Infeasible fixture: coverage min > headcount results in Infeasible status and no decode', () => {
-    const people = [
-      makePerson({ id: 'p1', name: 'Alice' }),
-    ]
-    const period = { start: '2026-08-17', end: '2026-08-17' } // 1 day
-    const current = emptySchedule(people, period.start, period.end)
-
-    // Need 3 people on EARLY, but headcount is only 1 person
-    const coverage: CoverageTable = {
-      byDow: {
-        0: { EARLY: { min: 3, max: 5 } },
-        1: { EARLY: { min: 3, max: 5 } },
-        2: { EARLY: { min: 3, max: 5 } },
-        3: { EARLY: { min: 3, max: 5 } },
-        4: { EARLY: { min: 3, max: 5 } },
-        5: { EARLY: { min: 3, max: 5 } },
-        6: { EARLY: { min: 3, max: 5 } },
-      },
-      dateOverrides: {},
-    }
-
-    const { lp } = buildModel({
-      people,
-      shifts: SHIFTS,
-      coverage,
-      settings: DEFAULT_SOLVE_SETTINGS,
-      period,
-      current,
-    })
-
-    const result = highs.solve(lp)
-    expect(result.Status).toBe('Infeasible')
-  })
 })

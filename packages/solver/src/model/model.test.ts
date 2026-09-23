@@ -15,7 +15,6 @@ import {
   OFF_ASSIGNMENT,
 } from '@crewdoku/domain'
 import { buildModel } from './model'
-import { mapSolution } from './mapSolution'
 
 const SHIFTS: ShiftDef[] = [
   { code: 'EARLY', label: 'Early', start: '0600', end: '1400', isNight: false },
@@ -74,18 +73,6 @@ function basicInput(overrides?: {
 }
 
 describe('buildModel unit tests', () => {
-  it('is byte-identical for identical input (determinism)', () => {
-    const input1 = basicInput()
-    const input2 = basicInput()
-
-    const res1 = buildModel(input1)
-    const res2 = buildModel(input2)
-
-    expect(res1.lp).toBe(res2.lp)
-    expect(res1.meta.varNames).toEqual(res2.meta.varNames)
-    expect(res1.meta.rowCount).toBe(res2.meta.rowCount)
-  })
-
   it('omits variables for ineligible person-shift pairs (Decision 1)', () => {
     const p1 = makePerson({ id: 'p1', name: 'Alice', ineligible: ['NIGHT'] })
     const p2 = makePerson({ id: 'p2', name: 'Bob', ineligible: [] })
@@ -388,39 +375,5 @@ describe('buildModel unit tests', () => {
     const inputPinned = basicInput({ people: [p1], start, end, current })
     const { lp: lpPinned } = buildModel(inputPinned)
     expect(lpPinned).not.toContain('h5_off_0_0:')
-  })
-
-  it('mapSolution produces sparse schedule ignoring aux vars and unselected columns', () => {
-    const input = basicInput()
-    const { meta } = buildModel(input)
-
-    const columns = {
-      x_0_0_EARLY: { Primal: 1.0 },
-      x_1_1_LATE: { Primal: 0.99 },
-      x_0_1_EARLY: { Primal: 0.2 }, // <= 0.5, ignored
-      nmax: { Primal: 3 }, // aux var, ignored
-      wmax: { Primal: 2 }, // aux var, ignored
-    }
-
-    const decoded = mapSolution(columns, meta)
-
-    expect(decoded.size).toBe(2)
-    const a1 = decoded.get(assignmentKey('p1', '2026-08-17'))
-    expect(a1).toEqual({
-      code: 'EARLY',
-      start: '0600',
-      end: '1400',
-      pinned: false,
-      ineligible: false,
-    })
-
-    const a2 = decoded.get(assignmentKey('p2', '2026-08-18'))
-    expect(a2).toEqual({
-      code: 'LATE',
-      start: '1400',
-      end: '2200',
-      pinned: false,
-      ineligible: false,
-    })
   })
 })

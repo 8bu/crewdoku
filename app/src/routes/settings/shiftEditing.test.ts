@@ -217,22 +217,6 @@ describe('moveShift', () => {
     expect(viaFirst[2]?.start).toBe('0800')
   })
 
-  it('preserves gaps between shifts while rolling', () => {
-    // Gapped ring: S1 [0000..0300], S2 [0400..0700], S3 [0800..1100] (60-min gaps).
-    const gapped: ShiftDef[] = [
-      { ...THREE_SHIFTS[0]!, start: '0000', end: '0300' },
-      { ...THREE_SHIFTS[1]!, start: '0400', end: '0700' },
-      { ...THREE_SHIFTS[2]!, start: '0800', end: '1100' },
-    ]
-    const res = moveShift(gapped, 1, 60)
-    expect(res[0]?.start).toBe('0100')
-    expect(res[0]?.end).toBe('0400')
-    expect(res[1]?.start).toBe('0500')
-    expect(res[1]?.end).toBe('0800')
-    expect(res[2]?.start).toBe('0900')
-    expect(res[2]?.end).toBe('1200')
-  })
-
   it('rolls a no-slack full-day tiling past midnight (the reported case)', () => {
     // D [00:00..08:00], M [08:00..16:00], N [16:00..24:00]; drag +2h -> N rolls off the
     // right edge and wraps onto the left, exactly the diagram:

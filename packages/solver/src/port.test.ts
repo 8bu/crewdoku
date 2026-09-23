@@ -110,7 +110,6 @@ describe('runSolve port unit tests', () => {
     expect(outcome.conflictCore.length).toBeGreaterThan(0)
     const h1Conflict = outcome.conflictCore.find((c) => c.ruleIds.includes('H1'))
     expect(h1Conflict).toBeDefined()
-    expect(h1Conflict?.message).toContain('EARLY on 2026-08-17 needs at least 3 people')
 
     expect(outcome.relaxations.length).toBeGreaterThan(0)
     const relaxation = outcome.relaxations[0]

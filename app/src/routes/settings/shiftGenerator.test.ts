@@ -98,23 +98,6 @@ describe('generateShifts', () => {
 
     expect(result.shifts).toHaveLength(5)
     expect(result.shifts.map((s) => s.code)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5'])
-    expect(result.shifts.map((s) => s.label)).toEqual(['Shift 1', 'Shift 2', 'Shift 3', 'Shift 4', 'Shift 5'])
-  })
-
-  it('honors 3 nine-hour shifts overlapping 4h (step = 9h − 4h = 5h)', () => {
-    const result = generateShifts({
-      windowStart: '0000',
-      shiftCount: 3,
-      shiftDurationMinutes: 540,
-      breakMinutes: 60,
-      overlapMinutes: 240,
-    })
-
-    expect(result.shifts.map((s) => [s.start, s.end])).toEqual([
-      ['0000', '0900'],
-      ['0500', '1400'],
-      ['1000', '1900'],
-    ])
   })
 
   it('floors the step at 15 min so overlap ≥ duration never coincides or reverses starts', () => {

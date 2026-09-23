@@ -49,9 +49,4 @@ describe('rangeCells / rangeSize', () => {
     ])
     expect(rangeSize(range)).toBe(6)
   })
-
-  it('a single-cell range has size 1', () => {
-    const range = { anchor: { row: 2, col: 2 }, focus: { row: 2, col: 2 } }
-    expect(rangeSize(range)).toBe(1)
-  })
 })

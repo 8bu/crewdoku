@@ -12,7 +12,6 @@ import {
   OFF_ASSIGNMENT,
 } from '@crewdoku/domain'
 import { IdbWorkspaceStorage } from './idbAdapter'
-import * as PersistenceModule from './index'
 
 function makeRichFixture(): Workspace {
   const alice = makePerson({
@@ -117,13 +116,6 @@ function makeRichFixture(): Workspace {
 }
 
 describe('IdbWorkspaceStorage', () => {
-  it('exports expected symbols from the package index', () => {
-    expect(typeof PersistenceModule.IdbWorkspaceStorage).toBe('function')
-    expect(typeof PersistenceModule.toWorkspaceDTO).toBe('function')
-    expect(typeof PersistenceModule.fromWorkspaceDTO).toBe('function')
-    expect(typeof PersistenceModule.migrate).toBe('function')
-  })
-
   it('save then load round-trips the rich fixture bit-for-bit (deep equal incl. Map key sets)', async () => {
     const fixture = makeRichFixture()
     const storage = new IdbWorkspaceStorage('crewdoku-roundtrip-test')

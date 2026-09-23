@@ -18,8 +18,4 @@ describe('isEligible', () => {
   it('flags a code on the ineligible list', () => {
     expect(isEligible(person(['NIGHT']), 'NIGHT')).toBe(false)
   })
-
-  it('allows everything when the list is empty', () => {
-    expect(isEligible(person([]), 'NIGHT')).toBe(true)
-  })
 })

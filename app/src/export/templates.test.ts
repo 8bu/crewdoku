@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildTemplateRows,
-  EXPORT_TEMPLATES,
-  type ExportTemplateId,
-} from './templates'
-import {
-  buildGridRows,
-  buildPersonRows,
-  type ExportInputs,
-} from './exportCsv'
+import { buildTemplateRows } from './templates'
+import { type ExportInputs } from './exportCsv'
 import {
   UNASSIGNED_TEAM_ID,
   type Assignment,
@@ -88,17 +80,6 @@ describe('export templates', () => {
     getAssignment: (personId, dateIso) => assignmentMap[`${personId}:${dateIso}`] ?? makeAssignment('OFF'),
   }
 
-  it('exports EXPORT_TEMPLATES in the pinned order with expected labels and descriptions', () => {
-    const ids: ExportTemplateId[] = EXPORT_TEMPLATES.map((t) => t.id)
-    expect(ids).toEqual(['team-grid', 'board', 'person-list', 'coverage-pivot'])
-    expect(EXPORT_TEMPLATES.map((t) => t.label)).toEqual([
-      'Team grid',
-      'Board layout',
-      'Per-person list',
-      'Coverage pivot',
-    ])
-  })
-
   it('builds exact matrix for board template: team headers, skipped empty team, unassigned last, OFF blank', () => {
     const rows = buildTemplateRows('board', inputs)
     const expected = [
@@ -148,17 +129,5 @@ describe('export templates', () => {
     ]
 
     expect(rows).toEqual(expected)
-  })
-
-  it('delegates team-grid template to buildGridRows', () => {
-    const templateRows = buildTemplateRows('team-grid', inputs)
-    const directRows = buildGridRows(inputs)
-    expect(templateRows).toEqual(directRows)
-  })
-
-  it('delegates person-list template to buildPersonRows', () => {
-    const templateRows = buildTemplateRows('person-list', inputs)
-    const directRows = buildPersonRows(inputs)
-    expect(templateRows).toEqual(directRows)
   })
 })

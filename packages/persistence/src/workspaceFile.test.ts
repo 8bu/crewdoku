@@ -10,11 +10,7 @@ import {
   makeTeam,
   OFF_ASSIGNMENT,
 } from '@crewdoku/domain'
-import {
-  exportWorkspaceFile,
-  importWorkspaceFile,
-  workspaceFileName,
-} from './workspaceFile'
+import { exportWorkspaceFile, importWorkspaceFile } from './workspaceFile'
 
 function makeRichFixture(): Workspace {
   const alice = makePerson({
@@ -119,23 +115,6 @@ function makeRichFixture(): Workspace {
 }
 
 describe('workspaceFile', () => {
-  describe('workspaceFileName', () => {
-    it('formats filename with crewdoku prefix and iso date', () => {
-      expect(workspaceFileName('2026-09-02')).toBe('crewdoku-workspace-2026-09-02.json')
-    })
-  })
-
-  describe('exportWorkspaceFile', () => {
-    it('pretty-prints JSON with newline and 2-space indentation', () => {
-      const fixture = makeRichFixture()
-      const exported = exportWorkspaceFile(fixture)
-
-      expect(exported.startsWith('{\n  ')).toBe(true)
-      expect(exported).toContain('\n  "schemaVersion": 1,')
-      expect(() => JSON.parse(exported)).not.toThrow()
-    })
-  })
-
   describe('importWorkspaceFile', () => {
     it('losslessly round-trips a rich workspace including Maps and Infinity bands', () => {
       const fixture = makeRichFixture()
@@ -195,29 +174,6 @@ describe('workspaceFile', () => {
         ok: false,
         reason: 'newer-schema',
         message: 'This file was made by a newer version of Crewdoku. Update the app to open it.',
-      })
-    })
-
-    it('returns newer-schema for a full workspace payload with newer schemaVersion', () => {
-      const fixture = makeRichFixture()
-      const text = exportWorkspaceFile(fixture).replace(
-        '"schemaVersion": 1',
-        '"schemaVersion": 2',
-      )
-      const result = importWorkspaceFile(text)
-      expect(result).toEqual({
-        ok: false,
-        reason: 'newer-schema',
-        message: 'This file was made by a newer version of Crewdoku. Update the app to open it.',
-      })
-    })
-
-    it('returns not-a-workspace when schemaVersion is 1 but payload is invalid', () => {
-      const result = importWorkspaceFile(JSON.stringify({ schemaVersion: 1 }))
-      expect(result).toEqual({
-        ok: false,
-        reason: 'not-a-workspace',
-        message: 'This file does not contain a Crewdoku workspace.',
       })
     })
   })

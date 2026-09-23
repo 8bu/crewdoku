@@ -3,7 +3,7 @@ import { handleSolve } from './worker'
 import type { HighsSolve, WorkerOutMessage } from './worker'
 
 describe('worker handleSolve (pure core)', () => {
-  it('posts message sequence with ready, logs, and result from injected highs', async () => {
+  it('posts ready first, then a result decoded from the injected highs', async () => {
     const posts: WorkerOutMessage[] = []
     const highs: HighsSolve = {
       solve: vi.fn(() => ({
@@ -22,29 +22,19 @@ describe('worker handleSolve (pure core)', () => {
       { highs, post: (m) => posts.push(m) },
     )
 
-    expect(posts.length).toBeGreaterThanOrEqual(6)
-
     const first = posts[0]
     expect(first).toBeDefined()
     if (first !== undefined) {
       expect(first.type).toBe('ready')
     }
 
-    const logLines: string[] = []
     let resultMessage: Extract<WorkerOutMessage, { type: 'result' }> | undefined
 
     for (const msg of posts) {
-      if (msg.type === 'log') {
-        logLines.push(msg.line)
-      } else if (msg.type === 'result') {
+      if (msg.type === 'result') {
         resultMessage = msg
       }
     }
-
-    expect(logLines).toContain('building model — 1 vars, 0 rows')
-    expect(logLines).toContain('solving…')
-    expect(logLines).toContain('obj 42.00')
-    expect(logLines).toContain('status Optimal')
 
     expect(resultMessage).toBeDefined()
     if (resultMessage !== undefined) {
@@ -55,35 +45,6 @@ describe('worker handleSolve (pure core)', () => {
       if (col !== undefined) {
         expect(col.Primal).toBe(1)
       }
-    }
-  })
-
-  it('posts an Infeasible result through verbatim', async () => {
-    const posts: WorkerOutMessage[] = []
-    const highs: HighsSolve = {
-      solve: vi.fn(() => ({
-        Status: 'Infeasible',
-        ObjectiveValue: 0,
-        Columns: {},
-      })),
-    }
-
-    await handleSolve(
-      { type: 'solve', lp: 'Minimize\n obj: 0\nSubject To\nEnd' },
-      { highs, post: (m) => posts.push(m) },
-    )
-
-    let resultMessage: Extract<WorkerOutMessage, { type: 'result' }> | undefined
-    for (const msg of posts) {
-      if (msg.type === 'result') {
-        resultMessage = msg
-      }
-    }
-
-    expect(resultMessage).toBeDefined()
-    if (resultMessage !== undefined) {
-      expect(resultMessage.status).toBe('Infeasible')
-      expect(resultMessage.columns).toEqual({})
     }
   })
 

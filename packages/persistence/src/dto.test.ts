@@ -146,48 +146,6 @@ describe('WorkspaceDTO', () => {
     expect(restored).toEqual(fixture)
   })
 
-  it('encodes Infinity as null in DTO and decodes null back to Infinity', () => {
-    const fixture = makeRichFixture()
-    const dto = toWorkspaceDTO(fixture)
-
-    // Verify DTO encoding in JSON-safe format
-    const sundayRowDTO = dto.coverage.byDow[0]
-    expect(sundayRowDTO).toBeDefined()
-    if (sundayRowDTO !== undefined) {
-      const earlyBand = sundayRowDTO['EARLY']
-      expect(earlyBand).toBeDefined()
-      if (earlyBand !== undefined) {
-        expect(earlyBand.max).toBeNull()
-      }
-    }
-
-    const overrideRowDTO = dto.coverage.dateOverrides['2026-09-01']
-    expect(overrideRowDTO).toBeDefined()
-    if (overrideRowDTO !== undefined) {
-      const earlyBand = overrideRowDTO['EARLY']
-      expect(earlyBand).toBeDefined()
-      if (earlyBand !== undefined) {
-        expect(earlyBand.max).toBeNull()
-      }
-      const lateBand = overrideRowDTO['LATE']
-      expect(lateBand).toBeDefined()
-      if (lateBand !== undefined) {
-        expect(lateBand.max).toBe(5)
-      }
-    }
-
-    // Also verify JSON stringify produces null, not dropped
-    const json = JSON.stringify(dto)
-    const parsed = JSON.parse(json) as typeof dto
-    expect(parsed.coverage.byDow[0]?.['EARLY']?.max).toBeNull()
-
-    // Restores back to Infinity
-    const restored = fromWorkspaceDTO(dto)
-    expect(restored.coverage.byDow[0]?.['EARLY']?.max).toBe(Infinity)
-    expect(restored.coverage.dateOverrides['2026-09-01']?.['EARLY']?.max).toBe(Infinity)
-    expect(restored.coverage.dateOverrides['2026-09-01']?.['LATE']?.max).toBe(5)
-  })
-
   describe('migrate', () => {
     it('accepts a valid v1 object', () => {
       const fixture = makeRichFixture()

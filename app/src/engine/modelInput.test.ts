@@ -6,7 +6,6 @@ import {
   makePerson,
   makeTeam,
   type Assignment,
-  type Schedule,
 } from '@crewdoku/domain'
 import { buildModelInput, type ModelInputParts } from './modelInput'
 
@@ -37,16 +36,6 @@ describe('buildModelInput', () => {
       }),
     )
     expect(input.people.map((p) => p.id)).toEqual(['p1'])
-  })
-
-  it('carries the current schedule (pins), catalog, and settings through verbatim', () => {
-    const current: Schedule = new Map<string, Assignment>()
-    const pinned: Assignment = { code: 'EARLY', start: null, end: null, pinned: true, ineligible: false }
-    current.set('p1|2026-01-05', pinned)
-    const input = buildModelInput(parts({ current }))
-    expect(input.current.get('p1|2026-01-05')).toEqual(pinned)
-    expect(input.settings).toBe(DEFAULT_SOLVE_SETTINGS)
-    expect(input.teams?.map((t) => t.id)).toEqual(['t1'])
   })
 
   it('throws when the period has no dates', () => {

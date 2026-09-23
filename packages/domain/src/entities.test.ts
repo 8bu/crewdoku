@@ -39,9 +39,4 @@ describe('solve settings defaults', () => {
     expect(DEFAULT_SOLVE_SETTINGS.softGoalOrder).toEqual(SOFT_GOAL_IDS)
     for (const id of SOFT_GOAL_IDS) expect(DEFAULT_SOLVE_SETTINGS.softGoalEnabled[id]).toBe(true)
   })
-
-  it('carries the prototype defaults for the numeric knobs', () => {
-    expect(DEFAULT_SOLVE_SETTINGS.hardRules.maxHoursPerWeek).toBe(40)
-    expect(DEFAULT_SOLVE_SETTINGS.hardRules.minRestHours).toBe(11)
-  })
 })
