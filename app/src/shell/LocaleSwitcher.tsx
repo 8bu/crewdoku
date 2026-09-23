@@ -39,7 +39,74 @@ function FlagVN() {
   )
 }
 
-const FLAGS: Record<LocaleId, ReactNode> = { en: <FlagGB />, vi: <FlagVN /> }
+function FlagES() {
+  return (
+    <span className={`${flagFrame} w-[18px]`}>
+      <svg viewBox="0 0 30 20" className="h-full w-full" aria-hidden="true">
+        <rect width="30" height="20" fill="#AA151B" />
+        <rect y="5" width="30" height="10" fill="#F1BF00" />
+      </svg>
+    </span>
+  )
+}
+
+function FlagFR() {
+  return (
+    <span className={`${flagFrame} w-[18px]`}>
+      <svg viewBox="0 0 30 20" className="h-full w-full" aria-hidden="true">
+        <rect width="10" height="20" fill="#002395" />
+        <rect x="10" width="10" height="20" fill="#FFFFFF" />
+        <rect x="20" width="10" height="20" fill="#ED2939" />
+      </svg>
+    </span>
+  )
+}
+
+function FlagJP() {
+  return (
+    <span className={`${flagFrame} w-[18px]`}>
+      <svg viewBox="0 0 30 20" className="h-full w-full" aria-hidden="true">
+        <rect width="30" height="20" fill="#FFFFFF" />
+        <circle cx="15" cy="10" r="6" fill="#BC002D" />
+      </svg>
+    </span>
+  )
+}
+
+function FlagDE() {
+  return (
+    <span className={`${flagFrame} w-[18px]`}>
+      <svg viewBox="0 0 30 20" className="h-full w-full" aria-hidden="true">
+        <rect width="30" height="6.67" fill="#000000" />
+        <rect y="6.67" width="30" height="6.66" fill="#DD0000" />
+        <rect y="13.33" width="30" height="6.67" fill="#FFCE00" />
+      </svg>
+    </span>
+  )
+}
+
+// The 10:7 official ratio, so the width is 10/7 of the 12px frame height.
+function FlagBR() {
+  return (
+    <span className={`${flagFrame} w-[17px]`}>
+      <svg viewBox="0 0 30 21" className="h-full w-full" aria-hidden="true">
+        <rect width="30" height="21" fill="#009C3B" />
+        <polygon points="15,2 28,10.5 15,19 2,10.5" fill="#FFDF00" />
+        <circle cx="15" cy="10.5" r="4.5" fill="#002776" />
+      </svg>
+    </span>
+  )
+}
+
+const FLAGS: Record<LocaleId, ReactNode> = {
+  en: <FlagGB />,
+  vi: <FlagVN />,
+  es: <FlagES />,
+  fr: <FlagFR />,
+  ja: <FlagJP />,
+  de: <FlagDE />,
+  pt: <FlagBR />,
+}
 
 /**
  * The app-wide locale control. The choice lives in `localeAtom`, drives `useT`
@@ -48,9 +115,9 @@ const FLAGS: Record<LocaleId, ReactNode> = { en: <FlagGB />, vi: <FlagVN /> }
  * nav-rail footer, the pre-shell entry overlay) owns its own spacing and muted
  * tone.
  *
- * Only the surface forks on touch, exactly as in `ThemeSwitcher`: a desktop
- * dropdown above `md`, a chip that opens a full-width bottom-sheet list of the
- * endonyms below it.
+ * Only the surface forks on touch, exactly as in `ThemeSwitcher`: on desktop a
+ * compact flag + language-code trigger whose panel lists the endonyms, below
+ * `md` a chip that opens a full-width bottom-sheet list of them.
  */
 export function LocaleSwitcher({ className }: { className?: string }) {
   const [locale, setLocale] = useAtom(localeAtom)
@@ -89,9 +156,13 @@ export function LocaleSwitcher({ className }: { className?: string }) {
       value={locale}
       onChange={handleChange}
       options={options}
-      size="xs"
-      variant="ghost"
-      className="w-full"
+      display={
+        <span className="flex items-center gap-1.5 text-2xs font-medium tracking-wide">
+          {FLAGS[locale]}
+          {locale.toUpperCase()}
+        </span>
+      }
+      align="end"
       ariaLabel={t('locale.aria')}
     />
   )
