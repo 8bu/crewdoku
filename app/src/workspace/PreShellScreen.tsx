@@ -17,8 +17,8 @@ import { useIsNarrow } from '../ui/useIsNarrow'
  * Mobile: the two device controls stop floating over the content they share a
  * 360px viewport with. They become a normal-flow row above the card (so they
  * can never cover it) and the `xs` ghost triggers take the 44px touch floor via
- * the wrapper's `[&_button]` rule. Desktop keeps the fixed top-right overlay
- * exactly as it was.
+ * the wrapper's `[&_button]` rule. Desktop keeps a fixed top-right overlay of
+ * the two compact triggers, side by side.
  */
 export function PreShellScreen({ children }: { children: ReactNode }) {
   const isNarrow = useIsNarrow()
@@ -34,7 +34,7 @@ export function PreShellScreen({ children }: { children: ReactNode }) {
           </div>
         </div>
       ) : (
-        <div className="fixed right-3 top-3 z-10 flex w-36 flex-col gap-1 text-base-content/50">
+        <div className="fixed right-3 top-3 z-10 flex items-center gap-0.5 text-base-content/50">
           <ThemeSwitcher />
           <LocaleSwitcher />
         </div>

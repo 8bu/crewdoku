@@ -55,22 +55,22 @@ export function NavRail() {
           ))}
         </ul>
       </div>
-      <div className="mt-auto flex flex-col gap-1 border-t border-base-300 px-2 py-2 text-base-content/50">
-        <ThemeSwitcher />
-        <LocaleSwitcher />
-        <div className="flex items-center gap-1.5 px-2 pt-0.5">
-          <Logo className="h-5 w-auto opacity-80" />
-          <span className="text-2xs text-base-content/40">
-            by{' '}
-            <a
-              href="https://8bu.dev"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-base-content/60 no-underline transition-colors hover:text-primary hover:underline"
-            >
-              8BU
-            </a>
-          </span>
+      <div className="mt-auto flex items-center gap-1.5 border-t border-base-300 py-1.5 pl-3 pr-1.5 text-base-content/50">
+        <Logo className="h-5 w-auto opacity-80" />
+        <span className="whitespace-nowrap text-2xs text-base-content/40">
+          by{' '}
+          <a
+            href="https://8bu.dev"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-base-content/60 no-underline transition-colors hover:text-primary hover:underline"
+          >
+            8BU
+          </a>
+        </span>
+        <div className="ml-auto flex items-center gap-0.5">
+          <ThemeSwitcher />
+          <LocaleSwitcher />
         </div>
       </div>
     </nav>

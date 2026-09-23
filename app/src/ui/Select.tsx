@@ -22,6 +22,8 @@ export function Select({
   panelClassName = '',
   id,
   ariaLabel,
+  display,
+  align = 'start',
 }: {
   value: string
   onChange: (value: string) => void
@@ -33,6 +35,13 @@ export function Select({
   panelClassName?: string
   id?: string
   ariaLabel?: string
+  /** Replaces the trigger's icon + label + chevron with compact content (e.g.
+      an icon alone). The full label then moves into the accessible name and
+      the hover tooltip, so the current value is never hidden from anyone. */
+  display?: ReactNode
+  /** Which trigger edge the panel hangs from; 'end' for triggers near the
+      right edge of their container. */
+  align?: 'start' | 'end'
 }) {
   const t = useT()
   const effectivePlaceholder = placeholder ?? t('chrome.select.placeholder')
@@ -72,31 +81,43 @@ export function Select({
 
   const sizeCls = size === 'xs' ? 'px-1.5 py-1 text-xs' : size === 'md' ? 'px-3 py-2 text-sm' : 'px-2 py-1 text-sm'
   const triggerCls =
-    variant === 'ghost'
-      ? `border border-transparent bg-transparent outline-none hover:border-base-300 focus:border-base-content/40 ${sizeCls}`
-      : `cd-field ${sizeCls}`
+    display !== undefined
+      ? `h-7 min-w-7 justify-center rounded-md px-1.5 outline-none transition-colors duration-150 hover:bg-base-300/50 hover:text-base-content focus-visible:ring-1 focus-visible:ring-base-content/40 ${open ? 'bg-base-300/50 text-base-content' : ''}`
+      : `w-full justify-between text-left ${
+          variant === 'ghost'
+            ? `border border-transparent bg-transparent outline-none hover:border-base-300 focus:border-base-content/40 ${sizeCls}`
+            : `cd-field ${sizeCls}`
+        }`
+  const compactName = display !== undefined && selected ? `${ariaLabel ?? ''}: ${selected.label}` : undefined
 
   return (
     <div ref={ref} className={`relative inline-block ${className}`}>
       <button
         type="button"
         id={id}
-        aria-label={ariaLabel}
+        aria-label={compactName ?? ariaLabel}
+        title={compactName}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={toggleOpen}
-        className={`inline-flex w-full cursor-pointer items-center justify-between gap-2 text-left ${triggerCls}`}
+        className={`inline-flex cursor-pointer items-center gap-2 ${triggerCls}`}
       >
-        <span className="flex items-center gap-1.5 truncate">
-          {selected?.icon}
-          {selected?.label ?? effectivePlaceholder}
-        </span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-base-content/40" />
+        {display !== undefined ? (
+          display
+        ) : (
+          <>
+            <span className="flex items-center gap-1.5 truncate">
+              {selected?.icon}
+              {selected?.label ?? effectivePlaceholder}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-base-content/40" />
+          </>
+        )}
       </button>
       {open && (
         <ul
           role="listbox"
-          className={`menu absolute left-0 z-20 max-h-64 w-max min-w-full flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${panelClassName}`}
+          className={`menu absolute z-20 max-h-64 w-max min-w-full flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg ${align === 'end' ? 'right-0' : 'left-0'} ${openUp ? 'bottom-full mb-1' : 'top-full mt-1'} ${panelClassName}`}
         >
           {options.map((o) => (
             <li key={o.value}>
