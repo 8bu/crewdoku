@@ -25,9 +25,7 @@ import { scheduleByPeriodAtom, type ScheduleState } from './schedule'
 import { overridesByPeriodAtom } from './boardOverrides'
 import { orgsAtom, workspaceMetasAtom, activeOrgIdAtom, activeWorkspaceIdAtom } from './orgStore'
 import { autoGenerateOnMountAtom, onboardedPeriodsAtom, workspaceOnboardedAtom } from './onboarding'
-import { applyCsvImport } from '../board/roster/csvImport'
-import { WORKSPACE_TEMPLATES } from '../onboarding/templates'
-import { SAMPLE_ROWS } from '../onboarding/sampleRoster'
+import { buildSampleWorkspace } from '../onboarding/sampleWorkspace'
 
 /**
  * The persistence seam (app ticket 02, extended for multi-workspace). The jotai
@@ -334,34 +332,24 @@ export async function createWorkspace(orgId: string, name: string): Promise<Work
 
 /**
  * One-click sample (org picker "see a sample schedule"): a fully seeded org +
- * workspace — a retail shape plus a small roster — that lands straight on the
- * board and auto-solves once, so a first-time visitor sees a real, fair,
- * rule-legal schedule with zero setup. It is an ordinary org (deletable from
- * the picker), not a special mode; the one-shot auto-generate reuses the exact
- * path the first-run wizard uses.
+ * workspace — a café-bakery with four shifts (one overnight), three teams,
+ * certifications, time off, recurring days off, personal preferences, busy
+ * weekends and one-off event days — that lands straight on the board and
+ * auto-solves once, so a first-time visitor sees the engine balance every
+ * rule with zero setup. It is an ordinary org (deletable from the picker), not
+ * a special mode; the one-shot auto-generate reuses the exact path the
+ * first-run wizard uses.
  */
 export async function startSampleWorkspace(): Promise<void> {
   const store = getDefaultStore()
   const currentId = store.get(activeWorkspaceIdAtom)
   if (currentId) await storageRef.saveWorkspace(currentId, collectWorkspace(store))
 
-  const template = WORKSPACE_TEMPLATES.find((t) => t.id === 'retail')
-  if (!template) throw new Error('startSampleWorkspace: retail template is missing')
-  const { people, teams } = applyCsvImport([], [], SAMPLE_ROWS)
   const today = new Date().toISOString().slice(0, 10)
-  const period = createPeriod('Sample fortnight', today, 'biweek', 'ready')
-  const sample: Workspace = {
-    people,
-    teams,
-    shifts: template.shifts,
-    coverage: template.coverage,
-    settings: template.solveSettings,
-    periods: [period],
-    schedules: new Map(),
-  }
+  const { orgName, workspaceName, workspace: sample, periodId } = buildSampleWorkspace(today)
 
-  const org = makeOrg('Sample team')
-  const meta = makeWorkspaceMeta(org.id, 'Downtown store')
+  const org = makeOrg(orgName)
+  const meta = makeWorkspaceMeta(org.id, workspaceName)
   await storageRef.saveWorkspace(meta.id, sample)
 
   store.set(orgsAtom, [...store.get(orgsAtom), org])
@@ -372,7 +360,7 @@ export async function startSampleWorkspace(): Promise<void> {
   // shut, and the board auto-solves this one period on mount.
   store.set(workspaceOnboardedAtom, true)
   store.set(onboardedPeriodsAtom, new Set<string>())
-  store.set(autoGenerateOnMountAtom, new Set<string>([period.id]))
+  store.set(autoGenerateOnMountAtom, new Set<string>([periodId]))
   store.set(activeOrgIdAtom, org.id)
   store.set(activeWorkspaceIdAtom, meta.id)
   await storageRef.saveRegistry(readRegistry(store))

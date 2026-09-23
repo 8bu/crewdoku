@@ -1,28 +1,23 @@
-import type { CsvRow } from '../board/roster/csvImport'
+import { employeeRowsToLines, type CsvRow } from '../board/roster/csvImport'
+import { SAMPLE_PEOPLE } from './sampleWorkspace'
 
 /**
- * A small, believable sample roster — twelve people across two teams, enough
- * to satisfy every template's sizing nudge. Shared by two callers: the org
- * picker's one-click demo workspace (`startSampleWorkspace`) and the first-run
- * wizard's "Use sample data" shortcut, so both show the same familiar names.
+ * The sample roster as import rows — the same eighteen people and three teams
+ * the one-click sample workspace seeds (`SAMPLE_PEOPLE`, minus the soft-removed
+ * former staff member), so the wizard's shortcut and the org picker's demo show
+ * one familiar crew. A person with no team is an empty team cell, which is what
+ * `applyCsvImport` reads as the unassigned sentinel.
+ *
+ * Only the first-run wizard reads this now; the org picker's demo workspace
+ * builds its roster through `buildSampleWorkspace`.
  */
-export const SAMPLE_ROWS: CsvRow[] = [
-  { name: 'Ava Bennett', team: 'Front of house' },
-  { name: 'Liam Carter', team: 'Front of house' },
-  { name: 'Sofia Delgado', team: 'Front of house' },
-  { name: 'Noah Fischer', team: 'Front of house' },
-  { name: 'Mia Okafor', team: 'Front of house' },
-  { name: 'Ethan Reyes', team: 'Front of house' },
-  { name: 'Hana Sato', team: 'Kitchen' },
-  { name: 'Omar Haddad', team: 'Kitchen' },
-  { name: 'Lucas Moreau', team: 'Kitchen' },
-  { name: 'Priya Nair', team: 'Kitchen' },
-  { name: 'Chloe Martin', team: 'Kitchen' },
-  { name: 'Diego Alvarez', team: 'Kitchen' },
-]
+export const SAMPLE_ROWS: CsvRow[] = SAMPLE_PEOPLE.filter((person) => !person.removed).map((person) => ({
+  name: person.name,
+  team: person.teamName ?? '',
+}))
 
 /** The sample roster as `Name, Team` lines — the exact shape the wizard's
  *  paste box expects, so it flows through the same parser a real paste does. */
 export function sampleRosterText(): string {
-  return SAMPLE_ROWS.map((row) => `${row.name}, ${row.team}`).join('\n')
+  return employeeRowsToLines(SAMPLE_ROWS).join('\n')
 }

@@ -89,7 +89,7 @@ export function OrgPicker() {
     try {
       await startSampleWorkspace()
       track('org_created', {})
-      track('workspace_created', { template: 'retail' })
+      track('workspace_created', { template: 'sample' })
     } finally {
       setBusy(false)
     }

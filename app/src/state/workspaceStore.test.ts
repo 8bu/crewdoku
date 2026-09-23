@@ -275,11 +275,15 @@ describe('startSampleWorkspace', () => {
     expect(store.get(activeOrgIdAtom)).toBe(meta.orgId)
     expect(store.get(activeWorkspaceIdAtom)).toBe(meta.id)
 
-    // Roster is populated across two teams with the retail shift catalog, so
-    // the board renders a real sample rather than an empty starter.
-    expect((store.get(peopleAtom) ?? []).length).toBeGreaterThan(0)
-    expect(store.get(teamsAtom)).toHaveLength(2)
-    expect((store.get(shiftsAtom) ?? []).map((s) => s.code)).toEqual(['OPEN', 'CLOSE'])
+    // The rich sample lands: three teams, the four-shift café-bakery catalog,
+    // and a roster that carries certifications, time off and preferences, so
+    // the board renders the engine's full range rather than an empty starter.
+    const people = store.get(peopleAtom) ?? []
+    expect(people.length).toBeGreaterThan(12)
+    expect(people.some((p) => (p.timeOff ?? []).length > 0)).toBe(true)
+    expect(people.some((p) => p.ineligible.length > 0)).toBe(true)
+    expect((store.get(teamsAtom) ?? []).map((t) => t.name)).toEqual(['Front of house', 'Kitchen', 'Bakery'])
+    expect((store.get(shiftsAtom) ?? []).map((s) => s.code)).toEqual(['OPEN', 'MID', 'CLOSE', 'BAKE'])
 
     // The wizard stays shut (roster present) and the one seeded period is armed
     // to auto-solve once on the board's next mount.
