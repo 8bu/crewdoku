@@ -29,6 +29,8 @@
       rel="stylesheet"
     />
     <title>Crewdoku — Auto-solve fair team schedules</title>
+    <link rel="canonical" href="https://crewdoku.8bu.dev/" />
+    <meta name="robots" content="index, follow" />
     <meta
       name="description"
       content="Describe your team and coverage, press Generate, and Crewdoku builds a fair, rule-legal multi-week shift schedule you can tweak by hand and export — all offline, on your own machine."
@@ -37,6 +39,13 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Crewdoku" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="vi_VN" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+    <meta property="og:locale:alternate" content="de_DE" />
+    <meta property="og:locale:alternate" content="pt_BR" />
     <meta property="og:title" content="Crewdoku — Auto-solve fair team schedules" />
     <meta
       property="og:description"
@@ -56,9 +65,98 @@
       content="Describe your team and coverage, press Generate, and Crewdoku builds a fair, rule-legal multi-week shift schedule you can tweak by hand and export — all offline, on your own machine."
     />
     <meta name="twitter:image" content="https://crewdoku.8bu.dev/og-image.png" />
+
+    <!-- Structured data for the single indexable page. `inLanguage` lists the
+         locales the SPA can render; deep routes are private client state and
+         are deliberately absent from every crawler-facing file. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Crewdoku",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": "https://crewdoku.8bu.dev/",
+        "description": "Describe your team and coverage, press Generate, and Crewdoku builds a fair, rule-legal multi-week shift schedule you can tweak by hand and export — all offline, on your own machine.",
+        "inLanguage": ["en", "vi", "es", "fr", "ja", "de", "pt"],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Crawler- and unfurler-visible hero: a JS-less fetch sees this instead of
+           an empty shell, and it doubles as the boot splash while bootWorkspace()
+           opens IndexedDB. React's createRoot REPLACES #root's children on mount,
+           so nothing here survives into the running app. Inline styles only —
+           styles.css has not applied at first paint — with light-dark() so both
+           palettes match the app's own theme-color tokens. -->
+      <div
+        style="
+          display: flex;
+          min-height: 100vh;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
+          padding: 40px 24px;
+          color-scheme: light dark;
+          background: light-dark(#f9f9fa, #141417);
+          font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+        "
+      >
+        <div style="width: 100%; max-width: 34rem; line-height: 1.5">
+          <h1
+            style="
+              margin: 0 0 10px;
+              font-size: 28px;
+              font-weight: 700;
+              letter-spacing: -0.02em;
+              color: light-dark(#18181b, #f4f4f5);
+            "
+          >
+            Crewdoku
+          </h1>
+          <p
+            style="
+              margin: 0 0 16px;
+              font-size: 15px;
+              font-weight: 500;
+              color: light-dark(#3f3f46, #d4d4d8);
+            "
+          >
+            Auto-solve fair team schedules
+          </p>
+          <p style="margin: 0 0 20px; font-size: 14px; color: light-dark(#52525b, #a1a1aa)">
+            Describe your team and coverage, press Generate, and Crewdoku builds a fair, rule-legal
+            multi-week shift schedule you can tweak by hand and export — all offline, on your own
+            machine.
+          </p>
+          <ul
+            style="
+              margin: 0;
+              padding: 0 0 0 20px;
+              font-size: 14px;
+              color: light-dark(#52525b, #a1a1aa);
+            "
+          >
+            <li style="margin-bottom: 6px">
+              Auto-solve a fair schedule from your team and coverage
+            </li>
+            <li style="margin-bottom: 6px">
+              Rule-legal multi-week rosters that respect rest and rotation limits
+            </li>
+            <li style="margin-bottom: 6px">
+              Tweak any cell by hand, then export the finished roster
+            </li>
+            <li>Runs fully offline — your data stays on your own machine</li>
+          </ul>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

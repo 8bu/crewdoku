@@ -2,13 +2,24 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "crewdoku",
   "compatibility_date": "2026-09-14",
+  // Front-controller Worker. Static assets still do all the serving; the Worker
+  // only stamps a first-visit geo default (cf-ipcountry) onto the HTML response
+  // so a Vietnamese visitor sees VI even on an English browser. An explicit pick
+  // in the app (localStorage) always wins client-side.
+  "main": "./src/worker.ts",
   "assets": {
     "directory": "./dist",
+    // Binding the Worker reads to fall through to the static assets.
+    "binding": "ASSETS",
     // "none": serve /foo.html as-is (Google Search Console verification file
     // must return 200 at its exact path). Everything else still falls through
     // to the SPA index.html via not_found_handling.
     "html_handling": "none",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // The Worker must see the document to attach the geo cookie; without this
+    // "/" matches index.html and is served straight from the assets, never
+    // reaching src/worker.ts. Non-HTML assets are returned untouched.
+    "run_worker_first": true
   },
   "routes": [{ "pattern": "crewdoku.8bu.dev", "custom_domain": true }]
 }
