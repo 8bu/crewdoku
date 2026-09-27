@@ -1,6 +1,7 @@
 import type { GenerateState } from './useGenerateFlow'
 import { formatElapsed } from './format'
 import { useT } from '../../i18n/useT'
+import { RefreshCw, Sparkles } from '../../ui/icons'
 
 export type GenerateControlsProps = {
   hasSchedule: boolean
@@ -40,8 +41,12 @@ export type GenerateControlsProps = {
  *
  * On a phone the FAB has one more thing under it than desktop does: the
  * Shell's fixed bottom nav (`--mobile-nav-h`, plus the home-indicator inset).
- * It lifts by both and grows to a 44px+ target; `md:` restores the original
- * `bottom-6` corner exactly.
+ * It lifts by both and shrinks to a 48px round icon button — sparkles for
+ * Generate, a refresh arrow for Regenerate — since a labelled pill over a
+ * 360px board covers two cells of the schedule and outweighs the tab bar under
+ * it. The name stays in the accessible label and tooltip, and an empty board
+ * still says "no schedule yet" in its banner. `md:` restores the original
+ * labelled pill at the `bottom-6` corner exactly.
  */
 export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onImport }: GenerateControlsProps) {
   const t = useT()
@@ -85,13 +90,21 @@ export function GenerateControls({ hasSchedule, state, onGenerate, onCancel, onI
       )}
       <button
         type="button"
-        className="btn btn-primary fixed right-6 bottom-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom)_+_0.5rem)] z-9 min-h-12 rounded-full px-6 shadow-[var(--shadow-pane)] md:bottom-6 md:min-h-0"
+        className="btn btn-primary fixed right-4 bottom-[calc(var(--mobile-nav-h)_+_env(safe-area-inset-bottom)_+_0.75rem)] z-9 h-12 min-h-12 w-12 rounded-full p-0 shadow-[var(--shadow-pane)] md:right-6 md:bottom-6 md:h-(--size) md:min-h-0 md:w-auto md:px-6"
         data-tour="generate"
         onClick={onGenerate}
         disabled={solving}
         aria-label={hasSchedule ? t('panels.generate.regenerateAria') : t('panels.generate.generateAria')}
+        title={hasSchedule ? t('panels.generate.regenerate') : t('panels.generate.generate')}
       >
-        {hasSchedule ? t('panels.generate.regenerate') : t('panels.generate.generate')}
+        {hasSchedule ? (
+          <RefreshCw className="h-5 w-5 md:hidden" aria-hidden="true" />
+        ) : (
+          <Sparkles className="h-5 w-5 md:hidden" aria-hidden="true" />
+        )}
+        <span className="hidden md:inline">
+          {hasSchedule ? t('panels.generate.regenerate') : t('panels.generate.generate')}
+        </span>
       </button>
     </>
   )

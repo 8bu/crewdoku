@@ -77,14 +77,20 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
       </ul>
     )
 
+  // On a phone the pair sits in the header row beside the filter button, so it
+  // drops the floating card (border, shadow) and reads as two plain icons.
   const buttonRow = (
     <div
-      className="flex items-stretch overflow-hidden rounded-lg border border-[var(--border-strong)] bg-base-100 shadow-[var(--shadow-pane)]"
+      className={
+        isNarrow
+          ? 'flex items-center gap-1'
+          : 'flex items-stretch overflow-hidden rounded-lg border border-[var(--border-strong)] bg-base-100 shadow-[var(--shadow-pane)]'
+      }
       data-tour="diagnostics"
     >
       <button
         type="button"
-        className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-2.5 text-xs font-semibold transition-colors duration-150 md:min-h-0 md:py-1.5 ${
+        className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition-colors duration-150 md:min-h-0 md:min-w-0 md:justify-start md:rounded-none md:py-1.5 ${
           flagged ? 'text-[var(--viol)]' : 'text-[color:var(--text-dim)]'
         }`}
         aria-expanded={open}
@@ -113,7 +119,7 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
       </button>
       <button
         type="button"
-        className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 border-l border-[var(--border-strong)] px-2.5 text-xs whitespace-nowrap transition-colors duration-150 md:min-h-0 md:py-1.5 ${
+        className={`inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs whitespace-nowrap transition-colors duration-150 md:min-h-0 md:min-w-0 md:justify-start md:rounded-none md:border-l md:border-[var(--border-strong)] md:py-1.5 ${
           showIssues ? 'bg-primary/10 text-[var(--sel-active)]' : 'text-[color:var(--text-dim)]'
         }`}
         aria-pressed={showIssues}

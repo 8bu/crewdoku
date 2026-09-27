@@ -13,14 +13,16 @@ import { useEffect, useState } from 'react'
  *
  * `emptyValue` is what a cleared field commits — `0` for a floor, `Infinity`
  * for a ceiling. When `emptyValue` is `Infinity` the control is a ceiling:
- * stepping below `min` (or clearing) means "no cap", shown as `∞`. The number
- * is a bare input (the bordered shell is the control) so it never double-boxes
- * with the app's `.cd-field`.
+ * stepping below `min` (or clearing) means "no cap", shown as `∞`. Otherwise
+ * a typed or stepped value is held inside `min`..`max`. The number is a bare
+ * input (the bordered shell is the control) so it never double-boxes with the
+ * app's `.cd-field`.
  */
 export function Stepper({
   value,
   emptyValue,
   min = 0,
+  max = Infinity,
   ariaLabel,
   placeholder,
   className = '',
@@ -29,12 +31,15 @@ export function Stepper({
   value: number
   emptyValue: number
   min?: number
+  max?: number
   ariaLabel: string
   placeholder?: string
   className?: string
   onCommit: (n: number) => void
 }) {
   const fmt = (n: number) => (Number.isFinite(n) ? String(n) : '')
+  /** A ceiling may sit below `min` (that reads as "no cap"); everything else is held in bounds. */
+  const clamp = (n: number) => Math.min(max, emptyValue === Infinity ? n : Math.max(min, n))
   const [draft, setDraft] = useState(fmt(value))
 
   // Resync when the committed value changes from outside (mode switch, a bulk
@@ -52,7 +57,7 @@ export function Stepper({
   function commit() {
     const raw = draft.trim()
     if (raw !== '' && !/^\d+$/.test(raw)) return setDraft(fmt(value))
-    const parsed = raw === '' ? emptyValue : Number(raw)
+    const parsed = raw === '' ? emptyValue : clamp(Number(raw))
     if (parsed !== value) onCommit(parsed)
     else setDraft(fmt(value))
   }
@@ -62,7 +67,7 @@ export function Stepper({
     if (base === Infinity) next = delta > 0 ? Infinity : min
     else {
       const raw = base + delta
-      next = emptyValue === Infinity && raw < min ? Infinity : Math.max(min, raw)
+      next = emptyValue === Infinity && raw < min ? Infinity : clamp(raw)
     }
     setDraft(fmt(next))
     if (next !== value) onCommit(next)
@@ -98,7 +103,7 @@ export function Stepper({
             bump(-1)
           }
         }}
-        className="w-6 border-0 bg-transparent p-0 text-center font-mono text-sm tabular-nums focus:outline-none focus:ring-0"
+        className={`${Number.isFinite(max) && max >= 100 ? 'w-8' : 'w-6'} border-0 bg-transparent p-0 text-center font-mono text-sm tabular-nums focus:outline-none focus:ring-0`}
       />
       <button
         type="button"

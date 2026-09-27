@@ -16,12 +16,15 @@ import {
   UNASSIGNED_TEAM,
   type BoardData,
 } from './mockBoard'
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { coverageDrillAtom } from '../state/coverageDrill'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
 import { useBoardSchedule } from '../state/schedule'
+import { useScheduleBoundary } from '../state/scheduleView'
+import { filterPeople, matchesShiftFilter, useScheduleFilters } from '../state/scheduleFilters'
+import { periodsAtom } from '../state/shell'
 import { useCoverageRules } from '../state/coverageRules'
 import { useSolveSettings } from '../state/solveSettings'
 import { useSettingsDirty } from '../state/settingsDirty'
@@ -213,6 +216,19 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     return map
   }, [people])
 
+  // Shared schedule filters (state/scheduleFilters.ts, held in the URL so the
+  // calendar and a reload see the same ones). They narrow what this board
+  // *shows* and nothing else: coverage, fairness, violations and Generate all
+  // still run over every person. Search and team drop rows; the shift and
+  // leave filters dim cells in place instead, so the shape of the week stays
+  // legible under them.
+  const [filters, setFilters] = useScheduleFilters()
+  const filteredPeopleByTeam = useMemo(() => {
+    const map = new Map<string, Person[]>()
+    for (const [teamId, list] of peopleByTeam) map.set(teamId, filterPeople(list, filters))
+    return map
+  }, [peopleByTeam, filters])
+
   // Not everyone has a team (8bu: the roster shouldn't assume full staffing)
   // — an "Unassigned" group renders after the real teams, only when someone
   // actually needs it, sharing every code path a real team already has
@@ -222,17 +238,36 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     [teams, peopleByTeam],
   )
 
+  // The groups actually drawn: a team the filters emptied is hidden outright,
+  // header and count included, rather than left as an empty band. `boardTeams`
+  // above stays whole — the person panel and the coverage drill still resolve
+  // a team by id there.
+  const shownTeams = useMemo(
+    () => boardTeams.filter((team) => (filteredPeopleByTeam.get(team.id)?.length ?? 0) > 0),
+    [boardTeams, filteredPeopleByTeam],
+  )
+
   // Row space for selection/keyboard nav: only people actually on screen,
   // in the same order the grid renders them, so an arrow key never lands on
-  // a folded team.
+  // a folded team (or on a row the filters hid).
   const visiblePeople = useMemo(() => {
     const list: Person[] = []
-    for (const team of boardTeams) {
+    for (const team of shownTeams) {
       if (collapsed.has(team.id)) continue
-      list.push(...(peopleByTeam.get(team.id) ?? []))
+      list.push(...(filteredPeopleByTeam.get(team.id) ?? []))
     }
     return list
-  }, [boardTeams, peopleByTeam, collapsed])
+  }, [shownTeams, filteredPeopleByTeam, collapsed])
+
+  // Rest (H3) now looks across the period's edges: the first day is checked
+  // against the last shift of whichever period covers the day before, the last
+  // day against the day after (state/scheduleView.ts, from the period list the
+  // board is scoped to). The solver gets the same boundary, so a schedule it
+  // generates sees the constraint the board flags. A neighbour with no
+  // schedule contributes nothing, exactly like no neighbour at all.
+  const periods = useAtomValue(periodsAtom)
+  const period = useMemo(() => periods.find((entry) => entry.id === periodId) ?? null, [periods, periodId])
+  const boundary = useScheduleBoundary(period, people)
 
   // Generate (ticket 11): `runSolveRef` breaks the circularity between
   // `useGenerateFlow` (needs a callable solve) and `useBoardEditing` (the
@@ -297,6 +332,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       settings: solveSettings,
       dates: data.dates.map((date) => date.iso),
       current: schedule,
+      boundary,
     })
     const input = relaxTransformRef.current ? relaxTransformRef.current(base) : base
     return solve(input, onLog)
@@ -378,8 +414,9 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
         solveSettings.hardRules.enabled,
         solveSettings.hardRules.maxHoursPerWeek,
         solveSettings.hardRules.minRestHours,
+        boundary,
       ),
-    [people, data.dates, getDisplayAssignment, shifts, solveSettings.hardRules],
+    [people, data.dates, getDisplayAssignment, shifts, solveSettings.hardRules, boundary],
   )
   // Each violation gets exactly one detail surface (8bu: the row tooltip
   // "should list only errors that doesn't has placed on the board"): a
@@ -691,25 +728,44 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     })
   }
 
+  // A jump aimed at a row the shared filters hide — a problem row, a proposal
+  // change, /coverage's drill — would otherwise do nothing at all, and a click
+  // that silently fails reads as broken. Clearing search and team (the two
+  // filters that hide rows) honours the jump; shift and leave only dim, so
+  // they stay exactly as the planner left them.
+  const revealPersonRow = useCallback(
+    (personId: string): boolean => {
+      if (visiblePeople.some((person) => person.id === personId)) return false
+      setFilters({ query: '', teamIds: [] })
+      return true
+    },
+    [visiblePeople, setFilters],
+  )
+
   // A folded team hides its rows from the DOM entirely (ticket 04), so a
   // reveal has to unfold first, then wait a render for `visiblePeople` to
-  // include the person before it can select/scroll to the cell.
+  // include the person before it can select/scroll to the cell. A filter-hidden
+  // row takes the same two-step, with the filter clear standing in for the
+  // unfold.
   const revealViolation = useCallback(
     (violation: Violation) => {
       const person = people.find((p) => p.id === violation.personId)
       if (!person) return
-      if (collapsed.has(person.teamId)) {
+      const folded = collapsed.has(person.teamId)
+      if (folded || revealPersonRow(person.id)) {
         pendingRevealRef.current = { personId: violation.personId, dateIso: violation.dateIso }
-        setCollapsed((prev) => {
-          const next = new Set(prev)
-          next.delete(person.teamId)
-          return next
-        })
+        if (folded) {
+          setCollapsed((prev) => {
+            const next = new Set(prev)
+            next.delete(person.teamId)
+            return next
+          })
+        }
         return
       }
       editing.selectByIds(violation.personId, violation.dateIso)
     },
-    [people, collapsed, editing],
+    [people, collapsed, editing, revealPersonRow],
   )
 
   useEffect(() => {
@@ -727,18 +783,21 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     (personId: string, dateIso: string) => {
       const person = people.find((p) => p.id === personId)
       if (!person) return
-      if (collapsed.has(person.teamId)) {
+      const folded = collapsed.has(person.teamId)
+      if (folded || revealPersonRow(personId)) {
         pendingRevealRef.current = { personId, dateIso }
-        setCollapsed((prev) => {
-          const next = new Set(prev)
-          next.delete(person.teamId)
-          return next
-        })
+        if (folded) {
+          setCollapsed((prev) => {
+            const next = new Set(prev)
+            next.delete(person.teamId)
+            return next
+          })
+        }
         return
       }
       editing.selectByIds(personId, dateIso)
     },
-    [people, collapsed, editing],
+    [people, collapsed, editing, revealPersonRow],
   )
 
   // Apply reuses the exact same commitEdit/undo history a hand-edit does
@@ -831,9 +890,8 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
     setCovDate(pendingDrill.dateIso)
     setCovDrillShift(pendingDrill.shift)
     if (pendingDrill.shift) {
-      const teamIds = new Set(
-        eligibleFreePeople(people, pendingDrill.dateIso, pendingDrill.shift, editing.getAssignment).map((p) => p.teamId),
-      )
+      const fixers = eligibleFreePeople(people, pendingDrill.dateIso, pendingDrill.shift, editing.getAssignment)
+      const teamIds = new Set(fixers.map((p) => p.teamId))
       if (teamIds.size > 0) {
         setCollapsed((prev) => {
           const next = new Set(prev)
@@ -841,8 +899,15 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           return next
         })
       }
+      // The drill exists to light up who could fill this shift. A filter that
+      // hides every one of them would light nothing at all, so drop search and
+      // team — the same concession a problem-row jump makes (`revealPersonRow`).
+      const shownIds = new Set(visiblePeople.map((person) => person.id))
+      if (fixers.length > 0 && fixers.every((person) => !shownIds.has(person.id))) {
+        setFilters({ query: '', teamIds: [] })
+      }
     }
-  }, [pendingDrill, setPendingDrill, people, editing.getAssignment])
+  }, [pendingDrill, setPendingDrill, people, editing.getAssignment, visiblePeople, setFilters])
 
   const covDay = covDate ? coverage.get(covDate) ?? null : null
 
@@ -906,7 +971,9 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   // Dim the grid and light the "could fix it" cells straight in the DOM
   // (ticket 03's benchmarked move for exactly this: dim-all-and-light-a-few
   // measured 4.1ms over 4200 cells) rather than threading a lit flag through
-  // every DayCell's props.
+  // every DayCell's props. `visiblePeople` is a dependency because the rows the
+  // filters keep decide which lit cells exist at all: a drill that cleared a
+  // row filter has to light its fixers on the very render they come back.
   useEffect(() => {
     const board = rootRef.current
     if (!board) return
@@ -920,7 +987,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       const el = board.querySelector(`.cd-cell[data-person-id="${person.id}"][data-date-iso="${covDate}"]`)
       el?.setAttribute('data-coverage-lit', '')
     }
-  }, [covDrillShift, covDate, freePeople])
+  }, [covDrillShift, covDate, freePeople, visiblePeople])
 
   useEffect(() => {
     // Desktop only. On a phone the breakdown is a BottomSheet that dismisses
@@ -1081,8 +1148,11 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           ))}
           {showIssues && !isNarrow && <FairnessHeaderCell />}
 
-          {boardTeams.map((team) => {
-            const teamPeople = peopleByTeam.get(team.id) ?? []
+          {/* Only the groups the filters kept (`shownTeams`), and each group
+              shows only the people they kept — while coverage, fairness and
+              violations still count everyone (see `filters` above). */}
+          {shownTeams.map((team) => {
+            const teamPeople = filteredPeopleByTeam.get(team.id) ?? []
             const isCollapsed = collapsed.has(team.id)
             return (
               <Fragment key={team.id}>
@@ -1142,6 +1212,13 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
                       </div>
                       {data.dates.map((date) => {
                         const assignment = getDisplayAssignment(person.id, date.iso)
+                        // Display-only, like the row filters: a cell the shift
+                        // filter does not keep (OFF included, since OFF is not
+                        // a shift) or a leave day while leave is turned off
+                        // steps back but keeps its value.
+                        const dimmed =
+                          !matchesShiftFilter(filters, assignment.code) ||
+                          (!filters.showLeave && (person.timeOff?.includes(date.iso) ?? false))
                         return (
                           <DayCell
                             key={date.iso}
@@ -1151,6 +1228,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
                             shiftColor={shiftColorByCode[assignment.code]}
                             violated={showIssues && violationPlacement.cellMessages.has(assignmentKey(person.id, date.iso))}
                             proposed={proposalChangeMessages.has(assignmentKey(person.id, date.iso))}
+                            dimmed={dimmed}
                           />
                         )
                       })}
@@ -1211,11 +1289,11 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
           centered instead of anchored to a trigger rect. */}
       {importOpen && (
         <div
-          className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-base-content/20 pt-16 pb-16"
+          className="fixed inset-0 z-30 flex items-end justify-center overflow-y-auto bg-base-content/20 pt-0 pb-0 md:items-start md:pt-16 md:pb-16"
           onMouseDown={() => setImportOpen(false)}
         >
           <div
-            className="w-[720px] max-w-[92vw] rounded-lg border border-base-300 bg-base-100 p-6 shadow-lg"
+            className="max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-x-0 border-b-0 border-base-300 bg-base-100 px-4 pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] shadow-lg md:max-h-none md:w-[720px] md:max-w-[92vw] md:overflow-visible md:rounded-lg md:border-x md:border-b md:p-6"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="mb-4">

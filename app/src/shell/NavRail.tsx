@@ -11,6 +11,7 @@ const SURFACES = [
   { to: '/coverage', key: 'nav.coverage' },
   { to: '/roster', key: 'nav.roster' },
   { to: '/teams', key: 'nav.teams' },
+  { to: '/calendar', key: 'nav.calendar' },
   { to: '/settings', key: 'nav.settings' },
   { to: '/export', key: 'nav.export' },
 ] as const

@@ -1,8 +1,18 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useT } from '../i18n/useT'
+import { useScheduleFilters, writeScheduleFilters } from '../state/scheduleFilters'
 import { BottomSheet } from '../ui/BottomSheet'
-import { Download, Gauge, LayoutGrid, MoreHorizontal, Settings, Users, UsersRound } from '../ui/icons'
+import {
+  CalendarDays,
+  Download,
+  Gauge,
+  LayoutGrid,
+  MoreHorizontal,
+  Settings,
+  Users,
+  UsersRound,
+} from '../ui/icons'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { Logo } from './Logo'
 import { OrgHeader } from './OrgHeader'
@@ -10,14 +20,19 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 
 /**
- * The mobile half of the navigation: the rail's six surfaces become four
- * primary tabs (Board, Coverage, Roster, Teams) plus More, which opens a sheet
- * holding the two remaining surfaces and everything the rail carries besides
- * navigation — org, workspace, theme, locale, the byline. A 360px-wide bar
- * can't hold six labelled targets at 44px a piece, and the rail's secondary
- * controls have no room to sit beside them, so the sheet is where the rail's
- * footer and header go on a phone. Slugs, labels, icons and active treatment
- * all mirror `NavRail` — the two are the same app, not two apps.
+ * The mobile half of the navigation: the rail's seven surfaces become four
+ * primary tabs (Board, Calendar, Coverage, Roster) plus More, which opens a
+ * sheet holding the three remaining surfaces and everything the rail carries
+ * besides navigation — org, workspace, theme, locale, the byline. A 360px-wide
+ * bar can't hold seven labelled targets at 44px a piece, and the rail's
+ * secondary controls have no room to sit beside them, so the sheet is where
+ * the rail's footer and header go on a phone. Slugs, labels, icons and active
+ * treatment all mirror `NavRail` — the two are the same app, not two apps.
+ *
+ * Board and Calendar sit next to each other because on a phone these two tabs
+ * *are* the Board | Calendar switch the desktop headers carry — so, like that
+ * switch, they carry the shared filter params across (`q/team/shift/leave`).
+ * Teams is set-up work, rarely a phone task, so it is the one in More.
  *
  * Fixed rather than in-flow so the bar never competes with the board's own
  * internal scrollers for height; `Shell`'s `<main>` reserves the matching
@@ -25,15 +40,19 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher'
  */
 const PRIMARY = [
   { to: '/board', key: 'nav.board', Icon: LayoutGrid },
+  { to: '/calendar', key: 'nav.calendar', Icon: CalendarDays },
   { to: '/coverage', key: 'nav.coverage', Icon: Gauge },
   { to: '/roster', key: 'nav.roster', Icon: Users },
-  { to: '/teams', key: 'nav.teams', Icon: UsersRound },
 ] as const
 
 const OVERFLOW = [
+  { to: '/teams', key: 'nav.teams', Icon: UsersRound },
   { to: '/settings', key: 'nav.settings', Icon: Settings },
   { to: '/export', key: 'nav.export', Icon: Download },
 ] as const
+
+/** The two schedule views, whose tabs keep the filters when switching between them. */
+const SCHEDULE_VIEWS: ReadonlySet<string> = new Set(['/board', '/calendar'])
 
 /** NavRail's active wash, grown into a full-height tab. Preflight already
     leaves buttons borderless and transparent, so the base carries no `bg-*`
@@ -47,6 +66,13 @@ export function BottomNav() {
   const t = useT()
   const { pathname } = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [filters] = useScheduleFilters()
+  const filterSearch = useMemo(() => {
+    const params = new URLSearchParams()
+    writeScheduleFilters(params, filters)
+    const search = params.toString()
+    return search ? `?${search}` : ''
+  }, [filters])
   const moreActive = moreOpen || OVERFLOW.some((s) => pathname.startsWith(s.to))
 
   return (
@@ -63,7 +89,7 @@ export function BottomNav() {
         {PRIMARY.map(({ to, key, Icon }) => (
           <NavLink
             key={to}
-            to={to}
+            to={SCHEDULE_VIEWS.has(to) ? `${to}${filterSearch}` : to}
             className={({ isActive }) => `${TAB_BASE} ${isActive ? TAB_ACTIVE : TAB_IDLE}`}
           >
             <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -110,8 +136,8 @@ export function BottomNav() {
               44px trigger that opens its own bottom-sheet picker, so the two
               share one row instead of stacking two full-width dropdowns. */}
           <div className="grid grid-cols-2 gap-2">
-            <ThemeSwitcher />
-            <LocaleSwitcher />
+            <ThemeSwitcher variant="sheet" />
+            <LocaleSwitcher variant="sheet" />
           </div>
           <div className="flex items-center gap-1.5 px-1 pt-1">
             <Logo className="h-5 w-auto opacity-80" />

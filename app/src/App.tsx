@@ -5,6 +5,7 @@ import { Board } from './routes/Board'
 import { Coverage } from './routes/Coverage'
 import { Roster } from './routes/Roster'
 import { Teams } from './routes/Teams'
+import { Calendar } from './routes/Calendar'
 import { Settings } from './routes/Settings'
 import { Export } from './routes/Export'
 import { activeOrgIdAtom, activeWorkspaceIdAtom } from './state/orgStore'
@@ -33,6 +34,7 @@ export function App() {
         <Route path="/coverage" element={<Coverage />} />
         <Route path="/roster" element={<Roster />} />
         <Route path="/teams" element={<Teams />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/export" element={<Export />} />
         <Route path="*" element={<Navigate to="/board" replace />} />

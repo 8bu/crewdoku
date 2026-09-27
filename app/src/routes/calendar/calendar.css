@@ -1,0 +1,699 @@
+/*
+  The /calendar page: FullCalendar, themed as this app's own surface, plus the
+  chip stacks painted over its day cells.
+
+  FC ships its CSS from JS at runtime and exposes nearly every visual knob as a
+  CSS custom property, so the re-skin is mostly *setting those variables* on the
+  calendar root rather than out-specifying FC's rules — the variables resolve
+  after FC's own declarations by definition, and the daisyUI tokens behind them
+  make light and dark come along for free. The handful of places FC hardcodes a
+  colour (the "+N more" hover, the day-cell frame) get a rule scoped one class
+  deeper than FC's own, so it never comes down to source order.
+
+  Shifts are not FC events: `dayCellContent` draws the day number, and React
+  portals one `.cal-day` stack per cell into the day's `td`. That
+  overlay is `pointer-events: none` on purpose — every gap between chips still
+  belongs to FullCalendar, which is what keeps click-to-book and drag-select on
+  blank day space working — while chips themselves take the pointer back.
+*/
+
+.cal-calendar .fc {
+  /* Structure + surfaces, straight onto the theme's own tokens. */
+  --fc-border-color: var(--color-base-300);
+  --fc-page-bg-color: var(--color-base-100);
+  --fc-neutral-bg-color: var(--color-base-200);
+  --fc-neutral-text-color: var(--text-dim);
+  --fc-today-bg-color: color-mix(in oklch, var(--color-primary) 8%, transparent);
+  --fc-highlight-color: color-mix(in oklch, var(--color-primary) 22%, transparent);
+  --fc-non-business-color: color-mix(in oklch, var(--color-base-200) 60%, transparent);
+  /* Chip text is `--text-2xs`; day numbers and headers are explicit below. */
+  --fc-small-font-size: var(--text-2xs, 11px);
+  font-size: var(--text-sm, 13px);
+}
+
+/* --- Team identity --------------------------------------------------------
+   Six palette slots assigned by teams-array order and cycled past the sixth,
+   plus one neutral for unassigned (or no-longer-existing) teams. Only the chip
+   dot wears these — a base-content name on the app's own background stays
+   legible in both themes without a second authored colour set.
+*/
+.cal-calendar .cal-ev-0 {
+  --cal-ev-tint: var(--color-primary);
+}
+.cal-calendar .cal-ev-1 {
+  --cal-ev-tint: var(--color-secondary);
+}
+.cal-calendar .cal-ev-2 {
+  --cal-ev-tint: var(--color-accent);
+}
+.cal-calendar .cal-ev-3 {
+  --cal-ev-tint: var(--color-info);
+}
+.cal-calendar .cal-ev-4 {
+  --cal-ev-tint: var(--color-success);
+}
+.cal-calendar .cal-ev-5 {
+  --cal-ev-tint: var(--color-warning);
+}
+.cal-calendar .cal-ev-none {
+  --cal-ev-tint: var(--color-neutral);
+}
+
+/* --- Grid ----------------------------------------------------------------- */
+.cal-calendar .fc .fc-col-header-cell-cushion {
+  padding: 4px 6px;
+  color: var(--text-dim);
+  font-size: var(--text-2xs, 11px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The header band matches the app's own tables instead of FC's page colour. */
+.cal-calendar .fc .fc-scrollgrid-section-header > * {
+  background: var(--color-base-200);
+}
+
+.cal-calendar .fc .fc-daygrid-day-number {
+  padding: 2px 6px;
+  color: var(--text-dim);
+  font-size: var(--text-xs, 12px);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-calendar .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Blank space in a cell is what books a day, so the cell — never a chip —
+   carries the pointer cursor and the hover wash, and it is the stack's
+   containing block (`relative`). Both hang on the `td`, not on FC's inner
+   `.fc-daygrid-day-frame`: that frame only reaches the full cell height where
+   the browser resolves its `min-height: 100%` inside a table cell, and
+   elsewhere (WebKit) it stops after the day number, which left a half-cell
+   hover band with the stack spilling out below it. The wash is a gradient
+   layer, not a background colour, so the today tint (FC's `background-color`
+   on the same `td`) still shows through underneath. */
+.cal-calendar .fc .fc-daygrid-day {
+  position: relative;
+  cursor: pointer;
+}
+
+.cal-calendar .fc .fc-daygrid-day:hover {
+  background-image: linear-gradient(
+    color-mix(in oklch, var(--color-primary) 5%, transparent),
+    color-mix(in oklch, var(--color-primary) 5%, transparent)
+  );
+}
+
+/* The day number, plus the "book this day" glyph that only fades in on hover, so
+   a blank cell reads as clickable without a calendar full of icons. */
+.cal-calendar .fc .fc-daygrid-day-number .cal-day-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cal-calendar .fc .cal-day-add {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-primary);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.cal-calendar .fc .fc-daygrid-day:hover .cal-day-add {
+  opacity: 1;
+}
+
+/* --- The day's stacks ------------------------------------------------------
+   One `.cal-day` per cell, portalled into the cell's `td`: absolutely inset so
+   it never fights FC's own layout, cleared of the day number by `padding-top`,
+   and transparent to the pointer so the gaps stay FullCalendar's. Days whose
+   period has no schedule yet are muted and carry leave only.
+*/
+.cal-day {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 4px 4px;
+  padding-top: 20px;
+  overflow: hidden;
+  pointer-events: none;
+  font-size: var(--text-2xs, 11px);
+  line-height: 1.3;
+}
+
+/* Only a grid cell is a size container, so the narrow layout below follows the
+   cell's own width (month vs week, window size), and the "+N" panel's copy of
+   a day — outside `.fc` — always gets the full one. */
+.cal-calendar .fc .cal-day {
+  container: cal-day / inline-size;
+}
+
+.cal-day[data-editable='false'] {
+  background-color: color-mix(in oklch, var(--color-base-200) 60%, transparent);
+}
+
+.cal-day[data-editable='false'] .cal-code {
+  opacity: 0.55;
+}
+
+/* The lines are the part that can run out of room; the "+N" below them never
+   does, so a cell that overflows still says how much it is hiding.
+
+   A two-column grid: every code in one column sized to the widest, every name
+   in the other, one per row. Each line is a subgrid row rather than
+   `display: contents`, so it keeps its own box — the drop indicator for a
+   shift change measures it. */
+.cal-lines {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-content: start;
+  column-gap: 6px;
+  row-gap: 4px;
+  overflow: hidden;
+}
+
+/* Each line carries its shift's colour, so both the code badge and — in a
+   narrow cell — the names themselves can wear it: the same muted wash and
+   `contrast-color()` ink the board's cells use, so a shift reads identically
+   on both pages. */
+.cal-line {
+  --cal-code-bg: var(--sh-slate-bg-muted);
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: start;
+  min-width: 0;
+}
+
+.cal-line[data-shift-color='amber'] {
+  --cal-code-bg: var(--sh-amber-bg-muted);
+}
+.cal-line[data-shift-color='orange'] {
+  --cal-code-bg: var(--sh-orange-bg-muted);
+}
+.cal-line[data-shift-color='lime'] {
+  --cal-code-bg: var(--sh-lime-bg-muted);
+}
+.cal-line[data-shift-color='teal'] {
+  --cal-code-bg: var(--sh-teal-bg-muted);
+}
+.cal-line[data-shift-color='sky'] {
+  --cal-code-bg: var(--sh-sky-bg-muted);
+}
+.cal-line[data-shift-color='navy'] {
+  --cal-code-bg: var(--sh-navy-bg-muted);
+}
+.cal-line[data-shift-color='rose'] {
+  --cal-code-bg: var(--sh-rose-bg-muted);
+}
+
+/* The Leave line: no shift colour, since leave belongs to no shift. */
+.cal-line-leave {
+  --cal-code-bg: color-mix(in oklch, var(--color-base-content) 7%, transparent);
+}
+
+/* The code badge, stretched to the column so every code is one badge width. */
+.cal-code {
+  border-radius: 3px;
+  padding: 0 4px;
+  background: var(--cal-code-bg);
+  color: contrast-color(var(--cal-code-bg));
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+.cal-line-leave .cal-code {
+  color: var(--text-dim);
+}
+
+/* One name per row, so a busy shift grows downward in the name column instead
+   of wrapping back under its code. */
+.cal-chips {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* A name row, not a boxed tag: the team dot and the name, with a wash only on
+   hover, so a full cell reads as a list instead of a pile of pills. */
+.cal-chip {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  border-radius: 3px;
+  padding: 0 3px;
+  color: var(--color-base-content);
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: grab;
+  /* The cell's gaps stay FullCalendar's, but a chip is this page's own handle:
+     it takes the pointer back so a press is a pick-up, not a selection. */
+  pointer-events: auto;
+  /* A swipe on a name scrolls the list it sits in — in the "+N" panel and the
+     phone's day list the names are nearly all there is to swipe on, so
+     blocking it left the rest of the list out of reach. A held finger still
+     picks the name up: once the drag arms, `ScheduleCalendar` cancels the
+     touch's scrolling so its moves carry the name instead. */
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.cal-chip:hover {
+  background-color: color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+/* A leave chip is read, not dragged: right-click (or long-press) opens its
+   actions, and the day it sits on is still booked through the dialog. */
+.cal-chip-leave {
+  cursor: default;
+  color: var(--text-dim);
+}
+
+.cal-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cal-ev-tint, var(--color-neutral));
+}
+
+.cal-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A rule break rides the chip, in the board's own red: same token, same
+   six-pixel dot the board's cells wear at their top-left, plus a faint red
+   wash now that the chip has no border to colour. The messages are the chip's
+   `title`. */
+.cal-chip-flagged {
+  background-color: color-mix(in oklch, var(--viol) 10%, transparent);
+}
+
+.cal-chip-flagged::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--viol);
+}
+
+/* The one "+N" a day carries when it is hiding anyone, opening its full stack:
+   a full-width row, so it lines up with the name rows above it and is an
+   easy target rather than a sliver in the corner. */
+.cal-more {
+  flex: none;
+  align-self: stretch;
+  border-radius: 3px;
+  padding: 0 6px;
+  line-height: 16px;
+  text-align: left;
+  background-color: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+  font-size: var(--text-2xs, 11px);
+  font-weight: 600;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.cal-more:hover {
+  background-color: color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+/* Chips the cell is too short to show (measured in `CalDay`), and lines left
+   with none: hidden whole instead of sliced mid-row, and counted into "+N". */
+.cal-chip[data-clipped],
+.cal-line[data-clipped] {
+  visibility: hidden;
+}
+
+/* --- Narrow cells ---------------------------------------------------------
+   Small desktops, the week view on a tablet: the code column would eat half
+   the cell and cut every name to three letters. So the codes step aside and
+   each name wears its shift's colour instead, at the full cell width — the
+   shift is still readable at a glance, and the badge is back in the panel. */
+@container cal-day (max-width: 150px) {
+  .cal-lines {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 3px;
+  }
+
+  .cal-code {
+    display: none;
+  }
+
+  .cal-chips {
+    gap: 1px;
+  }
+
+  .cal-chip {
+    width: 100%;
+    background-color: var(--cal-code-bg);
+  }
+
+  .cal-line:not(.cal-line-leave) .cal-chip {
+    color: contrast-color(var(--cal-code-bg));
+  }
+
+  .cal-chip:hover {
+    background-color: color-mix(in oklch, var(--cal-code-bg), var(--color-base-content) 10%);
+  }
+
+  /* The tint took the flag's red wash, so the flag becomes a red ring. */
+  .cal-chip.cal-chip-flagged {
+    box-shadow: inset 0 0 0 1px var(--viol);
+  }
+}
+
+/* --- Compact layout (phone, tablet) ---------------------------------------
+   After Apple Calendar's month view: the grid bleeds to the screen edges with
+   only the week rules left, each day is its date over a row of shift dots
+   (`CalMini`), and the names sit in the selected day's list under the grid
+   (`.cal-agenda`). A tap selects a day, so there is no hover wash either. */
+.cal-calendar[data-layout='compact'] .fc {
+  --fc-today-bg-color: transparent;
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-scrollgrid,
+.cal-calendar[data-layout='compact'] .fc td,
+.cal-calendar[data-layout='compact'] .fc th {
+  border-right-width: 0;
+  border-left-width: 0;
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-scrollgrid-section-header > * {
+  background: var(--color-base-100);
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-col-header-cell-cushion {
+  padding: 2px 0 4px;
+  color: var(--text-faint);
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-daygrid-day-top {
+  display: none;
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-daygrid-day-frame {
+  min-height: 50px;
+}
+
+/* The day list says "no schedule yet" in words, so it drops the grey wash an
+   unscheduled day wears in the desktop grid. */
+.cal-calendar[data-layout='compact'] .cal-day[data-editable='false'] {
+  background-color: transparent;
+}
+
+.cal-calendar[data-layout='compact'] .fc .fc-daygrid-day:hover {
+  background-image: none;
+}
+
+.cal-mini {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-top: 5px;
+  pointer-events: none;
+}
+
+.cal-mini-num {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-base-content);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-day-other .cal-mini-num {
+  color: var(--text-faint);
+}
+
+.fc-day-today .cal-mini-num {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.cal-mini[data-selected] .cal-mini-num {
+  background-color: var(--color-base-content);
+  color: var(--color-base-100);
+  font-weight: 600;
+}
+
+.fc-day-today .cal-mini[data-selected] .cal-mini-num {
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+.cal-mini-dots {
+  display: flex;
+  height: 6px;
+  gap: 3px;
+}
+
+/* One dot per shift with anyone on it, in the shift's own hue — lifted to a
+   mid lightness so a pale wash still reads as a dot on either theme. */
+.cal-mini-dot {
+  --cal-dot-src: var(--sh-slate-bg);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(from var(--cal-dot-src) 0.68 calc(c * 1.6) h);
+}
+
+.cal-mini-dot[data-shift-color='amber'] {
+  --cal-dot-src: var(--sh-amber-bg);
+}
+.cal-mini-dot[data-shift-color='orange'] {
+  --cal-dot-src: var(--sh-orange-bg);
+}
+.cal-mini-dot[data-shift-color='lime'] {
+  --cal-dot-src: var(--sh-lime-bg);
+}
+.cal-mini-dot[data-shift-color='teal'] {
+  --cal-dot-src: var(--sh-teal-bg);
+}
+.cal-mini-dot[data-shift-color='sky'] {
+  --cal-dot-src: var(--sh-sky-bg);
+}
+.cal-mini-dot[data-shift-color='navy'] {
+  --cal-dot-src: var(--sh-navy-bg);
+}
+.cal-mini-dot[data-shift-color='rose'] {
+  --cal-dot-src: var(--sh-rose-bg);
+}
+
+.cal-mini-dot-leave {
+  background: var(--text-faint);
+}
+
+/* The selected day's list: the day's stack at reading size, under the grid.
+   It is the same `CalDay` the "+N" panel shows, so drag (to another line, or
+   up onto a day in the grid) and the menus work here.
+
+   Grid and list scroll together in the compact wrapper, so a short screen can
+   still reach every name — and the day's heading pins to the top of that
+   scroller, so the list never loses which day it is. */
+.cal-agenda {
+  flex: 1 0 auto;
+  border-top: 1px solid var(--color-base-300);
+  padding: 0 16px 16px;
+}
+
+.cal-agenda-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -16px 8px;
+  border-bottom: 1px solid var(--color-base-300);
+  padding: 8px 16px;
+  background-color: var(--color-base-100);
+}
+
+.cal-agenda-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cal-agenda-empty {
+  margin: 12px 0 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.cal-agenda .cal-day {
+  position: static;
+  inset: auto;
+  padding: 0;
+  overflow: visible;
+  font-size: 14px;
+}
+
+.cal-agenda .cal-lines {
+  overflow: visible;
+  column-gap: 12px;
+  row-gap: 14px;
+}
+
+.cal-agenda .cal-code {
+  border-radius: 6px;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 28px;
+}
+
+.cal-agenda .cal-chips {
+  gap: 2px;
+}
+
+.cal-agenda .cal-chip {
+  gap: 8px;
+  border-radius: 6px;
+  padding: 0 6px;
+  line-height: 28px;
+}
+
+.cal-agenda .cal-dot {
+  width: 8px;
+  height: 8px;
+}
+
+/* --- The day's full stack -------------------------------------------------
+   The "+N" panel: anchored on its cell, so the day it belongs to stays in
+   sight, and scrollable when the day outgrows the window. */
+.cal-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.cal-popover {
+  position: absolute;
+  z-index: 21;
+  display: flex;
+  max-height: min(420px, 70vh);
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background-color: var(--color-base-100);
+  box-shadow: var(--shadow-pane);
+}
+
+.cal-popover-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-base-300);
+  padding: 4px 4px 4px 8px;
+  font-size: var(--text-xs, 12px);
+  font-weight: 600;
+}
+
+.cal-popover-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+/* Inside the panel the stack is a normal, laid-out block: no cell to cover and
+   nothing to clip — the panel body is what scrolls. */
+.cal-popover-body .cal-day {
+  position: static;
+  inset: auto;
+  padding: 2px 2px 0;
+  overflow: visible;
+  font-size: var(--text-xs, 12px);
+}
+
+.cal-popover-body .cal-lines {
+  overflow: visible;
+}
+
+/* --- Dragging -------------------------------------------------------------
+   The ghost follows the pointer; the indicator is the drop itself — the whole
+   cell for a swap, the one line for a shift change, dimmed red when the drop
+   would be refused. */
+.cal-drag-ghost {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  align-items: center;
+  gap: 3px;
+  max-width: 160px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background-color: var(--color-base-100);
+  color: var(--color-base-content);
+  font-size: var(--text-2xs, 11px);
+  box-shadow: var(--shadow-pane);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cal-drop-indicator {
+  display: none;
+  position: absolute;
+  z-index: 15;
+  border: 1px dashed color-mix(in oklch, var(--color-primary) 70%, transparent);
+  border-radius: 4px;
+  background-color: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  pointer-events: none;
+}
+
+.cal-drop-indicator[data-state='refused'] {
+  border-color: color-mix(in oklch, var(--viol) 70%, transparent);
+  background-color: color-mix(in oklch, var(--viol) 12%, transparent);
+}
+
+/* --- Context menus --------------------------------------------------------
+   The board's `Select` panel, sized for labels instead of a trigger. */
+.cal-menu-label {
+  padding: 2px 8px 4px;
+  color: var(--text-faint);
+  font-size: var(--text-2xs, 11px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cal-menu-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--sh-off-bd);
+}

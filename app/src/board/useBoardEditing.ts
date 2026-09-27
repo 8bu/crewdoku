@@ -15,7 +15,7 @@ import {
   type ShiftDef,
 } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
-import { isEligible } from './eligibility'
+import { buildAssignment } from './buildAssignment'
 import { useIsNarrow } from '../ui/useIsNarrow'
 import { useBoardOverrides } from '../state/boardOverrides'
 import { track } from '../analytics'
@@ -75,11 +75,6 @@ const ARROW_DIRS: Record<string, ArrowDir> = {
 export type OverlayRect = { left: number; top: number; width: number; height: number }
 
 export type CellMenuState = { row: number; col: number; pinned: boolean; rect: OverlayRect }
-
-function buildAssignment(shifts: ShiftDef[], person: Person, code: ShiftCode): Assignment {
-  const def = shifts.find((s) => s.code === code)
-  return { code, start: def?.start ?? null, end: def?.end ?? null, pinned: true, ineligible: !isEligible(person, code) }
-}
 
 /**
  * Hand-editing for the board (ticket 05). Selection lives here, outside any
