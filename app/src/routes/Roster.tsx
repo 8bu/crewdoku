@@ -1,6 +1,5 @@
 import { X, Upload, Plus } from '../ui/icons'
 import { useT } from '../i18n/useT'
-import { csvErrorText } from '../i18n/csvErrors'
 import { useMemo, useRef, useState } from 'react'
 import { useAtomValue } from 'jotai'
 import { selectedPeriodAtom, type Period } from '../state/shell'
@@ -18,14 +17,12 @@ import {
   setPersonTeam,
   toggleShiftEligibility,
 } from '../board/roster/rosterOps'
-import { parsePastedRoster, applyCsvImport, employeeRowsToLines, type CsvRow } from '../board/roster/csvImport'
-import { readEmployeeFile } from '../board/roster/xlsxImport'
 import { swatchBgMuted } from '../board/shiftColors'
 import { Stub } from './Stub'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
-import { BatchImportModal } from '../ui/BatchImportModal'
-import { track, usePageView, type ImportSource } from '../analytics'
+import { AioImportModal } from '../ui/AioImportModal'
+import { track, usePageView } from '../analytics'
 
 /**
  * Add, edit, remove people (wayfinder ticket 16) — its own dense table, not
@@ -60,12 +57,6 @@ function RosterTable({ period }: { period: Period }) {
   const [query, setQuery] = useState('')
   const [teamFilterId, setTeamFilterId] = useState<string>('all')
   const [importOpen, setImportOpen] = useState(false)
-  // The import modal is shared with the Teams page and only ever sees the
-  // text, so it cannot say which channel produced it. The file picker is the
-  // one place a file is read, so it records what it read here and `onApply`
-  // reports it — a fresh open resets it so a paste can't inherit an earlier
-  // open's file.
-  const importSourceRef = useRef<ImportSource>('paste')
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return active.filter((p) => {
@@ -99,7 +90,6 @@ function RosterTable({ period }: { period: Period }) {
   }
 
   function handleOpenImport() {
-    importSourceRef.current = 'paste'
     setImportOpen(true)
   }
 
@@ -278,55 +268,14 @@ function RosterTable({ period }: { period: Period }) {
         )}
       </div>
       {importOpen && (
-        <BatchImportModal<CsvRow>
-          title={t('rtc.roster.importTitle')}
-          subtitle={
-            <>
-              {t('rtc.roster.importSubtitlePrefix')} <span className="font-mono text-xs">Name, Team</span>
-              {t('rtc.roster.importSubtitleSuffix')}
-            </>
-          }
-          placeholder={t('rtc.roster.importPlaceholder')}
-          emptyLabel={t('rtc.roster.importEmpty')}
-          applyLabel={t('rtc.import.apply')}
-          cancelLabel={t('rtc.common.cancel')}
-          parse={parsePastedRoster}
-          renderSummary={(rows) => {
-            const teamNames = new Set(rows.filter((r) => r.team).map((r) => r.team.toLowerCase()))
-            const peopleLabel =
-              rows.length === 1
-                ? t('rtc.roster.count.person', { count: rows.length })
-                : t('rtc.roster.count.people', { count: rows.length })
-            if (teamNames.size === 0) return peopleLabel
-            const teamsLabel =
-              teamNames.size === 1
-                ? t('rtc.teams.count.team', { count: teamNames.size })
-                : t('rtc.teams.count.teams', { count: teamNames.size })
-            return `${peopleLabel} · ${teamsLabel}`
-          }}
-          onApply={(rows) => {
-            track('roster_imported', { source: importSourceRef.current, rows: rows.length })
-            const result = applyCsvImport(people, teams, rows)
-            setPeople(() => result.people)
-            setTeams(() => result.teams)
-          }}
-          file={{
-            label: t('rtc.roster.importFromFile'),
-            accept: '.csv,.xlsx',
-            read: async (f) => {
-              // Same predicate `readEmployeeFile` dispatches on, so the
-              // recorded channel is the branch that actually read the file.
-              importSourceRef.current = f.name.toLowerCase().endsWith('.xlsx') ? 'xlsx' : 'csv'
-              try {
-                const parsed = await readEmployeeFile(f)
-                return {
-                  text: employeeRowsToLines(parsed.rows).join('\n'),
-                  errors: parsed.errors.map((e) => csvErrorText(t, e)),
-                }
-              } catch {
-                return { text: '', errors: [t('rtc.import.fileError.unreadable')] }
-              }
-            },
+        <AioImportModal
+          people={people}
+          teams={teams}
+          shifts={shifts}
+          onApply={(r, m) => {
+            setPeople(() => r.people)
+            setTeams(() => r.teams)
+            track('roster_imported', { source: m.source, rows: m.peopleAdded })
           }}
           onCancel={() => setImportOpen(false)}
         />

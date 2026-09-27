@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { activeRoster, addPerson, removePerson, toggleShiftEligibility } from './rosterOps'
+import {
+  activeRoster,
+  addPerson,
+  removePerson,
+  toggleShiftEligibility,
+} from './rosterOps'
 import type { Person } from '@crewdoku/domain'
 
 function person(overrides: Partial<Person> = {}): Person {
@@ -40,3 +45,4 @@ describe('activeRoster', () => {
     expect(activeRoster(people).map((p) => p.id)).toEqual(['p1'])
   })
 })
+

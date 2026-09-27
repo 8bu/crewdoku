@@ -11,10 +11,11 @@ import { useTeamsController } from './teams/useTeamsController'
 import { DeleteTeamPopover } from './teams/DeleteTeamPopover'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
-import { BatchImportModal } from '../ui/BatchImportModal'
-import { parseTeamNames, parseTeamNameRows } from '../board/roster/teamOps'
-import { readXlsxRows } from '../board/roster/xlsxImport'
-import { usePageView } from '../analytics'
+import { AioImportModal } from '../ui/AioImportModal'
+import { useRosterPeople } from '../state/roster'
+import { useRosterTeams } from '../state/teams'
+import { useRosterShifts } from '../state/shifts'
+import { track, usePageView } from '../analytics'
 
 /**
  * Create, rename, delete teams and manage who's on each one (wayfinder
@@ -46,6 +47,13 @@ export function Teams() {
 function TeamsPage({ period }: { period: Period }) {
   const t = useT()
   const c = useTeamsController(period)
+  // The import modal writes whole rosters, so it needs the team and shift
+  // catalogs and a way to set both atoms. The controller owns the seeding of
+  // these three workspace atoms, so its current values are the initial value
+  // here — one seeder, no second `seedBoardData(period)`.
+  const [people, setPeople] = useRosterPeople(c.people)
+  const [teams, setTeams] = useRosterTeams(c.teams)
+  const [shifts] = useRosterShifts(c.shifts)
   const isNarrow = useIsNarrow()
   const sidebarTeams = [...c.teams, UNASSIGNED_TEAM]
   const [selectedId, setSelectedId] = useState(c.teams[0]?.id ?? UNASSIGNED_TEAM_ID)
@@ -279,42 +287,16 @@ function TeamsPage({ period }: { period: Period }) {
         )}
       </div>
       {importOpen && (
-        <BatchImportModal<string>
-          title={t('rtc.teams.importTitle')}
-          subtitle={t('rtc.teams.importSubtitle')}
-          placeholder={t('rtc.teams.importPlaceholder')}
-          emptyLabel={t('rtc.teams.importEmpty')}
-          applyLabel={t('rtc.import.apply')}
-          cancelLabel={t('rtc.common.cancel')}
-          parse={parseTeamNames}
-          renderSummary={(names) => {
-            const existing = new Set(c.teams.map((team) => team.name.trim().toLowerCase()))
-            const uniq = [...new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean))]
-            const newCount = uniq.filter((k) => !existing.has(k)).length
-            const dupCount = uniq.length - newCount
-            const newLabel =
-              newCount === 1
-                ? t('rtc.teams.importNew.team', { count: newCount })
-                : t('rtc.teams.importNew.teams', { count: newCount })
-            if (dupCount === 0) return newLabel
-            return `${newLabel} · ${t('rtc.teams.importExisting', { count: dupCount })}`
+        <AioImportModal
+          people={people}
+          teams={teams}
+          shifts={shifts}
+          onApply={(r, m) => {
+            setPeople(() => r.people)
+            setTeams(() => r.teams)
+            track('roster_imported', { source: m.source, rows: m.peopleAdded })
           }}
-          onApply={(names) => c.addTeamsBulk(names)}
           onCancel={() => setImportOpen(false)}
-          file={{
-            label: t('rtc.teams.importFromFile'),
-            accept: '.csv,.xlsx',
-            read: async (f) => {
-              try {
-                const names = f.name.toLowerCase().endsWith('.xlsx')
-                  ? parseTeamNameRows(await readXlsxRows(f))
-                  : parseTeamNames(await f.text())
-                return { text: names.join('\n'), errors: [] }
-              } catch {
-                return { text: '', errors: [t('rtc.import.fileError.unreadable')] }
-              }
-            },
-          }}
         />
       )}
     </section>
