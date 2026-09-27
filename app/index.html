@@ -10,6 +10,10 @@
          [data-theme="console-dark"] and React only mounts later, so without this a
          dark-mode load flashes the light theme. Kept in sync with state/theme.ts. -->
     <script>
+      // Marks a JS-capable browser: the hero copy in #root is for link unfurlers and
+      // crawlers, which read this HTML without running scripts. A person refreshing
+      // the app should see only the themed backdrop until React replaces #root.
+      document.documentElement.classList.add('js')
       try {
         var pref = localStorage.getItem('crewdoku-theme')
         var dark = pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
@@ -19,15 +23,30 @@
         /* localStorage can throw in locked-down browsers — the static default stands */
       }
     </script>
+    <style>
+      html.js #boot-hero-copy {
+        visibility: hidden;
+      }
+      /* The backdrop's light-dark() follows the resolved theme, not only the OS
+         (an inline color-scheme would outrank these rules, so it lives here). */
+      #boot-hero {
+        color-scheme: light dark;
+      }
+      html[data-theme='console'] #boot-hero {
+        color-scheme: light;
+      }
+      html[data-theme='console-dark'] #boot-hero {
+        color-scheme: dark;
+      }
+    </style>
     <link rel="icon" href="/favicon.ico?v=lexend-logo-1" sizes="any" />
     <link rel="icon" href="/favicon.svg?v=lexend-logo-1" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=lexend-logo-1" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Inter is self-hosted (@font-face in styles.css). A preload starts the
+         common latin file early without blocking paint — the Google Fonts
+         stylesheet this replaces was render-blocking and left the page white
+         until Google answered. -->
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>Crewdoku — Auto-solve fair team schedules</title>
     <link rel="canonical" href="https://crewdoku.8bu.dev/" />
     <meta name="robots" content="index, follow" />
@@ -90,12 +109,14 @@
   <body>
     <div id="root">
       <!-- Crawler- and unfurler-visible hero: a JS-less fetch sees this instead of
-           an empty shell, and it doubles as the boot splash while bootWorkspace()
-           opens IndexedDB. React's createRoot REPLACES #root's children on mount,
-           so nothing here survives into the running app. Inline styles only —
-           styles.css has not applied at first paint — with light-dark() so both
-           palettes match the app's own theme-color tokens. -->
+           an empty shell. In a real browser the head script adds html.js, which
+           hides the copy, so the boot screen while the bundle loads and
+           bootWorkspace() opens IndexedDB is just the themed backdrop — no text
+           flashing on every refresh. React's createRoot REPLACES #root's children
+           on mount, so nothing here survives into the running app. Inline styles
+           only — styles.css has not applied at first paint. -->
       <div
+        id="boot-hero"
         style="
           display: flex;
           min-height: 100vh;
@@ -103,12 +124,11 @@
           justify-content: center;
           box-sizing: border-box;
           padding: 40px 24px;
-          color-scheme: light dark;
           background: light-dark(#f9f9fa, #141417);
           font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
         "
       >
-        <div style="width: 100%; max-width: 34rem; line-height: 1.5">
+        <div id="boot-hero-copy" style="width: 100%; max-width: 34rem; line-height: 1.5">
           <h1
             style="
               margin: 0 0 10px;
