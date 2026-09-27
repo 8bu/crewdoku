@@ -112,6 +112,38 @@ describe('updatePeriodAtom', () => {
     store.set(updatePeriodAtom, { id: 'px', label: 'Renamed', start: PERIOD.start, end: PERIOD.end })
     expect(store.get(scheduleByPeriodAtom).px!.assignments).toBe(before)
   })
+
+  const PERIOD_LEFT: Period = { id: 'pl', label: 'Left', start: '2026-10-01', end: '2026-10-14', setup: 'ready' }
+  const PERIOD_RIGHT: Period = { id: 'pr', label: 'Right', start: '2026-10-15', end: '2026-10-28', setup: 'ready' }
+
+  it('refuses an edit that would share a day with a neighbour, leaving periods and schedule untouched', () => {
+    const store = createStore()
+    store.set(periodsAtom, [PERIOD_LEFT, PERIOD_RIGHT])
+    const assignments = new Map<string, Assignment>([[assignmentKey('alice', '2026-10-14'), assignment('EARLY')]])
+    store.set(scheduleByPeriodAtom, { pl: { assignments, hasSchedule: true } })
+
+    store.set(updatePeriodAtom, { id: 'pl', label: 'Left', start: '2026-10-01', end: '2026-10-15' })
+
+    expect(store.get(periodsAtom)).toEqual([PERIOD_LEFT, PERIOD_RIGHT])
+    expect(store.get(scheduleByPeriodAtom).pl!.assignments).toBe(assignments)
+  })
+
+  it('still allows a length change that stays clear of the neighbours', () => {
+    const store = createStore()
+    store.set(periodsAtom, [PERIOD_LEFT, PERIOD_RIGHT])
+    store.set(updatePeriodAtom, { id: 'pl', label: 'Left', start: '2026-10-08', end: '2026-10-14' })
+    expect(store.get(periodsAtom)[0]).toMatchObject({ start: '2026-10-08', end: '2026-10-14' })
+  })
+
+  it('allows editing one side of a pre-existing overlap, ignoring its own old dates', () => {
+    const store = createStore()
+    const tangled: Period = { id: 'pr', label: 'Right', start: '2026-10-10', end: '2026-10-28', setup: 'ready' }
+    store.set(periodsAtom, [PERIOD_LEFT, tangled])
+
+    store.set(updatePeriodAtom, { id: 'pr', label: 'Right', start: '2026-10-15', end: '2026-10-28' })
+
+    expect(store.get(periodsAtom)[1]).toMatchObject({ start: '2026-10-15', end: '2026-10-28' })
+  })
 })
 
 describe('deletePeriodAtom', () => {

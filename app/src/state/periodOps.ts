@@ -4,7 +4,7 @@ import { scheduleByPeriodAtom } from './schedule'
 import { overridesByPeriodAtom } from './boardOverrides'
 import { dirtyByPeriodAtom } from './settingsDirty'
 import { autoGenerateOnMountAtom, onboardedPeriodsAtom } from './onboarding'
-import { addDaysISO, periodsAtom, selectedPeriodIdAtom } from './shell'
+import { addDaysISO, findOverlap, periodsAtom, selectedPeriodIdAtom } from './shell'
 import { assignmentKey, type Assignment } from '@crewdoku/domain'
 
 /**
@@ -18,12 +18,15 @@ import { assignmentKey, type Assignment } from '@crewdoku/domain'
  * Edits a period in place — label, start, and end (dates were create-time
  * only until this grew out of rename). A blank label keeps the existing one
  * (so a date edit never hinges on a half-typed label field); an inverted
- * range is ignored outright. When the dates actually change and the
- * period already carries a schedule, the assignment matrix is reconciled to
- * the new range: in-range entries survive, dates that left the range are
- * dropped, and newly covered dates fill with OFF — the board renders a
- * complete person × date matrix, never a sparse map. Hand-edit overrides
- * outside the new range are pruned the same way.
+ * range is ignored outright, and so is a range that would overlap another
+ * period — the calendar joins every period into one timeline, so a day may
+ * belong to one period only. The check ignores the period being edited, so an
+ * existing overlap can be edited away one side at a time. When the dates
+ * actually change and the period already carries a schedule, the assignment
+ * matrix is reconciled to the new range: in-range entries survive, dates that
+ * left the range are dropped, and newly covered dates fill with OFF — the
+ * board renders a complete person × date matrix, never a sparse map.
+ * Hand-edit overrides outside the new range are pruned the same way.
  */
 export const updatePeriodAtom = atom(
   null,
@@ -31,6 +34,7 @@ export const updatePeriodAtom = atom(
     const { id, start, end } = payload
     const current = get(periodsAtom).find((p) => p.id === id)
     if (!current || !start || !end || start > end) return
+    if (findOverlap(get(periodsAtom), { start, end }, id)) return
     const label = payload.label.trim() || current.label
 
     set(periodsAtom, (prev) => prev.map((p) => (p.id === id ? { ...p, label, start, end } : p)))

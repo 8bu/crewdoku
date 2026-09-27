@@ -43,19 +43,58 @@ export function addDaysISO(iso: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-export function createPeriod(label: string, start: string, duration: PeriodDuration, setup: PeriodSetup): Period {
+/** The inclusive last day a period of `duration` starting on `start` covers. */
+export function periodEnd(start: string, duration: PeriodDuration): string {
   const days = PERIOD_DURATIONS.find((d) => d.value === duration)!.days
+  return addDaysISO(start, days - 1)
+}
+
+export function createPeriod(label: string, start: string, duration: PeriodDuration, setup: PeriodSetup): Period {
   return {
     id: `period-${crypto.randomUUID()}`,
     label,
     start,
-    end: addDaysISO(start, days - 1),
+    end: periodEnd(start, duration),
     setup,
   }
 }
 
-/** Adds a period and switches the shell to it in one atomic write. */
-export const addPeriodAtom = atom(null, (_get, set, period: Period) => {
+/**
+ * The first period sharing at least one day with `candidate`, or null. Two
+ * periods sharing a day used to be legal but never rendered together; the
+ * calendar joins every period into one timeline, so one day must belong to one
+ * period. `ignoreId` lets an edit be checked against the other periods without
+ * matching itself.
+ */
+export function findOverlap(
+  periods: readonly Period[],
+  candidate: { start: string; end: string },
+  ignoreId?: string,
+): Period | null {
+  return periods.find((p) => p.id !== ignoreId && p.start <= candidate.end && p.end >= candidate.start) ?? null
+}
+
+/** Every period caught in at least one overlap, so the UI can name them all. */
+export function findOverlappingPeriodIds(periods: readonly Period[]): ReadonlySet<string> {
+  const overlapping = new Set<string>()
+  periods.forEach((period, i) => {
+    for (const other of periods.slice(i + 1)) {
+      if (period.start <= other.end && other.start <= period.end) {
+        overlapping.add(period.id)
+        overlapping.add(other.id)
+      }
+    }
+  })
+  return overlapping
+}
+
+/**
+ * Adds a period and switches the shell to it in one atomic write. Refuses a
+ * range that overlaps an existing period — the callers validate first, this is
+ * the guard of last resort.
+ */
+export const addPeriodAtom = atom(null, (get, set, period: Period) => {
+  if (findOverlap(get(periodsAtom), period)) return
   set(periodsAtom, (prev) => [...prev, period])
   set(selectedPeriodIdAtom, period.id)
 })

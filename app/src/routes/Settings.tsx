@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { Info } from '../ui/icons'
 import { tourReplayRequestedAtom } from '../onboarding/tour/productTour'
-import { periodsAtom, selectedPeriodAtom } from '../state/shell'
+import { findOverlap, periodsAtom, selectedPeriodAtom, type Period } from '../state/shell'
 import { updatePeriodAtom } from '../state/periodOps'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
@@ -87,6 +87,10 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
   const [, setOverridesByPeriod] = useAtom(overridesByPeriodAtom)
 
   const [wizardOpen, setWizardOpen] = useState(false)
+  // The period whose dates the typed range would collide with; the atom would
+  // refuse the edit, so the panel says why instead of leaving a keystroke that
+  // silently does nothing.
+  const [periodClash, setPeriodClash] = useState<Period | null>(null)
   const analyticsOn = useAnalyticsEnabled()
   const navigate = useNavigate()
   const requestTourReplay = useSetAtom(tourReplayRequestedAtom)
@@ -260,6 +264,15 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
     // (surviving cells keep their codes, new dates fill OFF, out-of-range
     // hand edits are pruned) — BoardGrid no longer wipes on a range change.
     if (!start || !end || start > end) return
+    // Periods may not share a day, so a colliding range is refused here (the
+    // atom repeats the check) and the clash is named below. The inputs stay
+    // bound to the stored dates, so the refused value never sticks.
+    const clash = findOverlap(periods, { start, end }, periodId)
+    if (clash) {
+      setPeriodClash(clash)
+      return
+    }
+    setPeriodClash(null)
     updatePeriod({ id: periodId, label: period.label, start, end })
     setDirty(true)
   }
@@ -283,7 +296,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex max-w-[880px] flex-col gap-5 px-4 py-5">
-          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+          <div className="-mx-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
           <section className="flex flex-col gap-3">
             <div>
               <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.period.title')}</h2>
@@ -316,10 +329,19 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
                 />
               </div>
             </div>
+            {periodClash && (
+              <p className="m-0 text-xs text-warning">
+                {t('period.overlapFormError', {
+                  label: periodClash.label,
+                  start: periodClash.start,
+                  end: periodClash.end,
+                })}
+              </p>
+            )}
           </section>
           </div>
 
-          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+          <div className="-mx-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
           <ShiftsTable
             shifts={shifts}
             onAdd={handleAddShift}
@@ -334,7 +356,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onOpenWizard={() => setWizardOpen(true)}
           />
           </div>
-          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+          <div className="-mx-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
           <CoverageTable
             shifts={shifts}
             table={coverage}
@@ -348,7 +370,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
           {/* No measurement ID means nothing is collected, so there is nothing
               to switch off — a dead control would be worse than none. */}
           {analyticsConfigured() && (
-            <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+            <div className="-mx-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
             <section className="flex flex-col gap-3">
               <div>
                 <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.privacy.title')}</h2>
@@ -383,7 +405,7 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
 
           {/* The tour runs on the board, so this only raises the request and
               sends the person there; the board's own hook consumes it. */}
-          <div className="rounded-lg border border-base-300 bg-base-100 p-4 md:p-5">
+          <div className="-mx-4 px-4 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
             <section className="flex flex-col gap-3">
               <div>
                 <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('tour.done.title')}</h2>

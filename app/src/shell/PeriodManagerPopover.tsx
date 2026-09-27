@@ -1,4 +1,4 @@
-import { X, Check, Plus } from '../ui/icons'
+import { X, Check, Plus, TriangleAlert } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -7,6 +7,9 @@ import {
   addDaysISO,
   addPeriodAtom,
   createPeriod,
+  findOverlap,
+  findOverlappingPeriodIds,
+  periodEnd,
   periodsAtom,
   selectedPeriodIdAtom,
   type Period,
@@ -97,8 +100,12 @@ export function PeriodManagerBody({ onClose }: { onClose: () => void }) {
   const [creating, setCreating] = useState(false)
 
   const sortedPeriods = [...periods].sort((a, b) => a.start.localeCompare(b.start))
+  const overlappingIds = findOverlappingPeriodIds(periods)
 
   function handleCreate(label: string, start: string, duration: PeriodDuration, setup: PeriodSetup) {
+    // The form refuses first; this keeps the atom's refusal from silently
+    // dropping a period if the two ever disagree.
+    if (findOverlap(periods, { start, end: periodEnd(start, duration) })) return
     const period = createPeriod(label, start, duration, setup)
     addPeriod(period)
     // The duration is the planner's own choice, made here; the periods a
@@ -109,12 +116,32 @@ export function PeriodManagerBody({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {overlappingIds.size > 0 && (
+        <div className="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning/15 px-2.5 py-2 text-xs">
+          <p className="m-0 flex items-center gap-1.5 font-semibold text-base-content">
+            <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {t('period.overlapTitle')}
+          </p>
+          <ul className="m-0 flex list-none flex-col gap-0.5 p-0 tabular-nums text-base-content/70">
+            {sortedPeriods
+              .filter((period) => overlappingIds.has(period.id))
+              .map((period) => (
+                <li key={period.id}>
+                  {period.label} · {period.start} → {period.end}
+                </li>
+              ))}
+          </ul>
+          <p className="m-0 text-base-content/60">{t('period.overlapHint')}</p>
+        </div>
+      )}
+
       <ul className="m-0 flex max-h-64 list-none flex-col gap-0.5 overflow-y-auto p-0">
         {sortedPeriods.map((period) =>
           editingId === period.id ? (
             <EditPeriodForm
               key={period.id}
               period={period}
+              periods={periods}
               onSave={(label, start, end) => {
                 updatePeriod({ id: period.id, label, start, end })
                 setEditingId(null)
@@ -259,13 +286,17 @@ function PeriodRow({
  * end are all editable after creation (dates used to be create-time only).
  * Escape cancels the edit without closing the whole surface — the form
  * swallows the keydown before the outside handler's window listener sees it.
+ * A range that would overlap another period is refused here, naming the
+ * period it clashes with, so the atom's own refusal stays a backstop.
  */
 function EditPeriodForm({
   period,
+  periods,
   onSave,
   onCancel,
 }: {
   period: Period
+  periods: Period[]
   onSave: (label: string, start: string, end: string) => void
   onCancel: () => void
 }) {
@@ -275,7 +306,9 @@ function EditPeriodForm({
   const [end, setEnd] = useState(period.end)
 
   const trimmedLabel = label.trim()
-  const valid = trimmedLabel.length > 0 && start.length > 0 && end.length > 0 && start <= end
+  const inOrder = trimmedLabel.length > 0 && start.length > 0 && end.length > 0 && start <= end
+  const clash = inOrder ? findOverlap(periods, { start, end }, period.id) : null
+  const valid = inOrder && clash === null
 
   return (
     <li
@@ -310,6 +343,11 @@ function EditPeriodForm({
           className="min-w-0 flex-1 tabular-nums"
         />
       </div>
+      {clash && (
+        <p className="m-0 text-xs text-warning">
+          {t('period.overlapFormError', { label: clash.label, start: clash.start, end: clash.end })}
+        </p>
+      )}
       <div className="flex justify-end gap-2">
         <button
           type="button"
@@ -382,6 +420,9 @@ function CreatePeriodForm({
     month: t('chrome.period.duration.month'),
   }
   const latestEnd = periods.reduce((max, p) => (p.end > max ? p.end : max), periods[0]?.end ?? '')
+  // Default to the day after the latest period ends, so the prefilled range
+  // never overlaps one — the manager can still pick an earlier start, which is
+  // why the form validates below.
   const defaultStart = latestEnd ? addDaysISO(latestEnd, 1) : new Date().toISOString().slice(0, 10)
 
   const [label, setLabel] = useState('')
@@ -390,9 +431,11 @@ function CreatePeriodForm({
   const [mode, setMode] = useState<StartMode>('ready')
 
   const trimmedLabel = label.trim()
+  const clash = start ? findOverlap(periods, { start, end: periodEnd(start, duration) }) : null
+  const valid = trimmedLabel.length > 0 && start.length > 0 && clash === null
 
   function handleCreate() {
-    if (!trimmedLabel) return
+    if (!valid) return
     onCreate(trimmedLabel, start, duration, mode)
   }
 
@@ -418,6 +461,11 @@ function CreatePeriodForm({
           {t('chrome.periodManager.startsField')}
         </label>
         <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+        {clash && (
+          <p className="m-0 text-xs text-warning">
+            {t('period.overlapFormError', { label: clash.label, start: clash.start, end: clash.end })}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -462,7 +510,7 @@ function CreatePeriodForm({
         </button>
         <button
           type="button"
-          disabled={!trimmedLabel}
+          disabled={!valid}
           onClick={handleCreate}
           className="btn btn-primary btn-xs min-h-11 md:min-h-0"
         >

@@ -1,8 +1,8 @@
-import { ChevronDown } from '../ui/icons'
+import { ChevronDown, TriangleAlert } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useRef, useState } from 'react'
 import { useAtomValue } from 'jotai'
-import { selectedPeriodAtom } from '../state/shell'
+import { findOverlappingPeriodIds, periodsAtom, selectedPeriodAtom } from '../state/shell'
 import { BottomSheet } from '../ui/BottomSheet'
 import { useIsNarrow } from '../ui/useIsNarrow'
 import { PeriodManagerBody, PeriodManagerPopover } from './PeriodManagerPopover'
@@ -24,8 +24,14 @@ export function PeriodSelector() {
   const t = useT()
   const isNarrow = useIsNarrow()
   const selected = useAtomValue(selectedPeriodAtom)
+  const periods = useAtomValue(periodsAtom)
   const [openRect, setOpenRect] = useState<{ left: number; bottom: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+
+  // Overlapping periods predate the rule (an old workspace file can still hold
+  // two periods sharing days); the manager lists them in full, this is just
+  // the cue that something there needs fixing.
+  const overlaps = findOverlappingPeriodIds(periods).size > 0
 
   return (
     <div className="flex min-w-0 items-center">
@@ -50,6 +56,16 @@ export function PeriodSelector() {
           </>
         ) : (
           <span className="truncate text-base-content/60">{t('chrome.periodSelector.none')}</span>
+        )}
+        {overlaps && (
+          <span
+            role="img"
+            aria-label={t('period.overlapSelectorLabel')}
+            title={t('period.overlapSelectorLabel')}
+            className="shrink-0 text-warning"
+          >
+            <TriangleAlert className="h-3.5 w-3.5" />
+          </span>
         )}
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-base-content/40" />
       </button>
