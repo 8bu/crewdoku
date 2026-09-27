@@ -23,13 +23,13 @@ const THEME_ICONS: Record<ThemeId, ReactNode> = {
  * it. Layout-neutral: like `LocaleSwitcher` it renders only the control, so
  * each host owns its own spacing and muted tone.
  *
- * Only the surface forks on touch: on desktop the trigger is a compact icon
- * button (the label lives in its tooltip and accessible name, the panel keeps
- * full labels), so it can share one row with its host's other chrome; on
- * mobile the same options open as full-width rows in a `SheetSelect`'s bottom
- * sheet, under the thumb.
+ * Only the menu forks on touch: the trigger is the same compact icon button
+ * on every screen (the label lives in its tooltip and accessible name), and on
+ * a phone its options open as full-width rows in a `SheetSelect`'s bottom
+ * sheet, under the thumb. `variant="sheet"` is for a host that lists settings
+ * as labelled rows (the More sheet): there the trigger is a labelled chip.
  */
-export function ThemeSwitcher({ className }: { className?: string }) {
+export function ThemeSwitcher({ className, variant = 'compact' }: { className?: string; variant?: 'compact' | 'sheet' }) {
   const [pref, setPref] = useAtom(themeAtom)
   const t = useT()
 
@@ -62,6 +62,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
         title={t('theme.aria')}
         ariaLabel={t('theme.aria')}
         className={className}
+        display={variant === 'compact' ? THEME_ICONS[pref] : undefined}
       />
     )
   }

@@ -60,8 +60,8 @@ export function AdvancedRules({
   }
 
   return (
-    <details className="group overflow-hidden rounded-lg border border-base-300 bg-base-100">
-      <summary className="flex min-h-11 list-none cursor-pointer select-none items-center justify-between px-4 py-3 text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 md:min-h-0 [&::-webkit-details-marker]:hidden">
+    <details className="group -mx-4 overflow-hidden border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:px-0 md:pb-0">
+      <summary className="flex min-h-11 list-none cursor-pointer select-none items-center justify-between px-0 py-3 text-sm font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 md:min-h-0 md:px-4 [&::-webkit-details-marker]:hidden">
         <span>{t('settings.advanced.title')}</span>
         <span
           className="text-base-content/40 transition-transform duration-150 group-open:rotate-90"
@@ -70,7 +70,7 @@ export function AdvancedRules({
           ›
         </span>
       </summary>
-      <div className="flex flex-col gap-5 border-t border-base-300 p-4">
+      <div className="-mx-4 flex flex-col gap-5 border-t border-base-300 p-4 md:mx-0">
         <div>
           <h3 className="m-0 mb-2 text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.advanced.hardRules')}</h3>
           <ul className="m-0 flex list-none flex-col gap-1.5 p-0">

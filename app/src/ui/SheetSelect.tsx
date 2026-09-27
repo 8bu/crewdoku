@@ -7,14 +7,17 @@ export type SheetSelectOption = { value: string; label: string; icon?: ReactNode
 /**
  * The touch presentation of `Select`. A trigger-anchored dropdown is a corner
  * target: on a phone the menu opens under the thumb and its rows are the
- * desktop ones. So the same option *shape* becomes a compact chip, and the
- * chip opens a `BottomSheet` where every option is a full-width row at the
- * 44px touch floor — chosen by the thumb that just tapped the chip.
+ * desktop ones. So the options open in a `BottomSheet` where every option is a
+ * full-width row at the 44px touch floor — chosen by the thumb that just
+ * tapped the trigger.
  *
- * Callers branch on `useIsNarrow()` and render this instead of `Select`; the
- * chip is never used above `md`, so its geometry is touch-first. `w-full` +
- * `min-h-11` is the contract with a host grid: a chip fills its own cell and
- * never overflows it.
+ * Callers branch on `useIsNarrow()` and render this instead of `Select`. The
+ * trigger has two shapes, as `Select`'s does:
+ * - default: a labelled chip, `w-full` + `min-h-11`, which fills its own cell
+ *   in a host grid (the More sheet's settings rows) and never overflows it;
+ * - `display`: the same compact, borderless trigger `Select` draws for that
+ *   prop, grown to a 44px target — so a control that is an icon on desktop
+ *   stays an icon on a phone instead of turning into a different widget.
  */
 export function SheetSelect({
   value,
@@ -23,6 +26,7 @@ export function SheetSelect({
   title,
   ariaLabel,
   className = '',
+  display,
 }: {
   value: string
   onChange: (value: string) => void
@@ -30,6 +34,8 @@ export function SheetSelect({
   title: ReactNode
   ariaLabel: string
   className?: string
+  /** Compact trigger content (e.g. an icon alone); the label moves into the accessible name. */
+  display?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const selected = options.find((o) => o.value === value)
@@ -38,15 +44,23 @@ export function SheetSelect({
     <>
       <button
         type="button"
-        aria-label={ariaLabel}
+        aria-label={display !== undefined && selected ? `${ariaLabel}: ${selected.label}` : ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className={`flex min-h-11 w-full items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 text-sm text-base-content transition-colors hover:bg-base-200 ${className}`}
+        className={
+          display !== undefined
+            ? `inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-md px-2 transition-colors active:bg-base-300/50 ${className}`
+            : `flex min-h-11 w-full items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 text-sm text-base-content transition-colors hover:bg-base-200 ${className}`
+        }
       >
-        {selected?.icon}
-        <span className="min-w-0 truncate">{selected?.label}</span>
-        <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
+        {display ?? (
+          <>
+            {selected?.icon}
+            <span className="min-w-0 truncate">{selected?.label}</span>
+            <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
+          </>
+        )}
       </button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={title} ariaLabel={ariaLabel}>

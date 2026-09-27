@@ -139,7 +139,7 @@ export function GenerateShiftsWizard({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-[1px] md:items-center md:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="wizard-title"
@@ -151,7 +151,7 @@ export function GenerateShiftsWizard({
     >
       <div
         ref={modalRef}
-        className="cd-generate-shifts-wizard flex max-h-[90dvh] w-full max-w-[540px] flex-col gap-4 overflow-y-auto overscroll-contain rounded-lg border border-base-300 bg-base-100 p-4 shadow-lg md:max-h-none md:overflow-visible md:p-5"
+        className="cd-generate-shifts-wizard flex max-h-[90dvh] w-full flex-col gap-4 overflow-y-auto overscroll-contain rounded-t-2xl border border-x-0 border-b-0 border-base-300 bg-base-100 px-4 pt-4 pb-[calc(1rem_+_env(safe-area-inset-bottom))] shadow-lg md:max-h-none md:max-w-[540px] md:overflow-visible md:rounded-lg md:border-x md:border-b md:p-5"
       >
         <div className="flex items-start justify-between gap-3 border-b border-base-300/80 pb-3">
           <div>

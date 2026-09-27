@@ -37,8 +37,8 @@ export function WorkspaceCreate() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-base-200 py-4 md:h-full md:p-6">
-      <div className="w-full max-w-[420px] rounded-lg border border-base-300 bg-base-100 p-5 shadow-lg md:p-8">
+    <div className="flex flex-1 items-center justify-center py-4 md:h-full md:bg-base-200 md:p-6">
+      <div className="w-full max-w-[420px] md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-8 md:shadow-lg">
         <Logo className="mb-6 h-7 w-auto" />
         <h1 className="m-0 text-lg font-semibold tracking-tight text-base-content">
           {t('workspace.create.title')}

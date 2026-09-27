@@ -115,11 +115,13 @@ const FLAGS: Record<LocaleId, ReactNode> = {
  * nav-rail footer, the pre-shell entry overlay) owns its own spacing and muted
  * tone.
  *
- * Only the surface forks on touch, exactly as in `ThemeSwitcher`: on desktop a
- * compact flag + language-code trigger whose panel lists the endonyms, below
- * `md` a chip that opens a full-width bottom-sheet list of them.
+ * Only the menu forks on touch, exactly as in `ThemeSwitcher`: the trigger is
+ * the same compact flag + language-code button on every screen, whose options
+ * open in a panel on desktop and a full-width bottom-sheet list below `md`.
+ * `variant="sheet"` gives a labelled chip for hosts that list settings as rows
+ * (the More sheet).
  */
-export function LocaleSwitcher({ className }: { className?: string }) {
+export function LocaleSwitcher({ className, variant = 'compact' }: { className?: string; variant?: 'compact' | 'sheet' }) {
   const [locale, setLocale] = useAtom(localeAtom)
   const t = useT()
 
@@ -137,6 +139,12 @@ export function LocaleSwitcher({ className }: { className?: string }) {
       track('locale_changed', { locale: next.value })
     }
   }
+  const compact = (
+    <span className="flex items-center gap-1.5 text-2xs font-medium tracking-wide">
+      {FLAGS[locale]}
+      {locale.toUpperCase()}
+    </span>
+  )
 
   if (isNarrow) {
     return (
@@ -147,6 +155,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
         title={t('locale.aria')}
         ariaLabel={t('locale.aria')}
         className={className}
+        display={variant === 'compact' ? compact : undefined}
       />
     )
   }
@@ -156,12 +165,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
       value={locale}
       onChange={handleChange}
       options={options}
-      display={
-        <span className="flex items-center gap-1.5 text-2xs font-medium tracking-wide">
-          {FLAGS[locale]}
-          {locale.toUpperCase()}
-        </span>
-      }
+      display={compact}
       align="end"
       ariaLabel={t('locale.aria')}
     />

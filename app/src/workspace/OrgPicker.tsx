@@ -96,7 +96,7 @@ export function OrgPicker() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-base-200 py-4 md:h-full md:p-6">
+    <div className="flex flex-1 flex-col items-center justify-center py-4 md:h-full md:bg-base-200 md:p-6">
       <Logo className="mb-6 h-8 w-auto" />
 
       {firstRun && (
@@ -115,7 +115,7 @@ export function OrgPicker() {
       )}
 
       {mode === 'create' || firstRun ? (
-        <div className="w-full max-w-[420px] rounded-lg border border-base-300 bg-base-100 p-5 shadow-lg md:p-8">
+        <div className="w-full max-w-[420px] md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-8 md:shadow-lg">
           <h1 className="m-0 text-lg font-semibold tracking-tight text-base-content">
             {firstRun ? t('workspace.org.createFirstTitle') : t('workspace.org.newTitle')}
           </h1>
@@ -185,10 +185,12 @@ export function OrgPicker() {
                   <span className="w-full truncate text-sm text-base-content/80">{o.name}</span>
                 </button>
                 {/*
-                  One button, two presentations. On touch the hover-revealed
-                  corner X is unreachable and its `title` tooltip never shows,
-                  so it becomes an in-flow, labelled row under the tile; `md:`
-                  puts the 24px corner chip back exactly as it was.
+                  The same corner X on every screen, so a phone doesn't get a
+                  different widget. On touch there is no hover to reveal it and
+                  no tooltip to name it, so it is always shown, a little larger,
+                  with an invisible 44px hit area around it (`before:`); the
+                  confirm prompt names the action before anything is deleted.
+                  `md:` restores the hover-revealed 24px chip.
                 */}
                 <button
                   type="button"
@@ -196,10 +198,9 @@ export function OrgPicker() {
                   aria-label={t('workspace.org.delete')}
                   title={t('workspace.org.delete')}
                   onClick={() => void remove(o.id)}
-                  className="flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-base-300 text-2xs text-base-content/50 transition-all duration-150 active:bg-base-200 md:absolute md:-right-1 md:-top-1 md:h-6 md:min-h-0 md:w-6 md:rounded-full md:bg-base-100 md:text-xs md:opacity-70 md:hover:border-error md:hover:text-error md:hover:opacity-100 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:focus-visible:outline-none md:focus-visible:ring-2 md:focus-visible:ring-error/40"
+                  className="absolute -right-0.5 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-base-300 bg-base-100 text-base-content/60 shadow-sm transition-all duration-150 before:absolute before:-inset-2 before:content-[''] active:bg-base-200 md:-right-1 md:-top-1 md:h-6 md:w-6 md:text-xs md:opacity-70 md:shadow-none md:before:hidden md:hover:border-error md:hover:text-error md:hover:opacity-100 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:focus-visible:outline-none md:focus-visible:ring-2 md:focus-visible:ring-error/40"
                 >
                   <X className="h-4 w-4 shrink-0" />
-                  <span className="md:hidden">{t('workspace.org.delete')}</span>
                 </button>
               </div>
             ))}

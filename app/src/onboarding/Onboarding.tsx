@@ -1,4 +1,4 @@
-import { Check, Sparkles, TriangleAlert, Upload } from '../ui/icons'
+import { Check, ChevronLeft, Sparkles, TriangleAlert, Upload } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { csvErrorText } from '../i18n/csvErrors'
 import { track } from '../analytics'
@@ -112,6 +112,19 @@ function ShapeCard({ tmpl, selected, onPick }: { tmpl: WorkspaceTemplate; select
     </button>
   )
 }
+
+/**
+ * A step's actions. On a phone they are one full-bleed row pinned to the
+ * bottom of the scroller, so the next action never scrolls out of reach;
+ * `-mb-4` lets it cover the column's bottom padding so nothing shows beneath
+ * it. Desktop keeps the inline row after the content.
+ */
+const actionBar =
+  'sticky bottom-0 -mx-4 -mb-4 mt-auto flex items-center gap-2 border-t border-base-300 bg-base-100 px-4 py-3 md:static md:mx-0 md:mb-0 md:mt-0 md:gap-3 md:border-0 md:bg-transparent md:p-0'
+
+/** Back: a 44px chevron on a phone (leaving the row to the step's real
+ * actions), the text button on desktop. */
+const backBtn = 'btn btn-ghost btn-sm min-h-11 w-11 flex-none px-0 md:min-h-0 md:w-auto md:px-3'
 
 /**
  * First-run wizard for the workspace (wayfinder ticket 14): pick a company
@@ -265,7 +278,10 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[720px] p-4 md:p-8">
+        {/* Phone: a full-height column, so each step's action bar can sit at
+            the bottom (`mt-auto`) and stay pinned there (`sticky`) while a
+            long paste scrolls under it. Desktop keeps the plain flow. */}
+        <div className="mx-auto flex min-h-full max-w-[720px] flex-col p-4 md:block md:min-h-0 md:p-8">
           {step === 'shape' && (
             <div className="flex flex-col gap-5">
               <div>
@@ -289,7 +305,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
           )}
 
           {step === 'people' && template && (
-            <div className="flex flex-col gap-5" data-tour="wizard-people">
+            <div className="flex flex-1 flex-col gap-5" data-tour="wizard-people">
               <div>
                 <h2
                   ref={headingRef}
@@ -341,7 +357,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                       </>
                     )}
                   </p>
-                  <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                  <div className="-mx-2 flex flex-wrap items-center gap-2 md:mx-0">
                     <button
                       type="button"
                       className="btn btn-ghost btn-xs min-h-11 gap-1.5 md:min-h-0"
@@ -392,17 +408,19 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 <p className="flex items-start gap-1.5 text-xs text-warning"><TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{t(`onbex.template.${template.id}.hint`)}</span></p>
               )}
 
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <div className={actionBar}>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  className={backBtn}
+                  aria-label={t('onbex.btn.back')}
                   onClick={() => setStep('shape')}
                 >
-                  {t('onbex.btn.back')}
+                  <ChevronLeft className="h-5 w-5 md:hidden" aria-hidden="true" />
+                  <span className="hidden md:inline">{t('onbex.btn.back')}</span>
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  className="btn btn-primary btn-sm min-h-11 flex-1 md:min-h-0 md:flex-none"
                   disabled={rows.length === 0}
                   onClick={() => setStep('ready')}
                 >
@@ -413,7 +431,7 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
           )}
 
           {step === 'ready' && template && (
-            <div className="flex flex-col gap-5" data-tour="wizard-generate">
+            <div className="flex flex-1 flex-col gap-5" data-tour="wizard-generate">
               <div>
                 <h2
                   ref={headingRef}
@@ -449,27 +467,33 @@ export function Onboarding({ period, initial }: { period: Period; initial: Board
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <div className={actionBar}>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  className={backBtn}
+                  aria-label={t('onbex.btn.back')}
                   onClick={() => setStep('people')}
                 >
-                  {t('onbex.btn.back')}
+                  <ChevronLeft className="h-5 w-5 md:hidden" aria-hidden="true" />
+                  <span className="hidden md:inline">{t('onbex.btn.back')}</span>
                 </button>
+                {/* Phone: a short outlined "Later" left of the primary, which
+                    takes the rest of the row. Desktop: the quiet ghost after it. */}
                 <button
                   type="button"
-                  className="btn btn-primary min-h-11 w-full md:min-h-0 md:w-auto"
-                  onClick={() => finish(rows, true)}
-                >
-                  {t('onbex.ready.generate')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm min-h-11 w-full md:min-h-0 md:w-auto"
+                  className="btn btn-ghost btn-sm min-h-11 flex-none max-md:h-auto max-md:border-base-300 max-md:px-4 max-md:text-sm md:order-last md:min-h-0"
                   onClick={() => finish(rows, false)}
                 >
-                  {t('onbex.ready.skip')}
+                  <span className="md:hidden">{t('onbex.ready.skipShort')}</span>
+                  <span className="hidden md:inline">{t('onbex.ready.skip')}</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary min-h-11 flex-1 max-md:h-auto max-md:leading-tight md:min-h-0 md:flex-none"
+                  onClick={() => finish(rows, true)}
+                >
+                  <span className="md:hidden">{t('onbex.ready.generateShort')}</span>
+                  <span className="hidden md:inline">{t('onbex.ready.generate')}</span>
                 </button>
               </div>
             </div>
