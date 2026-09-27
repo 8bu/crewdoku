@@ -31,7 +31,12 @@ app map must plan around.
    Entities, calendar, the schedule shape, and the independent oracle:
    `checkSchedule` reports H1/H2/H3/H5 violations plus the eligibility
    capability flag (there is no H6 rule); `diffSchedules` is what the Ledger
-   computes changes from.
+   computes changes from. Rest (H3) is the one rule that looks past a
+   period's edges: an optional `ScheduleBoundary` (the neighbouring
+   periods' shifts on `start - 1` and `end + 1`) on `WorkspaceSlice.boundary`
+   and `ModelInput.boundary` makes the checker flag, and the solver avoid, a
+   first or last day too close to the neighbouring shift. Weekly hours stay
+   per period.
 
 ## What the app wires where
 

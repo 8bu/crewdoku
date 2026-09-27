@@ -4,6 +4,7 @@ import {
   type ISODate,
   type Person,
   type Schedule,
+  type ScheduleBoundary,
   type ShiftDef,
   type SolveSettings,
   type Team,
@@ -20,6 +21,12 @@ export type ModelInputParts = {
   dates: readonly ISODate[]
   /** The board before this solve; pinned entries are pins the solver must keep. */
   current: Schedule
+  /**
+   * The shifts each person works on the days just outside the period, from the
+   * neighbouring periods — the rest rule's only cross-period input. Absent
+   * means the period is checked on its own.
+   */
+  boundary?: ScheduleBoundary
 }
 
 /**
@@ -42,5 +49,6 @@ export function buildModelInput(parts: ModelInputParts): ModelInput {
     period: { start, end },
     current: parts.current,
     teams: parts.teams,
+    boundary: parts.boundary,
   }
 }

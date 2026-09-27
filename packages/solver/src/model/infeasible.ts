@@ -10,6 +10,7 @@ import type {
 } from '@crewdoku/domain'
 import {
   activePeople,
+  addDays,
   coverageBandFor,
   eachDate,
   getAssignment,
@@ -538,6 +539,141 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
             })
           }
         }
+      }
+    }
+  }
+
+  // =========================================================================
+  // e. REST LOCK ACROSS A PERIOD EDGE
+  // =========================================================================
+  // H3 also checks the period's first and last day against the neighbouring
+  // schedules (boundary). When the only people who could cover a shift on that
+  // day are blocked by the edge rest, the coverage is unreachable: name the
+  // edge shift as the cause instead of falling back to a nameless conflict.
+  if (hardRules.enabled.H1 && hardRules.enabled.H3 && input.boundary !== undefined) {
+    const minRest = hardRules.minRestHours
+    const firstIso = dates[0]
+    const lastIso = dates[dates.length - 1]
+
+    const edges: Array<{
+      codes: Readonly<Record<string, ShiftCode>>
+      /** In-period day the coverage sits on. */
+      iso: ISODate
+      /** Day just outside the period whose shift constrains `iso`. */
+      edgeIso: ISODate
+      /** `before` = the neighbour works first, `after` = the neighbour works last. */
+      side: 'before' | 'after'
+    }> = []
+    if (firstIso !== undefined) {
+      edges.push({
+        codes: input.boundary.before,
+        iso: firstIso,
+        edgeIso: addDays(firstIso, -1),
+        side: 'before',
+      })
+    }
+    if (lastIso !== undefined) {
+      edges.push({
+        codes: input.boundary.after,
+        iso: lastIso,
+        edgeIso: addDays(lastIso, 1),
+        side: 'after',
+      })
+    }
+
+    for (const edge of edges) {
+      const dow = weekdayOf(edge.iso)
+
+      for (const shift of shifts) {
+        const band = coverageBandFor(input.coverage, shift.code, edge.iso, dow)
+        if (band.min < 1) continue
+
+        let availableCount = 0
+        let blockedCount = 0
+        let worst: { code: ShiftCode; gap: number } | null = null
+
+        for (const person of active) {
+          const evalResult = evaluatePersonForShift(person, shift.code, edge.iso, dow, input)
+          if (!evalResult.canWork) continue
+
+          // A pinned cell is the planner's decision: it counts as covered and
+          // the model reads no edge rows for it (the checker flags it instead).
+          if (getAssignment(input.current, person.id, edge.iso).pinned) {
+            availableCount++
+            continue
+          }
+
+          const edgeCode = edge.codes[person.id]
+          if (edgeCode === undefined) {
+            availableCount++
+            continue
+          }
+
+          const rest =
+            edge.side === 'before'
+              ? restHoursBetween(shifts, edgeCode, shift.code)
+              : restHoursBetween(shifts, shift.code, edgeCode)
+
+          if (rest === null || rest >= minRest) {
+            availableCount++
+            continue
+          }
+
+          blockedCount++
+          if (worst === null || rest > worst.gap) {
+            worst = { code: edgeCode, gap: rest }
+          }
+        }
+
+        // Every missing person is edge-blocked: only a lower rest minimum can
+        // free the coverage. `worst` is the largest gap, so relaxing to it
+        // frees all of them at once.
+        if (worst === null || availableCount >= band.min) continue
+        if (availableCount + blockedCount < band.min) continue
+
+        const blocked = worst
+        const coreId = `rest-lock-${blocked.code}-${edge.edgeIso}-${shift.code}-${edge.iso}`
+        const message = `${blocked.code} on ${edge.edgeIso} followed by ${shift.code} on ${edge.iso} gives only ${blocked.gap} hours of rest, but minimum rest is ${minRest} hours.`
+
+        const label = `Lower minimum rest to ${blocked.gap} hours`
+        const description = `Lower minimum rest between shifts from ${minRest} hours to ${blocked.gap} hours.`
+
+        conflictCore.push({
+          id: coreId,
+          ruleIds: ['H1', 'H3'],
+          message,
+          kind: 'restLock',
+          params: {
+            shiftA: blocked.code,
+            dateA: edge.edgeIso,
+            shiftB: shift.code,
+            dateB: edge.iso,
+            gap: blocked.gap,
+            minRest,
+          },
+        })
+
+        relaxations.push({
+          id: `relax-${coreId}`,
+          label,
+          description,
+          kind: 'restLock',
+          params: { from: minRest, to: blocked.gap },
+          apply(oldInput: ModelInput): ModelInput {
+            // The spread keeps `boundary`: lowering minRestHours is what frees
+            // the edge constraint, the neighbouring shifts themselves stand.
+            return {
+              ...oldInput,
+              settings: {
+                ...oldInput.settings,
+                hardRules: {
+                  ...oldInput.settings.hardRules,
+                  minRestHours: blocked.gap,
+                },
+              },
+            }
+          },
+        })
       }
     }
   }

@@ -47,6 +47,21 @@ export function getAssignment(schedule: Schedule, personId: string, iso: ISODate
   return schedule.get(assignmentKey(personId, iso)) ?? OFF_ASSIGNMENT
 }
 
+/**
+ * The shift each person works on the day just outside a period, read from the
+ * neighbouring period: `before` is `period.start - 1`, `after` is
+ * `period.end + 1`, both `personId -> code`. A missing person (or `OFF`)
+ * means no shift there, so no rest constraint across that edge. Rest (H3) is
+ * the only rule that looks across a period edge; weekly hours stay per period.
+ */
+export type ScheduleBoundary = {
+  before: Readonly<Record<string, ShiftCode>>
+  after: Readonly<Record<string, ShiftCode>>
+}
+
+/** No neighbouring shifts on either side — a period checked on its own. */
+export const EMPTY_BOUNDARY: ScheduleBoundary = Object.freeze({ before: Object.freeze({}), after: Object.freeze({}) })
+
 /** A complete all-OFF matrix for every person × date of the range. */
 export function emptySchedule(people: readonly Person[], start: ISODate, end: ISODate): Schedule {
   const schedule: Schedule = new Map()

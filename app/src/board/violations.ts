@@ -7,10 +7,22 @@
  * H1 (coverage) lives in `coverage.ts`, H4 (one shift/day) can't be broken
  * by construction — this module covers H2 (max hours/week), H3 (rest), H5
  * (time off/unavailability), and H6 (eligibility), each toggle-gated by
- * `enabled` the same way Settings' Advanced door controls them.
+ * `enabled` the same way Settings' Advanced door controls them. H3 also
+ * looks across the period's edges, via the caller-supplied `boundary`.
  */
 
-import { assignmentKey, paidHours, weekIndexOf, type Assignment, type Person, type ShiftDef } from '@crewdoku/domain'
+import {
+  addDays,
+  assignmentKey,
+  EMPTY_BOUNDARY,
+  paidHours,
+  weekdayOf,
+  weekIndexOf,
+  type Assignment,
+  type Person,
+  type ScheduleBoundary,
+  type ShiftDef,
+} from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 import { shiftSpan } from './shiftDuration'
 import type { HardRuleId } from '@crewdoku/domain'
@@ -64,6 +76,7 @@ export function partitionViolationsForBoard(
 }
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** Hours between one day's shift ending and the next day's shift starting. `null` if either day is off. */
 function restHours(shifts: ShiftDef[], prevCode: string, nextCode: string): number | null {
@@ -75,6 +88,12 @@ function restHours(shifts: ShiftDef[], prevCode: string, nextCode: string): numb
 
 function dateLabel(date: BoardDate): string {
   return `${WEEKDAY_SHORT[date.weekday]} ${date.monthShort} ${date.dayOfMonth}`
+}
+
+/** `dateLabel` for a day just outside the period, which has no `BoardDate` — same shape, off the ISO. */
+function outsideDateLabel(iso: string): string {
+  const month = Number(iso.slice(5, 7))
+  return `${WEEKDAY_SHORT[weekdayOf(iso)]} ${MONTH_SHORT[month - 1]} ${Number(iso.slice(8, 10))}`
 }
 
 function shiftLabel(code: string): string {
@@ -100,6 +119,7 @@ export function detectViolations(
   enabled: Record<HardRuleId, boolean>,
   maxHoursPerWeek: number,
   minRestHours: number,
+  boundary: ScheduleBoundary = EMPTY_BOUNDARY,
 ): Violation[] {
   const violations: Violation[] = []
   const periodStart = dates[0]
@@ -135,16 +155,36 @@ export function detectViolations(
         })
       }
 
-      if (enabled.H3 && prevDate && prev) {
-        const gap = restHours(shifts, prev.code, assignment.code)
-        if (gap !== null && gap < minRestHours) {
-          violations.push({
-            id: `rest|${assignmentKey(person.id, date.iso)}`,
-            kind: 'rest',
-            personId: person.id,
-            dateIso: date.iso,
-            message: `${person.name} has only ${formatHours(gap)} rest between ${dateLabel(prevDate)} ${shiftLabel(prev.code)} and ${dateLabel(date)} ${shiftLabel(assignment.code)}`,
-          })
+      if (enabled.H3) {
+        // H3 crosses period edges (weekly hours don't): the first day's rest is
+        // measured from the day before the period, the last day's to the day
+        // after. Those days belong to the neighbouring period, so the caller's
+        // `boundary` is the only source of their shift code.
+        if (prevDate && prev) {
+          const gap = restHours(shifts, prev.code, assignment.code)
+          if (gap !== null && gap < minRestHours) {
+            violations.push({
+              id: `rest|${assignmentKey(person.id, date.iso)}`,
+              kind: 'rest',
+              personId: person.id,
+              dateIso: date.iso,
+              message: `${person.name} has only ${formatHours(gap)} rest between ${dateLabel(prevDate)} ${shiftLabel(prev.code)} and ${dateLabel(date)} ${shiftLabel(assignment.code)}`,
+            })
+          }
+        } else if (!prevDate) {
+          const beforeCode = boundary.before[person.id]
+          if (beforeCode !== undefined) {
+            const gap = restHours(shifts, beforeCode, assignment.code)
+            if (gap !== null && gap < minRestHours) {
+              violations.push({
+                id: `rest-before|${assignmentKey(person.id, date.iso)}`,
+                kind: 'rest',
+                personId: person.id,
+                dateIso: date.iso,
+                message: `${person.name} has only ${formatHours(gap)} rest between ${outsideDateLabel(addDays(date.iso, -1))} ${shiftLabel(beforeCode)} and ${dateLabel(date)} ${shiftLabel(assignment.code)}`,
+              })
+            }
+          }
         }
       }
 
@@ -172,6 +212,22 @@ export function detectViolations(
 
       prevDate = date
       prev = assignment
+    }
+
+    if (enabled.H3 && prevDate && prev) {
+      const afterCode = boundary.after[person.id]
+      if (afterCode !== undefined) {
+        const gap = restHours(shifts, prev.code, afterCode)
+        if (gap !== null && gap < minRestHours) {
+          violations.push({
+            id: `rest-after|${assignmentKey(person.id, prevDate.iso)}`,
+            kind: 'rest',
+            personId: person.id,
+            dateIso: prevDate.iso,
+            message: `${person.name} has only ${formatHours(gap)} rest between ${dateLabel(prevDate)} ${shiftLabel(prev.code)} and ${outsideDateLabel(addDays(prevDate.iso, 1))} ${shiftLabel(afterCode)}`,
+          })
+        }
+      }
     }
 
     if (enabled.H2 && weekAnchor && weekHours > maxHoursPerWeek) {

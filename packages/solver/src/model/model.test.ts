@@ -4,6 +4,7 @@ import type {
   ISODate,
   Person,
   Schedule,
+  ScheduleBoundary,
   ShiftDef,
   SolveSettings,
 } from '@crewdoku/domain'
@@ -50,6 +51,7 @@ function basicInput(overrides?: {
   current?: Schedule
   start?: ISODate
   end?: ISODate
+  boundary?: ScheduleBoundary
 }) {
   const people = overrides?.people ?? [
     makePerson({ id: 'p1', name: 'Alice' }),
@@ -69,6 +71,7 @@ function basicInput(overrides?: {
     settings,
     period: { start, end },
     current,
+    boundary: overrides?.boundary,
   }
 }
 
@@ -375,5 +378,117 @@ describe('buildModel unit tests', () => {
     const inputPinned = basicInput({ people: [p1], start, end, current })
     const { lp: lpPinned } = buildModel(inputPinned)
     expect(lpPinned).not.toContain('h5_off_0_0:')
+  })
+
+  it('forces the first day off every shift that breaks rest with the boundary code before the period', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Alice' })
+    const start = '2026-08-17'
+    const end = '2026-08-18'
+    const current = emptySchedule([p1], start, end)
+
+    // Alice worked NIGHT on 2026-08-16. NIGHT -> EARLY leaves 0h, NIGHT -> MID
+    // 4h, NIGHT -> LATE 8h: all under the 11h minimum, so day 0 may work none
+    // of them. NIGHT -> NIGHT leaves 16h and stays allowed.
+    const { lp } = buildModel(
+      basicInput({
+        people: [p1],
+        start,
+        end,
+        current,
+        boundary: { before: { p1: 'NIGHT' }, after: {} },
+      }),
+    )
+
+    const earlyRow = lp.split('\n').find((l) => l.includes('h3_before_0_EARLY:'))
+    expect(earlyRow).toBeDefined()
+    expect(earlyRow).toContain('x_0_0_EARLY = 0')
+    expect(lp).toContain('h3_before_0_LATE:')
+    expect(lp).not.toContain('h3_before_0_NIGHT:')
+  })
+
+  it('forces the last day off every shift that breaks rest with the boundary code after the period', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Alice' })
+    const start = '2026-08-17'
+    const end = '2026-08-18'
+    const current = emptySchedule([p1], start, end)
+
+    // Alice works LATE on 2026-08-19. NIGHT -> LATE leaves 8h (out), EARLY ->
+    // LATE 24h and LATE -> LATE 16h (allowed), so only day 1's NIGHT is forced
+    // off.
+    const { lp } = buildModel(
+      basicInput({
+        people: [p1],
+        start,
+        end,
+        current,
+        boundary: { before: {}, after: { p1: 'LATE' } },
+      }),
+    )
+
+    const nightRow = lp.split('\n').find((l) => l.includes('h3_after_0_NIGHT:'))
+    expect(nightRow).toBeDefined()
+    expect(nightRow).toContain('x_0_1_NIGHT = 0')
+    expect(lp).not.toContain('h3_after_0_EARLY:')
+    expect(lp).not.toContain('h3_after_0_LATE:')
+  })
+
+  it('adds no boundary row when the in-period cell is pinned (the checker flags it instead)', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Alice' })
+    const start = '2026-08-17'
+    const end = '2026-08-18'
+    const current = emptySchedule([p1], start, end)
+
+    // The planner pinned EARLY on the first day, which breaks rest after the
+    // NIGHT before the period. Pins are sacred: no row, no variable.
+    current.set(assignmentKey(p1.id, start), {
+      code: 'EARLY',
+      start: '0600',
+      end: '1400',
+      pinned: true,
+      ineligible: false,
+    })
+
+    const { lp } = buildModel(
+      basicInput({
+        people: [p1],
+        start,
+        end,
+        current,
+        boundary: { before: { p1: 'NIGHT' }, after: {} },
+      }),
+    )
+
+    expect(lp).not.toContain('h3_before_')
+    expect(lp).not.toContain('x_0_0_')
+  })
+
+  it('emits no boundary rows when H3 or the boundary is absent', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Alice' })
+    const start = '2026-08-17'
+    const end = '2026-08-18'
+    const current = emptySchedule([p1], start, end)
+
+    const withoutBoundary = buildModel(basicInput({ people: [p1], start, end, current }))
+    expect(withoutBoundary.lp).not.toContain('h3_before_')
+    expect(withoutBoundary.lp).not.toContain('h3_after_')
+
+    const h3Off: SolveSettings = {
+      ...DEFAULT_SOLVE_SETTINGS,
+      hardRules: {
+        ...DEFAULT_SOLVE_SETTINGS.hardRules,
+        enabled: { ...DEFAULT_SOLVE_SETTINGS.hardRules.enabled, H3: false },
+      },
+    }
+    const disabled = buildModel(
+      basicInput({
+        people: [p1],
+        start,
+        end,
+        current,
+        settings: h3Off,
+        boundary: { before: { p1: 'NIGHT' }, after: { p1: 'LATE' } },
+      }),
+    )
+    expect(disabled.lp).not.toMatch(/\bh3_/)
   })
 })

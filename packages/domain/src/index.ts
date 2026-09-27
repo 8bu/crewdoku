@@ -61,10 +61,11 @@ export {
   UNCONSTRAINED_BAND,
 } from './entities'
 
-export type { Assignment, Schedule } from './schedule'
+export type { Assignment, Schedule, ScheduleBoundary } from './schedule'
 export {
   activePeople,
   assignmentKey,
+  EMPTY_BOUNDARY,
   emptySchedule,
   getAssignment,
   OFF_ASSIGNMENT,

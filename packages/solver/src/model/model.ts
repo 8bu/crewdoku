@@ -3,6 +3,7 @@ import type {
   ISODate,
   Person,
   Schedule,
+  ScheduleBoundary,
   ShiftCode,
   ShiftDef,
   SolveSettings,
@@ -31,6 +32,15 @@ export interface ModelInput {
   current: Schedule
   baseline?: Schedule
   teams?: readonly Team[]
+  /**
+   * The shifts people work on the days just outside the period, taken from the
+   * neighbouring periods' schedules (`period.start - 1` and `period.end + 1`).
+   * H3 rest checks across these edges: the first period day is forced off any
+   * shift that leaves too little rest after `before`, the last day off any
+   * shift that leaves too little rest before `after`. A missing person or OFF
+   * means no shift there, so no constraint; absent boundary = today's model.
+   */
+  boundary?: ScheduleBoundary
 }
 
 export interface ModelMeta {
@@ -89,7 +99,7 @@ function lpSafe(code: string): string {
  * 5. Determinism: iterate in input order; LP byte-identical for identical input.
  */
 export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
-  const { people, shifts, coverage, settings, period, current } = input
+  const { people, shifts, coverage, settings, period, current, boundary } = input
   const dates = eachDate(period.start, period.end)
 
   // 1. Dense index maps
@@ -387,6 +397,49 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
               op: '<=',
               rhs: 1,
             })
+          }
+        }
+      }
+    }
+
+    // Rest across the period edges. The neighbouring shift (`boundary.before`
+    // on the day before the first period day, `boundary.after` on the day after
+    // the last) is a constant here, so an incompatible in-period cell is forced
+    // off exactly as it would be beside a pinned day. A pinned in-period cell
+    // emits no variables: the planner's hand-edit stands and the checker flags
+    // it. No boundary at all leaves the model byte-identical to before.
+    if (boundary !== undefined && dates.length > 0) {
+      const lastI = dates.length - 1
+
+      for (let empI = 0; empI < people.length; empI++) {
+        const p = people[empI]
+        if (!p) continue
+
+        const beforeCode = boundary.before[p.id]
+        if (beforeCode !== undefined && !pinnedCells.has(assignmentKey(p.id, period.start))) {
+          for (const pair of incompatiblePairs) {
+            if (pair.from === beforeCode && has(empI, 0, pair.to)) {
+              rows.push({
+                name: `h3_before_${empI}_${tok(pair.to)}`,
+                body: `+ ${varOf(empI, 0, pair.to)}`,
+                op: '=',
+                rhs: 0,
+              })
+            }
+          }
+        }
+
+        const afterCode = boundary.after[p.id]
+        if (afterCode !== undefined && !pinnedCells.has(assignmentKey(p.id, period.end))) {
+          for (const pair of incompatiblePairs) {
+            if (pair.to === afterCode && has(empI, lastI, pair.from)) {
+              rows.push({
+                name: `h3_after_${empI}_${tok(pair.from)}`,
+                body: `+ ${varOf(empI, lastI, pair.from)}`,
+                op: '=',
+                rhs: 0,
+              })
+            }
           }
         }
       }

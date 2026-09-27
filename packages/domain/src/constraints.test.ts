@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { Assignment, Schedule, ShiftCode, ShiftDef, SolveSettings, Violation } from './index'
+import type {
+  Assignment,
+  Schedule,
+  ScheduleBoundary,
+  ShiftCode,
+  ShiftDef,
+  SolveSettings,
+  Violation,
+} from './index'
 import {
   checkEligibility,
   checkH1Coverage,
@@ -299,6 +307,146 @@ describe('checkH3Rest (ported from proto/src/board/violations.test.ts:65-94)', (
     })
 
     expect(violations).toHaveLength(0)
+  })
+
+  it('flags too little rest between the shift before the period and the first day', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Anna' })
+    // Nothing on 2026-01-06: only the edge can flag the first day.
+    const schedule = makeTestSchedule({ 'p1|2026-01-05': { code: 'EARLY' } })
+    const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: {} }
+
+    const violations = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary,
+    })
+
+    expect(violations).toHaveLength(1)
+    const first = violations[0]
+    expect(first).toBeDefined()
+    if (first) {
+      expect(first.ruleId).toBe('H3')
+      expect(first.personId).toBe('p1')
+      expect(first.iso).toBe('2026-01-05')
+      expect(first.shiftCode).toBe('EARLY')
+      expect(first.restHours).toBe(0)
+      expect(first.minRestHours).toBe(11)
+      expect(first.message).toBe(
+        'Anna has only 0h rest between Sun 2026-01-04 NIGHT and Mon 2026-01-05 EARLY; minimum is 11h.',
+      )
+    }
+  })
+
+  it('flags too little rest between the last day and the shift after the period', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Anna' })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+    const boundary: ScheduleBoundary = { before: {}, after: { p1: 'EARLY' } }
+
+    const violations = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary,
+    })
+
+    expect(violations).toHaveLength(1)
+    const first = violations[0]
+    expect(first).toBeDefined()
+    if (first) {
+      expect(first.ruleId).toBe('H3')
+      expect(first.iso).toBe('2026-01-06')
+      expect(first.shiftCode).toBe('NIGHT')
+      expect(first.restHours).toBe(0)
+      expect(first.message).toBe(
+        'Anna has only 0h rest between Tue 2026-01-06 NIGHT and Wed 2026-01-07 EARLY; minimum is 11h.',
+      )
+    }
+  })
+
+  it('checks no edge without a boundary, and none for OFF or a compatible neighbour', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Anna' })
+    // The days outside the period would both break rest (0h into EARLY after
+    // NIGHT), but only a boundary can see a day the period does not contain.
+    const schedule = makeTestSchedule({
+      'p1|2026-01-05': { code: 'EARLY' },
+      'p1|2026-01-06': { code: 'NIGHT' },
+    })
+
+    const withoutBoundary = checkH3Rest({ people: [p1], shifts, coverage, settings, period, schedule })
+    expect(withoutBoundary).toHaveLength(0)
+
+    const offBoundary: ScheduleBoundary = { before: { p1: 'OFF' }, after: { p1: 'OFF' } }
+    const withOff = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary: offBoundary,
+    })
+    expect(withOff).toHaveLength(0)
+
+    // EARLY (0600-1400) before EARLY on 2026-01-05 leaves 16h, and NIGHT
+    // (2200-0600) after NIGHT on 2026-01-06 leaves 16h: both edges clear 11h.
+    const compatible: ScheduleBoundary = { before: { p1: 'EARLY' }, after: { p1: 'NIGHT' } }
+    const withCompatible = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary: compatible,
+    })
+    expect(withCompatible).toHaveLength(0)
+
+    // A neighbour who is not on the roster contributes nothing either.
+    const unknownPerson: ScheduleBoundary = { before: { p9: 'NIGHT' }, after: { p9: 'NIGHT' } }
+    const withUnknown = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary: unknownPerson,
+    })
+    expect(withUnknown).toHaveLength(0)
+  })
+
+  it('flags both edges in one pass with distinct ids', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Anna' })
+    // EARLY -> NIGHT inside the period leaves 32h, so only the edges break.
+    const schedule = makeTestSchedule({
+      'p1|2026-01-05': { code: 'EARLY' },
+      'p1|2026-01-06': { code: 'NIGHT' },
+    })
+    const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: { p1: 'MID' } }
+
+    const violations = checkH3Rest({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary,
+    })
+
+    expect(violations.map((v) => v.id)).toEqual(['H3|p1|2026-01-05', 'H3|p1|2026-01-06|after'])
+    expect(violations.map((v) => v.iso)).toEqual(['2026-01-05', '2026-01-06'])
+    expect(violations.map((v) => v.shiftCode)).toEqual(['EARLY', 'NIGHT'])
+    expect(violations[1]?.message).toBe(
+      'Anna has only 4h rest between Tue 2026-01-06 NIGHT and Wed 2026-01-07 MID; minimum is 11h.',
+    )
   })
 })
 
@@ -653,6 +801,51 @@ describe('checkSchedule (integration & sorting from proto/src/board/violations.t
       expect(second.personId).toBe('p1')
       expect(second.ruleId).toBe('eligibility')
     }
+  })
+
+  it('carries the boundary through to H3 on the period edges', () => {
+    const p1 = makePerson({ id: 'p1', name: 'Anna' })
+    const period = { start: '2026-01-05', end: '2026-01-06' }
+    // A hand-made schedule: NIGHT the day before, EARLY on the first day, and
+    // EARLY again on the last day (which is fine after an OFF in between).
+    const schedule = makeTestSchedule({
+      'p1|2026-01-05': { code: 'EARLY' },
+      'p1|2026-01-06': { code: 'OFF' },
+    })
+    const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: {} }
+
+    const violations = checkSchedule({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+      boundary,
+    })
+
+    const rest = violations.filter((v) => v.ruleId === 'H3')
+    expect(rest).toHaveLength(1)
+    const first = rest[0]
+    expect(first).toBeDefined()
+    if (first) {
+      expect(first.iso).toBe('2026-01-05')
+      expect(first.shiftCode).toBe('EARLY')
+      expect(first.restHours).toBe(0)
+      expect(first.message).toBe(
+        'Anna has only 0h rest between Sun 2026-01-04 NIGHT and Mon 2026-01-05 EARLY; minimum is 11h.',
+      )
+    }
+
+    const withoutBoundary = checkSchedule({
+      people: [p1],
+      shifts,
+      coverage,
+      settings,
+      period,
+      schedule,
+    })
+    expect(withoutBoundary.filter((v) => v.ruleId === 'H3')).toHaveLength(0)
   })
 })
 

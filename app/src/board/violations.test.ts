@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { detectViolations, partitionViolationsForBoard, type Violation } from './violations'
-import { DEFAULT_SHIFTS, DEFAULT_SOLVE_SETTINGS, type Assignment, type Person } from '@crewdoku/domain'
+import {
+  DEFAULT_SHIFTS,
+  DEFAULT_SOLVE_SETTINGS,
+  type Assignment,
+  type Person,
+  type ScheduleBoundary,
+} from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 
 // A high cap keeps H2 (hours/week) out of the way for tests focused on
@@ -106,6 +112,84 @@ describe('detectViolations', () => {
     })
     const violations = detect(people, threeDates, get)
     expect(violations.map((v) => v.dateIso)).toEqual(['2026-01-06', '2026-01-19'])
+  })
+})
+
+// H3 is the one rule that crosses a period edge: the first day is checked
+// against the day before the period, the last day against the day after.
+// Those days belong to the neighbouring period, so only their shift code is
+// known — the caller passes it as `boundary`.
+describe('detectViolations H3 across period edges', () => {
+  const dates = [date('2026-01-05', 1, 5), date('2026-01-06', 2, 6)]
+
+  function detectBoundary(
+    get: (personId: string, dateIso: string) => Assignment,
+    boundary: ScheduleBoundary,
+    enabled = ENABLED,
+  ) {
+    return detectViolations([person('p1', 'Anna')], dates, get, DEFAULT_SHIFTS, enabled, NO_HOURS_CAP, MIN_REST_HOURS, boundary)
+  }
+
+  it('flags a short rest between the day before the period and its first day', () => {
+    const violations = detectBoundary(
+      board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('OFF') }),
+      { before: { p1: 'NIGHT' }, after: {} },
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toMatchObject({
+      id: 'rest-before|p1|2026-01-05',
+      kind: 'rest',
+      personId: 'p1',
+      dateIso: '2026-01-05',
+    })
+    expect(violations[0]!.message).toBe('Anna has only 0h rest between Sun Jan 4 Night and Mon Jan 5 Early')
+  })
+
+  it('flags a short rest between the last day and the day after the period', () => {
+    const violations = detectBoundary(
+      board({ 'p1|2026-01-05': assignment('OFF'), 'p1|2026-01-06': assignment('NIGHT') }),
+      { before: {}, after: { p1: 'EARLY' } },
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toMatchObject({
+      id: 'rest-after|p1|2026-01-06',
+      kind: 'rest',
+      personId: 'p1',
+      dateIso: '2026-01-06',
+    })
+    expect(violations[0]!.message).toBe('Anna has only 0h rest between Tue Jan 6 Night and Wed Jan 7 Early')
+  })
+
+  it('anchors each edge break on the in-period day, ids unique across both edges', () => {
+    const get = board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('NIGHT') })
+    const violations = detectBoundary(get, { before: { p1: 'NIGHT' }, after: { p1: 'EARLY' } })
+    expect(violations.map((v) => v.id)).toEqual(['rest-before|p1|2026-01-05', 'rest-after|p1|2026-01-06'])
+  })
+
+  it('leaves enough rest across either edge unflagged', () => {
+    const get = board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('LATE') })
+    // MID -> EARLY is 12h across the start edge, LATE -> LATE 16h across the
+    // end, and the in-period EARLY -> LATE 24h — all over the 11h minimum.
+    expect(detectBoundary(get, { before: { p1: 'MID' }, after: { p1: 'LATE' } })).toHaveLength(0)
+  })
+
+  it('treats a missing or off outside day as no constraint', () => {
+    const get = board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('NIGHT') })
+    expect(detectBoundary(get, { before: {}, after: {} })).toHaveLength(0)
+    expect(detectBoundary(get, { before: { p2: 'NIGHT' }, after: { p1: 'OFF' } })).toHaveLength(0)
+  })
+
+  it('skips both edges when H3 is off', () => {
+    const get = board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('NIGHT') })
+    const off = { ...ENABLED, H3: false }
+    expect(detectBoundary(get, { before: { p1: 'NIGHT' }, after: { p1: 'EARLY' } }, off)).toHaveLength(0)
+  })
+
+  it('defaults to no boundary, so days outside the period are not checked', () => {
+    const get = board({ 'p1|2026-01-05': assignment('EARLY'), 'p1|2026-01-06': assignment('MID') })
+    // The NIGHT before the period would flag Jan 5 if the caller passed a boundary.
+    expect(detectBoundary(get, { before: { p1: 'NIGHT' }, after: {} })).toHaveLength(1)
+    expect(detect([person('p1', 'Anna')], dates, get)).toHaveLength(0)
   })
 })
 

@@ -3,10 +3,12 @@ import type {
   CoverageTable,
   ISODate,
   Person,
+  ScheduleBoundary,
   ShiftDef,
   SolveSettings,
 } from '@crewdoku/domain'
 import {
+  assignmentKey,
   DEFAULT_SOLVE_SETTINGS,
   emptySchedule,
   makePerson,
@@ -26,6 +28,7 @@ function makeModelInput(params: {
   period: { start: ISODate; end: ISODate }
   settings?: SolveSettings
   shifts?: ShiftDef[]
+  boundary?: ScheduleBoundary
 }): ModelInput {
   const settings = params.settings ?? DEFAULT_SOLVE_SETTINGS
   const current = emptySchedule(params.people, params.period.start, params.period.end)
@@ -36,6 +39,7 @@ function makeModelInput(params: {
     settings,
     period: params.period,
     current,
+    boundary: params.boundary,
   }
 }
 
@@ -235,6 +239,104 @@ describe('deriveConflictCore static screening', () => {
         expect(relaxedInput.settings.hardRules.minRestHours).toBe(8)
         expect(input.settings.hardRules.minRestHours).toBe(11) // unchanged
       }
+    })
+  })
+
+  describe('Cause e: Rest lock across a period edge (H3 boundary)', () => {
+    const coverage: CoverageTable = {
+      byDow: {
+        1: { EARLY: { min: 1, max: 1 } }, // Mon
+      },
+      dateOverrides: {},
+    }
+
+    it('diagnoses coverage only the person blocked by the neighbouring shift could cover', () => {
+      const people = [makePerson({ id: 'p1', name: 'Alice' })]
+      const period = { start: '2026-08-17', end: '2026-08-17' } // Monday
+      // Alice worked NIGHT on 2026-08-16, so EARLY on the period's first day
+      // leaves 0h rest: she is the only candidate and she is blocked.
+      const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: {} }
+
+      const input = makeModelInput({ people, coverage, period, boundary })
+      const { conflictCore, relaxations } = deriveConflictCore(input)
+
+      expect(conflictCore).toHaveLength(1)
+      const item = conflictCore.find((c) => c.id === 'rest-lock-NIGHT-2026-08-16-EARLY-2026-08-17')
+      expect(item).toBeDefined()
+      if (item !== undefined) {
+        expect(item.ruleIds).toEqual(['H1', 'H3'])
+        expect(item.kind).toBe('restLock')
+        expect(item.message).toBe(
+          'NIGHT on 2026-08-16 followed by EARLY on 2026-08-17 gives only 0 hours of rest, but minimum rest is 11 hours.',
+        )
+        expect(item.params).toMatchObject({
+          shiftA: 'NIGHT',
+          dateA: '2026-08-16',
+          shiftB: 'EARLY',
+          dateB: '2026-08-17',
+          gap: 0,
+          minRest: 11,
+        })
+      }
+
+      const relax = relaxations.find(
+        (r) => r.id === 'relax-rest-lock-NIGHT-2026-08-16-EARLY-2026-08-17',
+      )
+      expect(relax).toBeDefined()
+      if (relax !== undefined) {
+        expect(relax.kind).toBe('restLock')
+        expect(relax.label).toBe('Lower minimum rest to 0 hours')
+        expect(relax.description).toBe('Lower minimum rest between shifts from 11 hours to 0 hours.')
+
+        const relaxedInput = relax.apply(input)
+        expect(relaxedInput.settings.hardRules.minRestHours).toBe(0)
+        // The neighbouring shifts themselves stand: keeping `boundary` is the fix.
+        expect(relaxedInput.boundary).toEqual(boundary)
+        expect(input.settings.hardRules.minRestHours).toBe(11) // unchanged
+      }
+    })
+
+    it('stays silent when the blocked person is pinned to the shift anyway', () => {
+      const people = [makePerson({ id: 'p1', name: 'Alice' })]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: {} }
+
+      const input = makeModelInput({ people, coverage, period, boundary })
+      input.current.set(assignmentKey('p1', '2026-08-17'), {
+        code: 'EARLY',
+        start: '0600',
+        end: '1400',
+        pinned: true,
+        ineligible: false,
+      })
+
+      const { conflictCore } = deriveConflictCore(input)
+      expect(conflictCore.find((c) => c.id.startsWith('rest-lock-'))).toBeUndefined()
+    })
+
+    it('stays silent when someone else can cover the shift', () => {
+      const people = [
+        makePerson({ id: 'p1', name: 'Alice' }),
+        makePerson({ id: 'p2', name: 'Bob' }),
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const boundary: ScheduleBoundary = { before: { p1: 'NIGHT' }, after: {} }
+
+      const input = makeModelInput({ people, coverage, period, boundary })
+      const { conflictCore } = deriveConflictCore(input)
+
+      expect(conflictCore.find((c) => c.id.startsWith('rest-lock-'))).toBeUndefined()
+    })
+
+    it('names no edge lock without a boundary', () => {
+      const people = [makePerson({ id: 'p1', name: 'Alice' })]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+
+      const input = makeModelInput({ people, coverage, period })
+      const { conflictCore } = deriveConflictCore(input)
+
+      expect(conflictCore).toHaveLength(1)
+      expect(conflictCore[0]?.id).toBe('fallback')
     })
   })
 

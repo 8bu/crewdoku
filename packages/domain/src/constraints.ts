@@ -14,7 +14,7 @@
  */
 
 import type { ISODate } from './calendar'
-import { eachDate, weekdayOf, weekIndexOf } from './calendar'
+import { addDays, eachDate, weekdayOf, weekIndexOf } from './calendar'
 import type {
   CoverageTable,
   HardRuleId,
@@ -25,7 +25,7 @@ import type {
   SolveSettings,
 } from './entities'
 import { coverageBandFor, OFF_CODE } from './entities'
-import type { Schedule } from './schedule'
+import type { Schedule, ScheduleBoundary } from './schedule'
 import { assignmentKey, getAssignment } from './schedule'
 
 const WEEKDAY_NAMES: readonly string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -156,6 +156,13 @@ export type WorkspaceSlice = {
   settings: SolveSettings
   period: { start: ISODate; end: ISODate }
   schedule: Schedule
+  /**
+   * The shifts people work on the days just outside the period, from the
+   * neighbouring periods' schedules. H3 rest is the only rule that looks
+   * across the edge; missing person or OFF means no shift there, so no
+   * constraint. Absent boundary means the period is checked on its own.
+   */
+  boundary?: ScheduleBoundary
 }
 
 /**
@@ -298,6 +305,12 @@ export function checkH2WeeklyHours(slice: WorkspaceSlice): Violation[] {
  * between previous shift end and next shift start >= minRestHours.
  *
  * Flags the second cell (date.iso), matching proto/src/board/violations.ts:135-146.
+ *
+ * When `slice.boundary` is given, the day before the period starts and the day
+ * after it ends join the chain: the first day is checked against the
+ * neighbouring period's shift on `period.start - 1`, and the last day against
+ * the shift on `period.end + 1`. Both edges anchor their violation on the
+ * period's own day, so the planner still sees a problem on a real cell.
  */
 export function checkH3Rest(slice: WorkspaceSlice): Violation[] {
   if (!slice.settings.hardRules.enabled.H3) return []
@@ -307,8 +320,11 @@ export function checkH3Rest(slice: WorkspaceSlice): Violation[] {
   const minRest = slice.settings.hardRules.minRestHours
 
   for (const person of slice.people) {
-    let prevIso: ISODate | null = null
-    let prevCode: ShiftCode | null = null
+    // Seed the chain with the neighbour's shift on the day before the period;
+    // the loop below then flags the period's first day exactly like any other.
+    const beforeCode = slice.boundary?.before[person.id]
+    let prevIso: ISODate | null = beforeCode === undefined ? null : addDays(slice.period.start, -1)
+    let prevCode: ShiftCode | null = beforeCode ?? null
 
     for (const iso of dates) {
       const assignment = getAssignment(slice.schedule, person.id, iso)
@@ -331,6 +347,28 @@ export function checkH3Rest(slice: WorkspaceSlice): Violation[] {
 
       prevIso = iso
       prevCode = assignment.code
+    }
+
+    // The day after the period, from the neighbouring schedule. Here the
+    // in-period day is the earlier one, so the violation anchors on it.
+    const afterCode = slice.boundary?.after[person.id]
+    if (afterCode !== undefined) {
+      const lastIso = slice.period.end
+      const lastCode = getAssignment(slice.schedule, person.id, lastIso).code
+      const gap = restHoursBetween(slice.shifts, lastCode, afterCode)
+      if (gap !== null && gap < minRest) {
+        const afterIso = addDays(lastIso, 1)
+        violations.push({
+          id: `H3|${assignmentKey(person.id, lastIso)}|after`,
+          ruleId: 'H3',
+          personId: person.id,
+          iso: lastIso,
+          shiftCode: lastCode,
+          restHours: gap,
+          minRestHours: minRest,
+          message: `${person.name} has only ${formatHours(gap)} rest between ${formatIsoDate(lastIso)} ${lastCode} and ${formatIsoDate(afterIso)} ${afterCode}; minimum is ${minRest}h.`,
+        })
+      }
     }
   }
 

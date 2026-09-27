@@ -41,4 +41,9 @@ describe('buildModelInput', () => {
   it('throws when the period has no dates', () => {
     expect(() => buildModelInput(parts({ dates: [] }))).toThrow(/no dates/)
   })
+
+  it('passes the period boundary through for the cross-period rest rule', () => {
+    const boundary = { before: { p1: 'NIGHT' }, after: { p1: 'EARLY' } }
+    expect(buildModelInput(parts({ boundary })).boundary).toEqual(boundary)
+  })
 })
