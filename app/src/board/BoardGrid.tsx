@@ -1177,7 +1177,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
                           tier in styles.css for the identical reason, just DOM-order-lucky
                           until now (it renders last in a row, not first). */}
                       <div
-                        className="cd-board__name group sticky left-0 z-[3] flex h-[var(--row-h)] cursor-pointer items-center overflow-hidden border-r border-[var(--border-strong)] border-b border-b-[var(--border)] bg-base-100 px-[var(--cell-pad-x)] text-xs whitespace-nowrap hover:bg-base-200"
+                        className="cd-board__name group sticky left-0 z-[3] flex h-[var(--row-h)] cursor-pointer items-center overflow-hidden border-r border-[var(--border-strong)] border-b border-b-[var(--line)] bg-base-100 px-[var(--cell-pad-x)] text-xs whitespace-nowrap hover:bg-base-200"
                         data-person-id={person.id}
                         data-removed={person.removed || undefined}
                         role="button"

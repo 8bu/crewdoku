@@ -68,7 +68,7 @@ export function CellMenu({ menu, shifts, keyHints, onChoose, onReleasePin, onClo
       {pinned && (
         <button
           type="button"
-          className={`${itemClass} cd-cell-menu__item--release mt-0.5 border-t border-t-[var(--border)] text-[color:var(--text-dim)]`}
+          className={`${itemClass} cd-cell-menu__item--release mt-0.5 border-t border-t-[var(--line)] text-[color:var(--text-dim)]`}
           onClick={onReleasePin}
         >
           {t('board.menu.releasePin')}

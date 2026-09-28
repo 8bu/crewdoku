@@ -148,7 +148,7 @@ export function CoverageGrid({ period }: { period: Period }) {
 
           {view.rows.map((row) => (
             <Fragment key={row.shift.code}>
-              <div className="sticky left-0 z-[1] flex h-[var(--cov-row-h)] items-center gap-2 border-r border-b border-r-[var(--border-strong)] border-b-[var(--border)] bg-base-100 px-[var(--cell-pad-x)]">
+              <div className="sticky left-0 z-[1] flex h-[var(--cov-row-h)] items-center gap-2 border-r border-b border-r-[var(--border-strong)] border-b-[var(--line)] bg-base-100 px-[var(--cell-pad-x)]">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-xs"
                   style={{ background: swatchBg(row.shift.color) }}
@@ -169,7 +169,7 @@ export function CoverageGrid({ period }: { period: Period }) {
                   onOpen={openPopover}
                 />
               ))}
-              <div className="sticky right-0 z-[1] flex h-[var(--cov-row-h)] flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--border)] border-l-[var(--border-strong)] bg-base-100 text-2xs tabular-nums">
+              <div className="sticky right-0 z-[1] flex h-[var(--cov-row-h)] flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--line)] border-l-[var(--border-strong)] bg-base-100 text-2xs tabular-nums">
                 {view.scoped ? (
                   <span className="text-[color:var(--text-faint)]">—</span>
                 ) : row.shortDays === 0 && row.overDays === 0 ? (
@@ -188,13 +188,13 @@ export function CoverageGrid({ period }: { period: Period }) {
             </Fragment>
           ))}
 
-          <div className="cd-text-trim sticky left-0 z-[1] flex h-[var(--cov-row-h)] items-center border-r border-b border-r-[var(--border-strong)] border-b-[var(--border)] bg-base-100 px-[var(--cell-pad-x)] text-2xs text-[color:var(--text-dim)]">
+          <div className="cd-text-trim sticky left-0 z-[1] flex h-[var(--cov-row-h)] items-center border-r border-b border-r-[var(--border-strong)] border-b-[var(--line)] bg-base-100 px-[var(--cell-pad-x)] text-2xs text-[color:var(--text-dim)]">
             {t('rtc.coverage.onDutyHeader')}
           </div>
           {view.dayTotals.map((day) => (
             <div
               key={day.date.iso}
-              className="flex h-[var(--cov-row-h)] flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--border)] border-l-[var(--grid-line)] bg-base-100 tabular-nums"
+              className="flex h-[var(--cov-row-h)] flex-col items-center justify-center gap-0.5 border-b border-l border-b-[var(--line)] border-l-[var(--grid-line)] bg-base-100 tabular-nums"
               data-status={day.status ?? undefined}
             >
               <span
@@ -213,7 +213,7 @@ export function CoverageGrid({ period }: { period: Period }) {
               )}
             </div>
           ))}
-          <div className="sticky right-0 z-[1] border-b border-l border-b-[var(--border)] border-l-[var(--border-strong)] bg-base-100" />
+          <div className="sticky right-0 z-[1] border-b border-l border-b-[var(--line)] border-l-[var(--border-strong)] bg-base-100" />
         </div>
       </div>
 
