@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.0](https://github.com/8bu/crewdoku/compare/v0.1.0...v0.2.0) (2026-09-28)
+
+
+### Features
+
+* add calendar view with leave booking and shared schedule filters ([92e0ecb](https://github.com/8bu/crewdoku/commit/92e0ecbe5f6207fd9f629e46c44bbe99dc78ee8d))
+* add tags with shared preferences, strict avoids and tag coverage ([3deea78](https://github.com/8bu/crewdoku/commit/3deea7825e687c31e99025e00cbd3fa113cf570e))
+* enforce minimum rest across period boundaries ([96413b4](https://github.com/8bu/crewdoku/commit/96413b42cb5070d1d397559a215fe4e9f6cd42c3))
+* flatten mobile cards and pin onboarding actions within thumb reach ([7d1fff4](https://github.com/8bu/crewdoku/commit/7d1fff4fa254fa511a272a8e0b8fd5a4a6b86a55))
+* import roster, teams and preferences from one multi-sheet workbook ([8c44bcf](https://github.com/8bu/crewdoku/commit/8c44bcf834ba33ac19a04b23f8db2442639b1b26))
+* prevent periods from sharing dates ([e10ab30](https://github.com/8bu/crewdoku/commit/e10ab30af6d972cd71bc65826629bd0ff845d2b4))
+* show app version with a what's new panel of release highlights ([31b4d5b](https://github.com/8bu/crewdoku/commit/31b4d5b61efc21b459312c4add352009a4b11d1b))
+
+
+### Bug Fixes
+
+* restore unchecked checkbox outlines by renaming the legacy border alias ([58bbdfb](https://github.com/8bu/crewdoku/commit/58bbdfb3f778447085d5826ff875357ae72512c8))
+
+
+### Performance
+
+* self-host inter and show a text-free boot splash ([46e8dcc](https://github.com/8bu/crewdoku/commit/46e8dcc3e1ebf7fea26d4305048a799361d63484))
+
 ## 0.1.0 (2026-09-24)
 
 
