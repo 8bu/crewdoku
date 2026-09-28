@@ -1,5 +1,6 @@
 import { useAtomValue } from 'jotai'
-import { localeAtom, type LocaleId } from '../state/locale'
+import type { LocaleId } from './localeIds'
+import { localeAtom } from '../state/locale'
 import { MESSAGES } from './messages'
 
 /** Looks up a namespaced key in the active locale, with `{name}` interpolation. */

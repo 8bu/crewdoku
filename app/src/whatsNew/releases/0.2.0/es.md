@@ -1,0 +1,5 @@
+- **Etiquetas** dan a cada persona preferencias compartidas entre equipos; el planificador las respeta, incluidas las reglas que nunca puede incumplir.
+- **Calendario** muestra los turnos mes a mes y registra ausencias con un par de toques, con los filtros del tablero a mano.
+- **Importar desde una hoja de cálculo** trae personas, equipos, preferencias y etiquetas de una vez.
+- **Descanso mínimo** ahora se aplica entre periodos, así que los periodos consecutivos siguen siendo válidos.
+- **Arranque más rápido**: la aplicación carga bastante antes y ya no muestra texto sin estilo.

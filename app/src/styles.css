@@ -1213,3 +1213,52 @@ body {
   border-left-color: transparent;
   border-right-color: transparent;
 }
+
+/* --- What's new (`whatsNew/WhatsNewDialog.tsx`) ---
+   The panel renders the release notes from markdown, so this is the
+   typographic half of that handoff: Tailwind's preflight strips list markers,
+   so each item draws its own, and links and emphasis take the app's colours
+   instead of the browser's defaults. Body text sits one step back from the
+   version heading that introduces it, exactly as the panel's other body copy
+   does; both `--text-dim` and `--text-faint` are theme-aware (see the
+   `console-dark` block above). */
+.cd-whatsnew-md ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cd-whatsnew-md li {
+  position: relative;
+  padding-left: 14px;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.cd-whatsnew-md li::before {
+  content: "";
+  position: absolute;
+  top: 0.45em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--text-faint);
+}
+.cd-whatsnew-md strong {
+  font-weight: 600;
+  color: var(--text);
+}
+.cd-whatsnew-md p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.cd-whatsnew-md a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

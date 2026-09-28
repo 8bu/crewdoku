@@ -1,0 +1,5 @@
+- **Etiketten** geben Personen gemeinsame Vorlieben über Teams hinweg; der Solver hält sich daran – auch an Regeln, die er nie brechen darf.
+- **Kalender** zeigt den ganzen Dienstplan Monat für Monat und trägt Abwesenheiten mit wenigen Tipps ein, mit den Filtern des Dienstplans zur Hand.
+- **Import aus einer Tabelle** bringt Personen, Teams, Präferenzen und Etiketten auf einmal an.
+- **Mindestruhezeit** gilt jetzt über Zeitraumgrenzen hinweg, damit aufeinanderfolgende Zeiträume regelkonform bleiben.
+- **Schnellerer Start**: Die App lädt spürbar schneller und zeigt keinen unformatierten Text mehr.

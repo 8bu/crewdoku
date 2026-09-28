@@ -5,6 +5,7 @@ import { Logo } from './Logo'
 import { OrgHeader } from './OrgHeader'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
 import { useT } from '../i18n/useT'
+import { WhatsNewButton } from '../whatsNew/WhatsNewButton'
 
 const SURFACES = [
   { to: '/board', key: 'nav.board' },
@@ -70,6 +71,7 @@ export function NavRail() {
           </a>
         </span>
         <div className="ml-auto flex items-center gap-0.5">
+          <WhatsNewButton />
           <ThemeSwitcher />
           <LocaleSwitcher />
         </div>

@@ -1,0 +1,5 @@
+- **Tạo lịch** viết cả kỳ cho bạn: nhấn một lần là bảng được lấp đầy bằng lịch công bằng, đúng quy tắc mà bạn vẫn sửa tay được.
+- **Mức đáp ứng nhân sự** đối chiếu số người với chỉ tiêu cho từng ca và từng ngày, và **vi phạm quy tắc** hiện ra ngay khi xảy ra.
+- **Bắt đầu từ mô hình** — Ca trực 24/7, Cửa hàng bán lẻ, Tuần làm việc văn phòng — hoặc dán nhân sự thẳng từ bảng tính.
+- **Ngoại tuyến và thuộc về bạn**: mọi thứ nằm trên thiết bị của bạn và mọi thay đổi đều hoàn tác được; xuất một kỳ ra CSV, Excel, JSON hoặc PDF bất cứ lúc nào.
+- **Bảy ngôn ngữ, sáng hay tối**: toàn bộ giao diện theo ngôn ngữ và chế độ hiển thị bạn chọn.

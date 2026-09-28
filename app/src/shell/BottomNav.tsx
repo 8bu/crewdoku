@@ -18,6 +18,7 @@ import { Logo } from './Logo'
 import { OrgHeader } from './OrgHeader'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher'
+import { WhatsNewButton } from '../whatsNew/WhatsNewButton'
 
 /**
  * The mobile half of the navigation: the rail's seven surfaces become four
@@ -152,6 +153,9 @@ export function BottomNav() {
                 8BU
               </a>
             </span>
+            {/* Opens the panel with the sheet out of the way, so the panel never
+                lands behind it — and one Escape can't close both. */}
+            <WhatsNewButton className="ml-auto min-h-11" onOpen={() => setMoreOpen(false)} />
           </div>
         </div>
       </BottomSheet>

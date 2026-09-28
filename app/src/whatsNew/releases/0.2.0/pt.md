@@ -1,0 +1,5 @@
+- **Etiquetas** dão a cada pessoa preferências compartilhadas entre equipes; o planejador as respeita, incluindo regras que nunca pode quebrar.
+- **Calendário** mostra a escala mês a mês e regista ausências em poucos toques, com os filtros do quadro à mão.
+- **Importar de uma única planilha** traz funcionários, equipes, preferências e etiquetas de uma vez.
+- **Descanso mínimo** agora vale entre períodos, para que períodos consecutivos continuem válidos.
+- **Início mais rápido**: o aplicativo carrega bem mais rápido e não mostra mais texto sem estilo.

@@ -1,0 +1,5 @@
+- **Erstellen** schreibt den ganzen Zeitraum für dich: einmal tippen und der Dienstplan füllt sich mit einem fairen, regelkonformen Plan, den du weiter von Hand ändern kannst.
+- **Besetzung** vergleicht die Personenzahl mit deinem Ziel für jede Schicht und jeden Tag, und **Regelverstöße** werden sofort angezeigt.
+- **Mit einer Vorlage starten** – 24/7-Betrieb, Einzelhandel, Bürowoche – oder füge dein Team direkt aus einer Tabelle ein.
+- **Offline und bei dir**: alles bleibt auf deinem Gerät und jede Änderung lässt sich rückgängig machen; exportiere einen Zeitraum jederzeit als CSV, Excel, JSON oder PDF.
+- **Sieben Sprachen, hell oder dunkel**: die ganze Oberfläche folgt Sprache und Erscheinungsbild, die du wählst.

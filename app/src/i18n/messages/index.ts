@@ -1,4 +1,4 @@
-import type { LocaleId } from '../../state/locale'
+import type { LocaleId } from '../localeIds'
 import type { AreaCatalog } from './types'
 import { shell } from './shell'
 import { chrome } from './chrome'
@@ -13,6 +13,7 @@ import { scheduleFilters } from './scheduleFilters'
 import { calendar } from './calendar'
 import { tags } from './tags'
 import { tagRules } from './tagRules'
+import { whatsNew } from './whatsNew'
 
 /**
  * The app's message catalogs, composed from per-area modules. Keys are
@@ -20,7 +21,7 @@ import { tagRules } from './tagRules'
  * can be authored independently and never collide when merged. Each area
  * module carries the same keys in every locale (guarded by `catalog.test.ts`).
  */
-const AREAS: AreaCatalog[] = [shell, chrome, board, boardPanels, settings, onbex, rtc, workspace, tour, scheduleFilters, calendar, tags, tagRules]
+const AREAS: AreaCatalog[] = [shell, chrome, board, boardPanels, settings, onbex, rtc, workspace, tour, scheduleFilters, calendar, tags, tagRules, whatsNew]
 
 function compose(locale: LocaleId): Record<string, string> {
   return Object.assign({}, ...AREAS.map((area) => area[locale]))

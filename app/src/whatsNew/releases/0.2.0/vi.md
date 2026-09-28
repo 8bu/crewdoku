@@ -1,0 +1,5 @@
+- **Nhãn** cho mỗi người sở thích chung áp dụng qua mọi phòng/ban; bộ xếp lịch tuân theo, kể cả những quy tắc không bao giờ được vi phạm.
+- **Lịch** trải toàn bộ lịch phân ca theo từng tháng và đặt nghỉ phép chỉ với vài thao tác, kèm sẵn bộ lọc của bảng.
+- **Nhập từ một bảng tính** đưa nhân sự, phòng/ban, nguyện vọng và nhãn về cùng một lượt.
+- **Nghỉ tối thiểu** nay được áp dụng qua ranh giới giữa các kỳ, nên các kỳ nối tiếp vẫn hợp lệ.
+- **Khởi động nhanh hơn**: ứng dụng mở nhanh hơn rõ rệt và không còn nhấp nháy chữ chưa định dạng khi tải.

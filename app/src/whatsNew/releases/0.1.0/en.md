@@ -1,0 +1,5 @@
+- **Generate** writes the whole period for you: press it once and the board fills with a fair, rule-legal schedule you can still edit by hand.
+- **Coverage** weighs headcount against your target for every shift and day, and **rule breaks** surface as they happen.
+- **Start from a template** — 24/7 ward, retail store, office week — or paste your team in straight from a spreadsheet.
+- **Offline and yours**: everything stays on your device and every edit can be undone; export a period as CSV, Excel, JSON or PDF whenever you like.
+- **Seven languages, light or dark**: the whole interface follows the language and theme you pick.

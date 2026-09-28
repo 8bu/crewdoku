@@ -1,0 +1,5 @@
+- **Étiquettes** donnent à chacun des préférences partagées entre les équipes ; le planificateur les respecte, y compris les règles qu'il ne peut jamais enfreindre.
+- **Calendrier** déroule le planning mois par mois et pose une absence en deux gestes, avec les filtres du planning sous la main.
+- **Import depuis une seule feuille** fait arriver personnel, équipes, préférences et étiquettes d'un coup.
+- **Repos minimum** s'applique désormais d'une période à l'autre : les périodes enchaînées restent valides.
+- **Démarrage plus rapide** : l'application se charge nettement plus vite, sans texte non stylé au passage.

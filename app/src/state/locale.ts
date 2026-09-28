@@ -1,5 +1,6 @@
 import { atom } from 'jotai'
 import { isLocaleId, readGeoLocale } from '../i18n/geo'
+import { LOCALE_IDS, type LocaleId } from '../i18n/localeIds'
 
 /**
  * UI language. The switcher in the nav rail writes `localeAtom`, which drives
@@ -8,25 +9,29 @@ import { isLocaleId, readGeoLocale } from '../i18n/geo'
  * gets the region default set at the edge, then their browser language
  * auto-detected.
  *
- * Seven locales are supported: English, Vietnamese, Spanish, French, Japanese,
- * German and Portuguese (Brazilian). Labels are endonyms so a user can find
- * their own language regardless of the current one. First-load precedence, in
- * order: the saved choice, then the geo cookie the edge Worker set from
- * `cf-ipcountry`, then the browser language, then EN (see `initialLocale`).
+ * The locales themselves are listed once, in `i18n/localeIds.ts`; this module
+ * gives each one the endonym the switcher shows, so a user can find their own
+ * language regardless of the current one (a missing or extra label is a compile
+ * error). First-load precedence, in order: the saved choice, then the geo cookie
+ * the edge Worker set from `cf-ipcountry`, then the browser language, then EN
+ * (see `initialLocale`).
  */
-export type LocaleId = 'en' | 'vi' | 'es' | 'fr' | 'ja' | 'de' | 'pt'
-
 export const LOCALE_STORAGE_KEY = 'crewdoku-locale'
 
-export const LOCALES: { value: LocaleId; label: string }[] = [
-  { value: 'en', label: 'English' },
-  { value: 'vi', label: 'Tiếng Việt' },
-  { value: 'es', label: 'Español' },
-  { value: 'fr', label: 'Français' },
-  { value: 'ja', label: '日本語' },
-  { value: 'de', label: 'Deutsch' },
-  { value: 'pt', label: 'Português' },
-]
+const LOCALE_LABELS: Record<LocaleId, string> = {
+  en: 'English',
+  vi: 'Tiếng Việt',
+  es: 'Español',
+  fr: 'Français',
+  ja: '日本語',
+  de: 'Deutsch',
+  pt: 'Português',
+}
+
+export const LOCALES: { value: LocaleId; label: string }[] = LOCALE_IDS.map((value) => ({
+  value,
+  label: LOCALE_LABELS[value],
+}))
 
 /**
  * The browser's preferred language ("pt-BR") reduced to its primary subtag and

@@ -1,0 +1,5 @@
+- **Tags** give people shared preferences across teams; the scheduler follows them, including rules it must never break.
+- **Calendar** lays the whole rota out month by month and books leave in a couple of taps, with the board's filters to hand.
+- **One-spreadsheet import** brings people, teams, preferences and tags in together.
+- **Minimum rest** is now enforced across period boundaries, so back-to-back periods stay legal.
+- **Faster startup** means the app loads noticeably quicker, with no flash of unstyled text.

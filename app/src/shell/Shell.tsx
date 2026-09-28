@@ -5,6 +5,7 @@ import { PeriodSelector } from './PeriodSelector'
 import { useIsNarrow } from '../ui/useIsNarrow'
 import { ViewSwitch } from '../ui/ViewSwitch'
 import { ScheduleFilterBar } from '../ui/ScheduleFilterBar'
+import { WhatsNewDialog } from '../whatsNew/WhatsNewDialog'
 
 /**
  * Routes whose content is period-scoped (the schedule and its views) — only
@@ -87,6 +88,10 @@ export function Shell() {
         </main>
       </div>
       <BottomNav />
+      {/* One panel for the whole app: both version labels (rail footer, More
+          sheet) raise it through `whatsNewOpenAtom`, and a phone cannot end up
+          with two dialogs open at once. */}
+      <WhatsNewDialog />
     </div>
   )
 }

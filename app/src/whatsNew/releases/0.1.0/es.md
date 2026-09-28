@@ -1,0 +1,5 @@
+- **Generar** escribe todo el periodo por ti: pulsa una vez y el tablero se llena con un horario justo y válido que aún puedes editar a mano.
+- **Cobertura** compara el número de personas con tu objetivo para cada turno y día, y los **incumplimientos de reglas** aparecen al momento.
+- **Empieza con una plantilla** — Centro 24/7, Tienda minorista, Semana de oficina — o pega tu equipo directamente desde una hoja de cálculo.
+- **Sin conexión y tuyo**: todo se queda en tu dispositivo y cada cambio se puede deshacer; exporta un periodo a CSV, Excel, JSON o PDF cuando quieras.
+- **Siete idiomas, claro u oscuro**: toda la interfaz sigue el idioma y el tema que elijas.

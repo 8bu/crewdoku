@@ -10,7 +10,7 @@
  * client state) would be wrong. Keep every addition to this file pure and
  * side-effect-free.
  */
-import type { LocaleId } from '../state/locale'
+import { LOCALE_IDS, type LocaleId } from './localeIds'
 
 /** Cookie the edge Worker writes with the visitor's geo-resolved locale. */
 export const GEO_LOCALE_COOKIE = 'crewdoku-geo'
@@ -45,26 +45,12 @@ export function localeForCountry(country: string | null | undefined): LocaleId |
 }
 
 /**
- * Every supported locale, as an exhaustive map — a new `LocaleId` member without
- * an entry here is a compile error, which keeps `isLocaleId` honest.
- */
-const SUPPORTED: Record<LocaleId, true> = {
-  en: true,
-  vi: true,
-  es: true,
-  fr: true,
-  ja: true,
-  de: true,
-  pt: true,
-}
-
-/**
  * Narrows an untrusted string (a cookie value, a browser language tag) to a
- * supported locale. `hasOwn` (not `in`) keeps prototype keys such as
- * `'toString'` out.
+ * supported locale, reading the one list in `localeIds.ts` so it can never
+ * drift from the locales the app actually ships.
  */
 export function isLocaleId(v: string | null | undefined): v is LocaleId {
-  return v != null && Object.hasOwn(SUPPORTED, v)
+  return v != null && (LOCALE_IDS as readonly string[]).includes(v)
 }
 
 /**

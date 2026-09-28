@@ -1,0 +1,5 @@
+- **Générer** écrit toute la période pour vous : un clic et le planning se remplit d'un horaire équitable et valide, que vous pouvez toujours ajuster à la main.
+- **Couverture** compare le nombre de personnes à votre objectif pour chaque créneau et chaque jour, et les **infractions aux règles** apparaissent aussitôt.
+- **Partez d'un modèle** — Service 24/7, Commerce, Semaine de bureau — ou collez votre équipe directement depuis une feuille de calcul.
+- **Hors connexion et chez vous** : tout reste sur votre appareil et chaque modification peut être annulée ; exportez une période en CSV, Excel, JSON ou PDF quand vous voulez.
+- **Sept langues, clair ou sombre** : toute l'interface suit la langue et le thème que vous choisissez.

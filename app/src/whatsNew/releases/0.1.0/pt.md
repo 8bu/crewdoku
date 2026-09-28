@@ -1,0 +1,5 @@
+- **Gerar** escreve o período inteiro por você: um toque e o quadro se enche com uma escala justa e válida que você ainda pode editar à mão.
+- **Cobertura** compara o número de pessoas com a sua meta para cada turno e dia, e as **quebras de regra** aparecem na hora.
+- **Comece com um modelo** — Operação 24/7, Loja de varejo, Semana de escritório — ou cole a equipe direto de uma planilha.
+- **Offline e seu**: tudo fica no seu dispositivo e cada alteração pode ser desfeita; exporte um período em CSV, Excel, JSON ou PDF quando quiser.
+- **Sete idiomas, claro ou escuro**: toda a interface segue o idioma e o tema que você escolher.

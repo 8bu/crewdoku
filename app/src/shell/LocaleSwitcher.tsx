@@ -1,6 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { useAtom } from 'jotai'
-import { LOCALES, LOCALE_STORAGE_KEY, localeAtom, type LocaleId } from '../state/locale'
+import { LOCALES, LOCALE_STORAGE_KEY, localeAtom } from '../state/locale'
+import type { LocaleId } from '../i18n/localeIds'
 import { Select } from '../ui/Select'
 import { SheetSelect } from '../ui/SheetSelect'
 import { useIsNarrow } from '../ui/useIsNarrow'
