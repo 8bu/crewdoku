@@ -6,8 +6,7 @@ import { emptyBoardData } from '../board/mockBoard'
 /**
  * The pivot behind `/coverage` (ticket 21): counts come from the injected
  * `getAssignment` (overrides-over-schedule at the call site), statuses from
- * the authored band, and a lens without a requirement table (a team, or a tag
- * the planner has not given coverage) suppresses status entirely.
+ * the authored band, and a team lens suppresses status entirely.
  */
 
 const SHIFTS: ShiftDef[] = [
@@ -15,8 +14,8 @@ const SHIFTS: ShiftDef[] = [
   { code: 'LATE', label: 'Late', start: '1400', end: '2200', color: 'orange' },
 ]
 
-function person(id: string, teamId: string, tagIds?: string[], removed?: boolean): Person {
-  return { id, name: id, teamId, ineligible: [], tagIds, removed }
+function person(id: string, teamId: string): Person {
+  return { id, name: id, teamId, ineligible: [] }
 }
 
 const PEOPLE = [person('a', 't1'), person('b', 't1'), person('c', 't2')]
@@ -85,28 +84,6 @@ describe('buildCoverageView', () => {
     expect(view.rows.flatMap((r) => r.cells.map((c) => c.status))).toEqual([null, null, null, null])
     expect([view.shortCells, view.overCells]).toEqual([0, 0])
     expect(view.dayTotals.map((d) => d.status)).toEqual([null, null])
-  })
-
-  it('a tag lens counts active holders only — removed and untagged people drop out', () => {
-    // `a` and `b` hold the tag, but `b` was removed; `c` is active but untagged.
-    const tagged = [person('a', 't1', ['night']), person('b', 't1', ['night'], true), person('c', 't2', [])]
-    const tagTable: CoverageTable = { byDow: {}, dateOverrides: {} }
-    for (let dow = 0; dow < 7; dow++) tagTable.byDow[dow] = { EARLY: { min: 1, max: 1 } }
-    const view = buildCoverageView(tagged, DATES, SHIFTS, tagTable, getAssignment, { kind: 'tag', id: 'night' })
-    expect(view.scoped).toBe(false)
-    expect(view.rows[0]!.cells[0]!.count).toBe(1) // a alone; b removed, c untagged and on LATE
-    expect(view.rows[0]!.cells[0]!.status).toBe('ok')
-    expect(view.rows[1]!.cells[0]!.count).toBe(0)
-    expect(view.dayTotals.map((d) => d.assigned)).toEqual([1, 0])
-  })
-
-  it('a tag with no coverage table shows counts with a neutral status', () => {
-    const tagged = [person('a', 't1', ['night']), person('b', 't1', [])]
-    const view = buildCoverageView(tagged, DATES, SHIFTS, null, getAssignment, { kind: 'tag', id: 'night' })
-    expect(view.scoped).toBe(true)
-    expect(view.rows[0]!.cells[0]!.count).toBe(1) // b does not hold the tag
-    expect(view.rows.flatMap((r) => r.cells.map((c) => c.status))).toEqual([null, null, null, null])
-    expect(view.dayTotals.map((d) => d.minTotal)).toEqual([0, 0])
   })
 
   it('names in a cell are the in-scope people on that shift', () => {

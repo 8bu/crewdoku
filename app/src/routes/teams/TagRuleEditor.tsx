@@ -7,7 +7,7 @@ import { useIsNarrow } from '../../ui/useIsNarrow'
 import { Select, type SelectOption } from '../../ui/Select'
 import { SheetSelect } from '../../ui/SheetSelect'
 import { Input } from '../../ui/Input'
-import { Plus, X } from '../../ui/icons'
+import { X } from '../../ui/icons'
 
 /** The same weekday labels the person panel's recurring-off chips use. */
 const WEEKDAY_KEYS = [
@@ -36,9 +36,13 @@ const WHEN_LABEL_KEYS: Record<TagWhen['type'], string> = {
  * divide the line's width evenly and a row of seven never wraps (`px-3` per
  * chip was 24px of padding each, which pushed `Sat` onto a line of its own on
  * a 390px phone). At `md` it is the padded inline chip it always was.
+ *
+ * Picked days take the primary tint, not the inverted `bg-base-content` block
+ * they used to: a solid black chip in the middle of a sentence read as a
+ * different kind of control from every other selected thing on the page.
  */
 const chipBase =
-  'flex min-h-11 min-w-0 items-center justify-center rounded-md border border-base-300 bg-base-100 text-2xs font-semibold text-base-content cursor-pointer transition-colors duration-150 data-[active]:border-base-content data-[active]:bg-base-content data-[active]:text-base-100 md:min-h-0 md:px-[9px] md:py-1'
+  'flex min-h-11 min-w-0 items-center justify-center rounded-md border border-base-300 bg-base-100 text-2xs font-semibold text-base-content cursor-pointer transition-colors duration-150 data-[active]:border-primary/40 data-[active]:bg-primary/10 data-[active]:text-primary md:min-h-0 md:px-[9px] md:py-1'
 
 const hint = 'text-2xs text-base-content/50'
 
@@ -112,14 +116,12 @@ export function TagRuleEditor({
   tag,
   shifts,
   periodStart,
-  onAddRule,
   onPatchRule,
   onRemoveRule,
 }: {
   tag: Tag
   shifts: ShiftDef[]
   periodStart: string
-  onAddRule: () => void
   onPatchRule: (ruleId: string, patch: Partial<Omit<TagRule, 'id'>>) => void
   onRemoveRule: (ruleId: string) => void
 }) {
@@ -267,12 +269,14 @@ export function TagRuleEditor({
       {tag.rules.length === 0 ? (
         <p className={`m-0 ${hint}`}>{t('tags.rules.empty')}</p>
       ) : (
-        <ul className="m-0 flex list-none flex-col gap-0 p-0 md:gap-2">
+        // Dividers, not a box per line: the rules are one list read top to
+        // bottom, and five nested cards for five sentences is what made this
+        // pane look like a stack of unrelated panels.
+        <ul className="m-0 flex list-none flex-col divide-y divide-base-300 p-0">
           {tag.rules.map((rule) => (
-            <li
-              key={rule.id}
-              className="-mx-4 flex flex-col gap-2 border-b border-base-300 px-4 py-3 md:mx-0 md:rounded-md md:border md:border-base-300 md:bg-base-100 md:px-2.5 md:py-2"
-            >
+            // Full-bleed under `md`, where the divider is the only thing
+            // separating the lines; inside the card's own padding from `md` up.
+            <li key={rule.id} className="-mx-4 px-4 py-3 md:mx-0 md:px-0 md:py-2.5">
               {/* The remove control keeps the sentence's first line: inside the
                   wrapping half it would be left alone on a line of its own. */}
               <div className="flex items-start gap-1.5">
@@ -299,6 +303,29 @@ export function TagRuleEditor({
                     className="w-44"
                   />
                   {whenControls(rule)}
+                  {/* Avoids only: a want never needs to say how firmly it is
+                      held, so the switch is not offered on one. Off, the rule
+                      is a preference the schedule may break; the caption
+                      after the switch says which of the two you are looking
+                      at, and is the one-line answer to "what does strict
+                      change?". */}
+                  {rule.kind === 'avoid' && (
+                    <span className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-0.5 md:min-h-0">
+                      <label className="flex cursor-pointer items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          className="toggle toggle-xs toggle-primary"
+                          checked={rule.strict === true}
+                          onChange={(e) => onPatchRule(rule.id, { strict: e.target.checked })}
+                          aria-label={t('tags.rules.strict')}
+                        />
+                        <span className="text-2xs font-semibold text-base-content">{t('tags.rules.strict')}</span>
+                      </label>
+                      <span className={`${hint} ${rule.strict === true ? 'text-warning' : ''}`}>
+                        {rule.strict === true ? t('tags.rules.strictHintOn') : t('tags.rules.strictHintOff')}
+                      </span>
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -309,37 +336,10 @@ export function TagRuleEditor({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              {/* Avoids only: a want never needs to say how firmly it is held.
-                  The label is the whole row under `md`, and the hint follows the
-                  switch: off, the rule is a preference the schedule may break. */}
-              {rule.kind === 'avoid' && (
-                <div className="flex flex-col gap-1">
-                  <label className="flex min-h-11 w-full cursor-pointer items-center gap-2 text-sm font-semibold text-base-content md:min-h-0 md:text-2xs">
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-sm"
-                      checked={rule.strict === true}
-                      onChange={(e) => onPatchRule(rule.id, { strict: e.target.checked })}
-                    />
-                    {t('tags.rules.strict')}
-                  </label>
-                  <p className={`m-0 ${hint}`}>
-                    {rule.strict === true ? t('tags.rules.strictHintOn') : t('tags.rules.strictHintOff')}
-                  </p>
-                </div>
-              )}
             </li>
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={onAddRule}
-        className="btn btn-outline btn-sm min-h-11 gap-1.5 self-start md:min-h-0"
-      >
-        <Plus className="h-4 w-4" />
-        {t('tags.rules.add')}
-      </button>
     </div>
   )
 }

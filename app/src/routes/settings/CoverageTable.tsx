@@ -87,6 +87,7 @@ export function CoverageTable({
   onAddOverride,
   onSetOverrideBand,
   onRemoveOverride,
+  showHeading = true,
 }: {
   shifts: ShiftDef[]
   table: CoverageTableData
@@ -94,6 +95,9 @@ export function CoverageTable({
   onAddOverride: (iso: string) => void
   onSetOverrideBand: (iso: string, code: string, band: CoverageBand) => void
   onRemoveOverride: (iso: string) => void
+  /** `false` where the host already supplies the title and description — the
+      tag's own coverage card headers itself the same way its sibling boxes do. */
+  showHeading?: boolean
 }) {
   const t = useT()
   const [newOverrideDate, setNewOverrideDate] = useState('')
@@ -112,10 +116,12 @@ export function CoverageTable({
 
   return (
     <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.coverage.title')}</h2>
-        <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('settings.coverage.desc')}</p>
-      </div>
+      {showHeading && (
+        <div>
+          <h2 className="m-0 text-sm font-semibold tracking-tight text-base-content">{t('settings.coverage.title')}</h2>
+          <p className="m-0 mt-0.5 text-xs text-base-content/60">{t('settings.coverage.desc')}</p>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-lg border border-base-300">
         {shifts.map((shift, i) => {

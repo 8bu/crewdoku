@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { Info, Plus } from '../ui/icons'
+import { Info } from '../ui/icons'
 import { tourReplayRequestedAtom } from '../onboarding/tour/productTour'
 import { findOverlap, periodsAtom, selectedPeriodAtom, type Period } from '../state/shell'
 import { updatePeriodAtom } from '../state/periodOps'
@@ -9,8 +9,8 @@ import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
 import { useCoverageRules } from '../state/coverageRules'
-import { useTags, useTagCoverage } from '../state/tags'
-import { defaultCoverageTable, type CoverageBand, type CoverageTable as DomainCoverageTable, type Tag } from '@crewdoku/domain'
+import { useTagCoverage } from '../state/tags'
+import { defaultCoverageTable, type CoverageBand, type CoverageTable as DomainCoverageTable } from '@crewdoku/domain'
 import { useSolveSettings, type DisplayHardRuleId } from '../state/solveSettings'
 import type { SoftGoalId } from '@crewdoku/domain'
 import { useSettingsDirty, useMarkAllSettingsDirty } from '../state/settingsDirty'
@@ -33,11 +33,9 @@ import type { ShiftColorId } from '../board/shiftColors'
 import { Stub } from './Stub'
 import { ShiftsTable } from './settings/ShiftsTable'
 import { CoverageTable } from './settings/CoverageTable'
+import { withAddedOverride, withBandDays, withOverrideBand, withoutOverride } from './settings/coverageEdits'
 import { AdvancedRules } from './settings/AdvancedRules'
 import { useT } from '../i18n/useT'
-import { useIsNarrow } from '../ui/useIsNarrow'
-import { Select } from '../ui/Select'
-import { SheetSelect } from '../ui/SheetSelect'
 import { GenerateShiftsWizard } from './settings/GenerateShiftsWizard'
 import { Input } from '../ui/Input'
 import {
@@ -74,104 +72,6 @@ export function Settings() {
   return <SettingsPage periodId={period.id} initial={initial} />
 }
 
-/** A coverage table with no bands at all — what a tag starts from. */
-const EMPTY_COVERAGE_TABLE: DomainCoverageTable = { byDow: {}, dateOverrides: {} }
-
-// The four edits `CoverageTable` emits, shared by the org table and a tag's
-// own table so the two editors can never drift apart.
-function withBandDays(table: DomainCoverageTable, weekdays: number[], code: string, band: CoverageBand): DomainCoverageTable {
-  const byDow = { ...table.byDow }
-  for (const wd of weekdays) byDow[wd] = { ...byDow[wd], [code]: band }
-  return { ...table, byDow }
-}
-function withAddedOverride(table: DomainCoverageTable, iso: string): DomainCoverageTable {
-  const weekday = new Date(`${iso}T00:00:00Z`).getUTCDay()
-  const seedRow = table.byDow[weekday] ?? {}
-  return { ...table, dateOverrides: { ...table.dateOverrides, [iso]: { ...seedRow } } }
-}
-function withOverrideBand(table: DomainCoverageTable, iso: string, code: string, band: CoverageBand): DomainCoverageTable {
-  return { ...table, dateOverrides: { ...table.dateOverrides, [iso]: { ...table.dateOverrides[iso], [code]: band } } }
-}
-function withoutOverride(table: DomainCoverageTable, iso: string): DomainCoverageTable {
-  const rest = { ...table.dateOverrides }
-  delete rest[iso]
-  return { ...table, dateOverrides: rest }
-}
-
-/**
- * Apply an edit to one tag's table. The entry only disappears once nothing is
- * left in it: a band the planner typed back to `0..∞` is still their explicit
- * choice, and an override row the seed left empty is about to be filled in.
- */
-function withTagTable(
-  prev: Record<string, DomainCoverageTable>,
-  tagId: string,
-  edit: (table: DomainCoverageTable) => DomainCoverageTable,
-): Record<string, DomainCoverageTable> {
-  const next = edit(prev[tagId] ?? EMPTY_COVERAGE_TABLE)
-  if (Object.keys(next.byDow).length > 0 || Object.keys(next.dateOverrides).length > 0) return { ...prev, [tagId]: next }
-  if (!(tagId in prev)) return prev
-  const rest = { ...prev }
-  delete rest[tagId]
-  return rest
-}
-
-/**
- * "Coverage for" — the org table or one tag's. A segmented control while the
- * catalog is small enough to read at a glance; past that, a dropdown (a sheet
- * on a phone, where a trigger-anchored menu is a corner target).
- */
-function CoverageScopePicker({
-  value,
-  onChange,
-  tags,
-}: {
-  value: string
-  onChange: (value: string) => void
-  tags: Tag[]
-}) {
-  const t = useT()
-  const isNarrow = useIsNarrow()
-  const options = [
-    { value: 'all', label: t('settings.coverage.everyone') },
-    ...tags.map((tag) => ({ value: tag.id, label: tag.name })),
-  ]
-  if (options.length > 3) {
-    return isNarrow ? (
-      <SheetSelect
-        value={value}
-        onChange={onChange}
-        options={options}
-        title={t('settings.coverage.for')}
-        ariaLabel={t('settings.coverage.scopeAria')}
-      />
-    ) : (
-      <Select
-        value={value}
-        onChange={onChange}
-        options={options}
-        ariaLabel={t('settings.coverage.scopeAria')}
-        className="min-w-[140px]"
-      />
-    )
-  }
-  return (
-    <div role="group" aria-label={t('settings.coverage.scopeAria')} className="flex overflow-hidden rounded-md border border-base-300 text-2xs">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-pressed={option.value === value}
-          onClick={() => onChange(option.value)}
-          className={`min-h-11 flex-1 px-2.5 py-1 font-medium transition-colors md:min-h-0 md:flex-none ${option.value === value ? 'bg-primary/10 text-primary' : 'text-base-content/50 hover:bg-base-200'}`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function SettingsPage({ periodId, initial }: { periodId: string; initial: BoardData }) {
   const t = useT()
   const [teams, setTeams] = useRosterTeams(initial.teams)
@@ -179,17 +79,13 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
   const [shifts, setShifts] = useRosterShifts(DEFAULT_SHIFTS)
   const defaultCoverage = useMemo(() => defaultCoverageTable(DEFAULT_SHIFTS, teams.length), [teams.length])
   const [coverage, setCoverage] = useCoverageRules(defaultCoverage)
-  const [tags] = useTags()
-  const [tagCoverage, setTagCoverage] = useTagCoverage()
-  const [coverageScope, setCoverageScope] = useState('all')
+  const [, setTagCoverage] = useTagCoverage()
   const [solveSettings, setSolveSettings] = useSolveSettings()
   const [, setDirty] = useSettingsDirty(periodId)
   const markAllDirty = useMarkAllSettingsDirty()
   const [periods, setPeriods] = useAtom(periodsAtom)
   const period = periods.find((p) => p.id === periodId)
   const updatePeriod = useSetAtom(updatePeriodAtom)
-  // A tag deleted while it was selected falls back to the everyone table.
-  const coverageTag = tags.find((tag) => tag.id === coverageScope) ?? null
   const [, setScheduleByPeriod] = useAtom(scheduleByPeriodAtom)
   const [, setOverridesByPeriod] = useAtom(overridesByPeriodAtom)
 
@@ -308,40 +204,23 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
     markAllDirty()
   }
 
-  // The four band/override edits write to whichever table the "Coverage for"
-  // switch points at — the org table, or one tag's — through the same
-  // `with*` helpers, so both stay dirty-marked and behave identically.
+  // The four band/override edits write to the org coverage table through the
+  // shared `with*` helpers (the tag editor in the Tags view uses them too), so
+  // both stay dirty-marked and behave identically.
   function handleSetBandDays(weekdays: number[], code: string, band: CoverageBand) {
-    if (coverageTag) setTagCoverage((prev) => withTagTable(prev, coverageTag.id, (table) => withBandDays(table, weekdays, code, band)))
-    else setCoverage((prev) => withBandDays(prev, weekdays, code, band))
+    setCoverage((prev) => withBandDays(prev, weekdays, code, band))
     markAllDirty()
   }
   function handleAddOverride(iso: string) {
-    if (coverageTag) setTagCoverage((prev) => withTagTable(prev, coverageTag.id, (table) => withAddedOverride(table, iso)))
-    else setCoverage((prev) => withAddedOverride(prev, iso))
+    setCoverage((prev) => withAddedOverride(prev, iso))
     markAllDirty()
   }
   function handleSetOverrideBand(iso: string, code: string, band: CoverageBand) {
-    if (coverageTag) setTagCoverage((prev) => withTagTable(prev, coverageTag.id, (table) => withOverrideBand(table, iso, code, band)))
-    else setCoverage((prev) => withOverrideBand(prev, iso, code, band))
+    setCoverage((prev) => withOverrideBand(prev, iso, code, band))
     markAllDirty()
   }
   function handleRemoveOverride(iso: string) {
-    if (coverageTag) setTagCoverage((prev) => withTagTable(prev, coverageTag.id, (table) => withoutOverride(table, iso)))
-    else setCoverage((prev) => withoutOverride(prev, iso))
-    markAllDirty()
-  }
-  /** Give a tag its own (still empty) table so its bands become editable. */
-  function handleAddTagCoverage(tagId: string) {
-    setTagCoverage((prev) => ({ ...prev, [tagId]: { byDow: {}, dateOverrides: {} } }))
-    markAllDirty()
-  }
-  function handleRemoveTagCoverage(tagId: string) {
-    setTagCoverage((prev) => {
-      const rest = { ...prev }
-      delete rest[tagId]
-      return rest
-    })
+    setCoverage((prev) => withoutOverride(prev, iso))
     markAllDirty()
   }
 
@@ -480,52 +359,15 @@ export function SettingsPage({ periodId, initial }: { periodId: string; initial:
             onOpenWizard={() => setWizardOpen(true)}
           />
           </div>
-          <div className="-mx-4 flex flex-col gap-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
-          {tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-2xs font-semibold uppercase tracking-wide text-base-content/40">{t('settings.coverage.for')}</span>
-              <CoverageScopePicker value={coverageTag ? coverageTag.id : 'all'} onChange={setCoverageScope} tags={tags} />
-              {coverageTag && tagCoverage[coverageTag.id] && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTagCoverage(coverageTag.id)}
-                  className="ml-auto min-h-11 cursor-pointer border-none bg-transparent px-2 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors hover:text-error md:min-h-0 md:px-0"
-                >
-                  {t('settings.coverage.tagRemoveRequirements')}
-                </button>
-              )}
-            </div>
-          )}
-          {coverageTag && !tagCoverage[coverageTag.id] ? (
-            // A tag carries no requirement until the planner asks for one — the
-            // empty state says so instead of implying a table of zeroes.
-            <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-base-300 px-3 py-4">
-              <p className="m-0 text-sm font-semibold text-base-content">
-                {t('settings.coverage.tagEmptyTitle', { tag: coverageTag.name })}
-              </p>
-              <p className="m-0 text-xs text-base-content/60">{t('settings.coverage.tagEmptyBody')}</p>
-              <button
-                type="button"
-                onClick={() => handleAddTagCoverage(coverageTag.id)}
-                className="btn btn-outline btn-sm min-h-11 gap-1.5 md:min-h-8"
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                {t('settings.coverage.tagAddRequirements')}
-              </button>
-            </div>
-          ) : (
-            <CoverageTable
-              // A fresh instance per scope: the per-shift "Every day / Weekend /
-              // Per day" choices are a view of one table, not a shared setting.
-              key={coverageTag?.id ?? 'all'}
-              shifts={shifts}
-              table={coverageTag ? (tagCoverage[coverageTag.id] ?? EMPTY_COVERAGE_TABLE) : coverage}
-              onSetBandDays={handleSetBandDays}
-              onAddOverride={handleAddOverride}
-              onSetOverrideBand={handleSetOverrideBand}
-              onRemoveOverride={handleRemoveOverride}
-            />
-          )}
+          <div className="-mx-4 border-b border-base-300 px-4 pb-5 md:mx-0 md:rounded-lg md:border md:border-base-300 md:bg-base-100 md:p-5">
+          <CoverageTable
+            shifts={shifts}
+            table={coverage}
+            onSetBandDays={handleSetBandDays}
+            onAddOverride={handleAddOverride}
+            onSetOverrideBand={handleSetOverrideBand}
+            onRemoveOverride={handleRemoveOverride}
+          />
           </div>
 
           {/* No measurement ID means nothing is collected, so there is nothing

@@ -6,6 +6,7 @@ import {
   addTeamToTag,
   deleteTag,
   deleteTagGroup,
+  freshName,
   isTagGroupNameTaken,
   isTagNameTaken,
   removeRule,
@@ -51,6 +52,31 @@ describe('duplicate names', () => {
     expect(addTag(tags, 'night OWL')).toBe(tags)
     // A tag may reuse a group's word: the two are different catalogs.
     expect(addTag(tags, 'Faith').at(-1)!.name).toBe('Faith')
+  })
+})
+
+describe('freshName', () => {
+  it('hands back a name the catalog accepts, however many times it is asked', () => {
+    let tags: Tag[] = []
+    for (let i = 0; i < 3; i++) {
+      const name = freshName(tags.map((t) => t.name), 'New tag')
+      const next = addTag(tags, name)
+      // `addTag` refuses a duplicate, so a refusal here is a create button
+      // that does nothing — the one thing this helper exists to prevent.
+      expect(next).not.toBe(tags)
+      tags = next
+    }
+    expect(tags.map((t) => t.name)).toEqual(['New tag', 'New tag 2', 'New tag 3'])
+  })
+
+  it('treats a name that differs only in case or spacing as taken', () => {
+    expect(freshName([], 'New tag')).toBe('New tag')
+    expect(freshName(['new tag'], 'New tag')).toBe('New tag 2')
+    expect(freshName(['  New tag 4 '], 'New tag 3')).toBe('New tag 3')
+  })
+
+  it('skips a suffix that is already used rather than colliding with it', () => {
+    expect(freshName(['New tag', 'New tag 2', 'New tag 4'], 'New tag')).toBe('New tag 3')
   })
 })
 

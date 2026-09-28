@@ -18,7 +18,6 @@ import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
 import { useCoverageRules } from '../state/coverageRules'
-import { useTags, useTagCoverage } from '../state/tags'
 import { useBoardSchedule } from '../state/schedule'
 import { useBoardOverrides } from '../state/boardOverrides'
 import { Select } from '../ui/Select'
@@ -34,10 +33,9 @@ import { buildCoverageView, type CoverageScope, type CoverageViewCell } from './
  * so the two views always agree. Read-only: a cell's popover names who's on
  * and jumps to the board, which stays the only place that edits.
  *
- * Two lenses sit beside the title: a team (whose assignments to count) and a
- * tag (whose holders to count, judged by that tag's own coverage table — the
- * same numbers Settings → Coverage authors). One is active at a time; picking
- * either clears the other.
+ * The team lens beside the title narrows whose assignments are counted. A
+ * team has no requirement of its own, so under it every `status` is `null`
+ * and the UI shows plain numbers.
  */
 
 type PopoverState = { cell: CoverageViewCell; rect: { left: number; top: number; width: number; height: number } }
@@ -51,14 +49,11 @@ export function CoverageGrid({ period }: { period: Period }) {
   const [shifts] = useRosterShifts(DEFAULT_SHIFTS)
   const initialCoverage = useMemo(() => defaultCoverageTable(DEFAULT_SHIFTS, initial.teams.length), [initial])
   const [coverageTable] = useCoverageRules(initialCoverage)
-  const [tags] = useTags()
-  const [tagCoverage] = useTagCoverage()
   const initialAssignments = useMemo(() => emptyAssignments(initial.people, initial.dates), [initial])
   const [baseAssignments, hasSchedule] = useBoardSchedule(periodId, initialAssignments)
   const [overrides] = useBoardOverrides(periodId)
 
   const [teamId, setTeamId] = useState('all')
-  const [tagId, setTagId] = useState('all')
   const [popover, setPopover] = useState<PopoverState | null>(null)
 
   const getAssignment = useCallback(
@@ -69,37 +64,20 @@ export function CoverageGrid({ period }: { period: Period }) {
     [overrides, baseAssignments],
   )
 
-  // A deleted tag must not leave the pivot pointing at nothing.
-  const activeTagId = tags.some((tag) => tag.id === tagId) ? tagId : 'all'
-  const activeTag = tags.find((tag) => tag.id === activeTagId)
-
   const scope = useMemo<CoverageScope>(
-    () =>
-      activeTagId !== 'all'
-        ? { kind: 'tag', id: activeTagId }
-        : teamId !== 'all'
-          ? { kind: 'team', id: teamId }
-          : { kind: 'all' },
-    [activeTagId, teamId],
+    () => (teamId !== 'all' ? { kind: 'team', id: teamId } : { kind: 'all' }),
+    [teamId],
   )
-  // A tag's status needs that tag's table; a tag without one reads as counts
-  // only (`null` = no requirement), exactly like a team lens.
-  const scopeTable = scope.kind === 'tag' ? (tagCoverage[scope.id] ?? null) : coverageTable
 
   const view = useMemo(
-    () => buildCoverageView(people, initial.dates, shifts, scopeTable, getAssignment, scope),
-    [people, initial.dates, shifts, scopeTable, getAssignment, scope],
+    () => buildCoverageView(people, initial.dates, shifts, coverageTable, getAssignment, scope),
+    [people, initial.dates, shifts, coverageTable, getAssignment, scope],
   )
 
   const teamOptions = useMemo(() => {
     const extra = people.some((p) => p.teamId === UNASSIGNED_TEAM_ID) ? [UNASSIGNED_TEAM] : []
     return [{ value: 'all', label: t('rtc.common.allTeams') }, ...[...teams, ...extra].map((team) => ({ value: team.id, label: team.id === UNASSIGNED_TEAM_ID ? t('rtc.common.unassigned') : team.name }))]
   }, [teams, people, t])
-
-  const tagOptions = useMemo(
-    () => [{ value: 'all', label: t('settings.coverage.everyone') }, ...tags.map((tag) => ({ value: tag.id, label: tag.name }))],
-    [tags, t],
-  )
 
   const openPopover = useCallback((cell: CoverageViewCell, target: HTMLElement) => {
     const box = target.getBoundingClientRect()
@@ -116,11 +94,7 @@ export function CoverageGrid({ period }: { period: Period }) {
           360px line; `md:` restores the single 48px strip unchanged. */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-2 md:h-12 md:flex-nowrap md:gap-3 md:py-0">
         <h1 className="m-0 text-sm font-semibold tracking-tight">{t('rtc.coverage.title')}</h1>
-        {scope.kind === 'tag' && scopeTable === null ? (
-          <span className="text-xs text-[color:var(--text-dim)]">
-            {t('settings.coverage.tagCountsOnly', { tag: activeTag?.name ?? '' })}
-          </span>
-        ) : view.scoped ? (
+        {view.scoped ? (
           <span className="text-xs text-[color:var(--text-dim)]">
             {t('rtc.coverage.scopedNotice')}
           </span>
@@ -141,43 +115,22 @@ export function CoverageGrid({ period }: { period: Period }) {
             )}
           </span>
         )}
-        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 text-sm md:ml-auto md:w-auto md:min-w-0 md:flex-nowrap">
-          <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
-            <label htmlFor="cov-team" className="shrink-0 text-[color:var(--text-dim)]">
-              {t('rtc.coverage.teamFilter')}
-            </label>
-            <Select
-              id="cov-team"
-              value={teamId}
-              onChange={(next) => {
-                // An open popover snapshots its cell in the previous scope —
-                // stale the moment the lens changes.
-                setPopover(null)
-                setTeamId(next)
-                if (next !== 'all') setTagId('all')
-              }}
-              options={teamOptions}
-              className="flex-1 md:flex-initial"
-            />
-          </div>
-          {tags.length > 0 && (
-            <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
-              <label htmlFor="cov-tag" className="shrink-0 text-[color:var(--text-dim)]">
-                {t('settings.coverage.tagFilter')}
-              </label>
-              <Select
-                id="cov-tag"
-                value={activeTagId}
-                onChange={(next) => {
-                  setPopover(null)
-                  setTagId(next)
-                  if (next !== 'all') setTeamId('all')
-                }}
-                options={tagOptions}
-                className="flex-1 md:flex-initial"
-              />
-            </div>
-          )}
+        <div className="flex w-full items-center gap-2 text-sm md:ml-auto md:w-auto">
+          <label htmlFor="cov-team" className="shrink-0 text-[color:var(--text-dim)]">
+            {t('rtc.coverage.teamFilter')}
+          </label>
+          <Select
+            id="cov-team"
+            value={teamId}
+            onChange={(next) => {
+              // An open popover snapshots its cell in the previous scope —
+              // stale the moment the lens changes.
+              setPopover(null)
+              setTeamId(next)
+            }}
+            options={teamOptions}
+            className="flex-1 md:flex-initial"
+          />
         </div>
       </div>
 

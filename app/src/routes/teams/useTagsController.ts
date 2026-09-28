@@ -1,8 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DEFAULT_SHIFTS,
   makeTagRule,
   togglePersonTag,
+  type CoverageBand,
+  type CoverageTable,
   type TagRule,
   type TagWhen,
 } from '@crewdoku/domain'
@@ -10,9 +12,19 @@ import { useRosterPeople } from '../../state/roster'
 import { useRosterTeams } from '../../state/teams'
 import { useRosterShifts } from '../../state/shifts'
 import { useTagCoverage, useTagGroups, useTags } from '../../state/tags'
+import { useMarkAllSettingsDirty } from '../../state/settingsDirty'
+import { useT } from '../../i18n/useT'
 import { seedBoardData } from '../../board/periodSeed'
 import type { Period } from '../../state/shell'
 import { track } from '../../analytics'
+import {
+  EMPTY_COVERAGE_TABLE,
+  withAddedOverride,
+  withBandDays,
+  withOverrideBand,
+  withTagTable,
+  withoutOverride,
+} from '../settings/coverageEdits'
 import {
   addRule,
   addTag,
@@ -20,8 +32,7 @@ import {
   addTeamToTag,
   deleteTag,
   deleteTagGroup,
-  isTagGroupNameTaken,
-  isTagNameTaken,
+  freshName,
   removeRule,
   renameTag,
   renameTagGroup,
@@ -38,9 +49,12 @@ import {
  * The catalog itself lives in `state/tags.ts` (three atoms, hydrated with the
  * rest of the workspace), so this hook is the only place the Tags view writes
  * them: every edit goes through `tagOps`, which is what keeps the cascades
- * (delete a tag, make a group exclusive) in one testable place.
+ * (delete a tag, make a group exclusive) in one testable place. Coverage is
+ * the exception only in that its pure edits live in `routes/settings/coverageEdits.ts`,
+ * shared with the org table so the two editors cannot drift.
  */
 export function useTagsController(period: Period) {
+  const t = useT()
   const initial = useMemo(() => seedBoardData(period), [period])
   const [people, setPeople] = useRosterPeople(initial.people)
   const [teams] = useRosterTeams(initial.teams)
@@ -48,47 +62,41 @@ export function useTagsController(period: Period) {
   const [groups, setGroups] = useTagGroups()
   const [tags, setTags] = useTags()
   const [tagCoverage, setTagCoverage] = useTagCoverage()
+  const markAllDirty = useMarkAllSettingsDirty()
 
-  const [newGroupName, setNewGroupName] = useState('')
-  const [newTagName, setNewTagName] = useState('')
-  const [newTagGroupId, setNewTagGroupId] = useState('')
   // The "one per person" toggle is the one edit that can silently take a tag
   // away from people, so its count is kept to be shown, not just applied.
   const [exclusiveNote, setExclusiveNote] = useState<{ groupId: string; count: number } | null>(null)
   const [bulkTeamId, setBulkTeamId] = useState('')
   const [bulkNote, setBulkNote] = useState<{ tagId: string; count: number } | null>(null)
-  const newGroupInputRef = useRef<HTMLInputElement | null>(null)
-  const newTagInputRef = useRef<HTMLInputElement | null>(null)
 
   const activePeople = useMemo(() => people.filter((p) => !p.removed), [people])
 
-  const newGroupNameTaken = newGroupName.trim() !== '' && isTagGroupNameTaken(groups, newGroupName)
-  const newTagNameTaken = newTagName.trim() !== '' && isTagNameTaken(tags, newTagName)
-
-  function handleAddGroup() {
-    const name = newGroupName.trim()
-    if (name === '' || isTagGroupNameTaken(groups, name)) return
+  /**
+   * A group created by one click: named "New group", or "New group 2" when
+   * that is taken, and returned so the pane can select it and put the caret
+   * in its title. Asking for the name first — as the old header input did —
+   * is a second decision (and a second place to look) before the thing you
+   * asked for exists at all.
+   */
+  function createGroup(): string | null {
+    const name = freshName(groups.map((group) => group.name), t('tags.defaultGroupName'))
     const next = addTagGroup(groups, name)
+    if (next === groups) return null
     setGroups(() => next)
-    // A group you have just made is where the next tag is going, so the create
-    // row's picker points at it instead of leaving tags to land ungrouped.
-    const created = next[next.length - 1]
-    if (created) setNewTagGroupId(created.id)
     // A new group is never exclusive, so the event records that default.
     track('tag_group_created', { exclusive: false })
-    setNewGroupName('')
-    newGroupInputRef.current?.focus()
+    return next[next.length - 1]?.id ?? null
   }
 
-  /** `intoGroupId` lets the group pane add straight into itself, ignoring the picker. */
-  function handleAddTag(intoGroupId?: string) {
-    const name = newTagName.trim()
-    if (name === '' || isTagNameTaken(tags, name)) return
-    const groupId = intoGroupId ?? (newTagGroupId === '' ? undefined : newTagGroupId)
-    setTags((prev) => addTag(prev, name, groupId))
-    track('tag_created', { grouped: groupId !== undefined })
-    setNewTagName('')
-    newTagInputRef.current?.focus()
+  /** `intoGroupId` lets the group pane add straight into itself, ignoring the selection. */
+  function createTag(intoGroupId?: string): string | null {
+    const name = freshName(tags.map((tag) => tag.name), t('tags.defaultTagName'))
+    const next = addTag(tags, name, intoGroupId)
+    if (next === tags) return null
+    setTags(() => next)
+    track('tag_created', { grouped: intoGroupId !== undefined })
+    return next[next.length - 1]?.id ?? null
   }
 
   function setExclusive(groupId: string, exclusive: boolean) {
@@ -113,7 +121,7 @@ export function useTagsController(period: Period) {
     setBulkNote(null)
   }
 
-  /** Everyone active holding the tag — the detail pane's member list. */
+  /** Everyone active holding the tag — the detail pane's member chips. */
   function members(tagId: string) {
     return activePeople.filter((person) => person.tagIds?.includes(tagId))
   }
@@ -122,7 +130,7 @@ export function useTagsController(period: Period) {
     return activePeople.reduce((n, person) => (person.tagIds?.includes(tagId) ? n + 1 : n), 0)
   }
 
-  /** Adding or removing a member is the same toggle: clicking a member row drops them. */
+  /** Adding or removing a member is the same toggle: clicking a chip's x drops them. */
   function toggleMember(personId: string, tagId: string) {
     setPeople((prev) =>
       prev.map((person) =>
@@ -156,6 +164,43 @@ export function useTagsController(period: Period) {
     setTags((prev) => removeRule(prev, tagId, ruleId))
   }
 
+  /** Give a tag a table of its own, so its bands become editable at all. */
+  function addCoverage(tagId: string) {
+    setTagCoverage((prev) => (tagId in prev ? prev : { ...prev, [tagId]: EMPTY_COVERAGE_TABLE }))
+    markAllDirty()
+  }
+
+  /** Back to "any shift": the tag stops asking for a minimum or maximum anywhere. */
+  function removeCoverage(tagId: string) {
+    setTagCoverage((prev) => {
+      const rest = { ...prev }
+      delete rest[tagId]
+      return rest
+    })
+    markAllDirty()
+  }
+
+  /**
+   * The four `CoverageTable` edits, bound to one tag's table through the same
+   * `with*` helpers Settings uses — and every one of them marks the board
+   * stale, which is the whole reason the edit functions are gathered here
+   * rather than spread over the card.
+   */
+  function coverageEdits(tagId: string) {
+    const edit = (change: (table: CoverageTable) => CoverageTable) => {
+      setTagCoverage((prev) => withTagTable(prev, tagId, change))
+      markAllDirty()
+    }
+    return {
+      onSetBandDays: (weekdays: number[], code: string, band: CoverageBand) =>
+        edit((table) => withBandDays(table, weekdays, code, band)),
+      onAddOverride: (iso: string) => edit((table) => withAddedOverride(table, iso)),
+      onSetOverrideBand: (iso: string, code: string, band: CoverageBand) =>
+        edit((table) => withOverrideBand(table, iso, code, band)),
+      onRemoveOverride: (iso: string) => edit((table) => withoutOverride(table, iso)),
+    }
+  }
+
   return {
     people,
     activePeople,
@@ -163,18 +208,9 @@ export function useTagsController(period: Period) {
     shifts,
     groups,
     tags,
-    newGroupName,
-    setNewGroupName,
-    newGroupNameTaken,
-    newGroupInputRef,
-    handleAddGroup,
-    newTagName,
-    setNewTagName,
-    newTagNameTaken,
-    newTagGroupId,
-    setNewTagGroupId,
-    newTagInputRef,
-    handleAddTag,
+    tagCoverage,
+    createGroup,
+    createTag,
     renameGroup: (groupId: string, name: string) => setGroups((prev) => renameTagGroup(prev, groupId, name)),
     renameTag: (tagId: string, name: string) => setTags((prev) => renameTag(prev, tagId, name)),
     setTagGroup: (tagId: string, groupId: string | null) => setTags((prev) => setTagGroup(prev, tagId, groupId)),
@@ -192,5 +228,8 @@ export function useTagsController(period: Period) {
     addRuleLine,
     changeRule,
     removeRuleLine,
+    addCoverage,
+    removeCoverage,
+    coverageEdits,
   }
 }

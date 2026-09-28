@@ -33,6 +33,23 @@ export function isTagNameTaken(tags: readonly Tag[], name: string): boolean {
   return tags.some((t) => t.name.trim().toLowerCase() === wanted)
 }
 
+/**
+ * The name a one-click "new tag"/"new group" starts from: the bare default,
+ * then "New tag 2", " 3"… on collision. Creating without asking for a name is
+ * only safe if the result is always a *distinct* row — `addTag` refuses a
+ * duplicate outright, so a second "New tag" would otherwise do nothing at all.
+ * Same case-insensitive rule as `isTagNameTaken`, since that is what decides
+ * whether the name we hand back is accepted.
+ */
+export function freshName(existing: readonly string[], base: string): string {
+  const taken = existing.map((name) => name.trim().toLowerCase())
+  if (!taken.includes(base.trim().toLowerCase())) return base
+  for (let n = 2; ; n++) {
+    const candidate = `${base} ${n}`
+    if (!taken.includes(candidate.toLowerCase())) return candidate
+  }
+}
+
 /** A new group starts non-exclusive: one-per-person is a deliberate per-group choice. */
 export function addTagGroup(groups: TagGroup[], name: string): TagGroup[] {
   const trimmed = name.trim()

@@ -9,25 +9,19 @@
  * EARLY/MID/LATE/NIGHT row set) that shipped with the route before any of
  * that state existed.
  *
- * The scope decides both whose assignments are counted and where status comes
- * from. `all` counts everyone against the org table. A team lens filters
- * *counts only* — the requirement table is org-wide, so a per-team status
- * would cry "short" while the org is fine; under a team lens every `status`
- * is `null` and the UI shows plain numbers. A tag lens counts active people
- * holding that tag and reads status from *that tag's own* table; a tag with no
- * table behaves like a team lens (counts only, neutral status) because it
- * carries no requirement to check against.
+ * The scope decides whose assignments are counted. `all` counts everyone
+ * against the org table. A team lens filters *counts only* — the requirement
+ * table is org-wide, so a per-team status would cry "short" while the org is
+ * fine; under a team lens every `status` is `null` and the UI shows plain
+ * numbers.
  */
 
-import { activePeople, coverageBandFor, UNCONSTRAINED_BAND, type Assignment, type CoverageTable, type Person, type ShiftDef } from '@crewdoku/domain'
+import { coverageBandFor, type Assignment, type CoverageTable, type Person, type ShiftDef } from '@crewdoku/domain'
 import type { BoardDate } from '../board/mockBoard'
 import type { CoverageStatus } from '../board/coverage'
 
-/** Whose assignments a coverage view counts, and which table judges them. */
-export type CoverageScope =
-  | { kind: 'all' }
-  | { kind: 'team'; id: string }
-  | { kind: 'tag'; id: string }
+/** Whose assignments a coverage view counts. */
+export type CoverageScope = { kind: 'all' } | { kind: 'team'; id: string }
 
 export type CoverageViewCell = {
   shift: ShiftDef
@@ -37,14 +31,14 @@ export type CoverageViewCell = {
   count: number
   min: number
   max: number
-  /** `null` under a lens without a requirement table — see the module comment. */
+  /** `null` under a team lens — see the module comment. */
   status: CoverageStatus | null
 }
 
 export type CoverageViewRow = {
   shift: ShiftDef
   cells: CoverageViewCell[]
-  /** Period margins for this shift's row (0 under a lens that suppresses status). */
+  /** Period margins for this shift's row (0 under a team lens). */
   shortDays: number
   overDays: number
 }
@@ -65,7 +59,7 @@ export type CoverageView = {
   /** Period headline (org scope only; 0 under a lens that suppresses status). */
   shortCells: number
   overCells: number
-  /** True when the scope carries no requirement table and statuses are suppressed. */
+  /** True under a team lens, where statuses are suppressed. */
   scoped: boolean
 }
 
@@ -79,20 +73,15 @@ export function buildCoverageView(
   people: Person[],
   dates: BoardDate[],
   shifts: ShiftDef[],
-  /** The requirement table to judge against; `null` for a tag with none. */
-  table: CoverageTable | null,
+  /** The org-wide requirement table to judge against. */
+  table: CoverageTable,
   getAssignment: (personId: string, dateIso: string) => Assignment,
   scope: CoverageScope,
 ): CoverageView {
-  // A team lens has no per-team requirement, and a tag lens has none until the
-  // planner authors one — both read as "counts only", never a false "short".
-  const scoped = scope.kind === 'team' || table === null
-  const inScope =
-    scope.kind === 'all'
-      ? people
-      : scope.kind === 'team'
-        ? people.filter((p) => p.teamId === scope.id)
-        : activePeople(people).filter((p) => p.tagIds?.includes(scope.id))
+  // A team lens has no per-team requirement, so it reads as "counts only" —
+  // never a false "short".
+  const scoped = scope.kind === 'team'
+  const inScope = scope.kind === 'all' ? people : people.filter((p) => p.teamId === scope.id)
 
   // One pass over people × dates, bucketed by shift code.
   const byShiftDate = new Map<string, Person[][]>()
@@ -116,7 +105,7 @@ export function buildCoverageView(
     let overDays = 0
     const cells = dates.map((date, dateIndex) => {
       const cellPeople = byShiftDate.get(shift.code)![dateIndex]!
-      const band = table ? coverageBandFor(table, shift.code, date.iso, date.weekday) : UNCONSTRAINED_BAND
+      const band = coverageBandFor(table, shift.code, date.iso, date.weekday)
       const status = scoped ? null : statusOf(cellPeople.length, band.min, band.max)
       if (status === 'short') {
         shortDays++

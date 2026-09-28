@@ -1,7 +1,7 @@
 import { WarningTriangleIcon, X } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useMemo, useState } from 'react'
-import { togglePersonTag } from '@crewdoku/domain'
+import { Link } from 'react-router-dom'
 import type { Person, ShiftCode, ShiftDef, Team } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 import type { FairnessRow } from './fairness'
@@ -53,6 +53,12 @@ const hint = 'mt-1.5 text-2xs text-base-content/50'
 const chipsRow = 'flex flex-wrap gap-1.5'
 const chipBase =
   'rounded-md border border-base-300 bg-base-100 px-3 py-2 text-2xs font-semibold text-base-content cursor-pointer transition-colors duration-150 disabled:cursor-default disabled:opacity-75 min-h-11 md:min-h-0 md:px-[9px] md:py-1'
+// Tags are read-only here, so a chip is a link to that tag's page rather than
+// a button — same tap floor as the editable chips beside it.
+const tagChip =
+  'inline-flex items-center no-underline rounded-md border border-base-300 bg-base-100 px-3 py-2 text-2xs font-semibold text-base-content transition-colors duration-150 hover:bg-base-200 min-h-11 md:min-h-0 md:px-[9px] md:py-1'
+const editTagsLink =
+  'mt-2 inline-flex min-h-11 items-center text-2xs font-semibold uppercase tracking-wide text-primary no-underline transition-colors hover:text-primary/80 md:min-h-0'
 
 /**
  * The person side panel (ticket 09) — docked right of the board, decided over
@@ -115,18 +121,20 @@ export function PersonPanel({
   const [tags] = useTags()
   const [tagGroups] = useTagGroups()
   const heldTagIds = person.tagIds ?? []
-  // Grouped the way the Tags view draws them — catalog order, loose tags last,
-  // and a tag whose group is gone reads as loose so a stale id never hides it.
+  const heldTags = tags.filter((tag) => heldTagIds.includes(tag.id))
+  // Only the tags this person holds, grouped the way the Tags view draws them
+  // — catalog order, loose tags last, and a tag whose group is gone reads as
+  // loose so a stale id never hides it. A group with no held tag drops out.
   const tagSections = [
     ...tagGroups.map((group) => ({
       key: group.id,
       label: group.name || t('rtc.common.unnamed'),
-      tags: tags.filter((tag) => tag.groupId === group.id),
+      tags: heldTags.filter((tag) => tag.groupId === group.id),
     })),
     {
       key: '',
       label: t('tags.person.ungrouped'),
-      tags: tags.filter((tag) => !tag.groupId || !tagGroups.some((group) => group.id === tag.groupId)),
+      tags: heldTags.filter((tag) => !tag.groupId || !tagGroups.some((group) => group.id === tag.groupId)),
     },
   ].filter((section) => section.tags.length > 0)
 
@@ -310,39 +318,34 @@ export function PersonPanel({
         </div>
       </section>
 
-      {/* Tags are the cross-team half of a person's preferences: chips, not
-          wants/avoids — a tag carries its own rule lines in the Tags view.
-          An exclusive group behaves as a single pick here because
-          `togglePersonTag` replaces its sibling rather than stacking. Hidden
-          entirely when the workspace has no tags: an empty section on every
-          person would be noise, not a hint. */}
+      {/* Tags are the cross-team half of a person's preferences, but read-only
+          here: the Tags view is the one place that edits them, and a chip jumps
+          straight to that tag's page. Hidden entirely when the workspace has no
+          tags: an empty section on every person would be noise, not a hint. */}
       {tags.length > 0 && (
         <section>
           <h3 className={heading}>{t('tags.person.section')}</h3>
-          <div className="flex flex-col gap-2.5">
-            {tagSections.map((section) => (
-              <div key={section.key} className="flex items-center gap-2.5">
-                <span className="w-[52px] flex-none text-2xs text-base-content/50">{section.label}</span>
-                <div className={chipsRow}>
-                  {section.tags.map((tag) => {
-                    const active = heldTagIds.includes(tag.id)
-                    return (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        className={`${chipBase} ${active ? 'border-primary bg-primary text-primary-content' : ''}`}
-                        data-active={active || undefined}
-                        onClick={() => onUpdate({ tagIds: togglePersonTag(heldTagIds, tag.id, tags, tagGroups) })}
-                      >
+          {heldTags.length === 0 ? (
+            <p className={hint}>{t('tags.person.none')}</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {tagSections.map((section) => (
+                <div key={section.key} className="flex items-center gap-2.5">
+                  <span className="w-[52px] flex-none text-2xs text-base-content/50">{section.label}</span>
+                  <div className={chipsRow}>
+                    {section.tags.map((tag) => (
+                      <Link key={tag.id} to={`/teams?view=tags&tag=${tag.id}`} className={tagChip}>
                         {tag.name}
-                      </button>
-                    )
-                  })}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <p className={hint}>{t('tags.person.hint')}</p>
+              ))}
+            </div>
+          )}
+          <Link to="/teams?view=tags" className={editTagsLink}>
+            {t('tags.person.edit')}
+          </Link>
         </section>
       )}
 
