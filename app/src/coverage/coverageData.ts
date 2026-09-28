@@ -9,15 +9,25 @@
  * EARLY/MID/LATE/NIGHT row set) that shipped with the route before any of
  * that state existed.
  *
- * The team lens filters *counts only*: the requirement table is org-wide
- * (min/max per shift × weekday), so a per-team status would cry "short"
- * while the org is fine. Under a lens every `status` is `null` and the UI
- * shows plain numbers.
+ * The scope decides both whose assignments are counted and where status comes
+ * from. `all` counts everyone against the org table. A team lens filters
+ * *counts only* — the requirement table is org-wide, so a per-team status
+ * would cry "short" while the org is fine; under a team lens every `status`
+ * is `null` and the UI shows plain numbers. A tag lens counts active people
+ * holding that tag and reads status from *that tag's own* table; a tag with no
+ * table behaves like a team lens (counts only, neutral status) because it
+ * carries no requirement to check against.
  */
 
-import { coverageBandFor, type Assignment, type CoverageTable, type Person, type ShiftDef } from '@crewdoku/domain'
+import { activePeople, coverageBandFor, UNCONSTRAINED_BAND, type Assignment, type CoverageTable, type Person, type ShiftDef } from '@crewdoku/domain'
 import type { BoardDate } from '../board/mockBoard'
 import type { CoverageStatus } from '../board/coverage'
+
+/** Whose assignments a coverage view counts, and which table judges them. */
+export type CoverageScope =
+  | { kind: 'all' }
+  | { kind: 'team'; id: string }
+  | { kind: 'tag'; id: string }
 
 export type CoverageViewCell = {
   shift: ShiftDef
@@ -27,14 +37,14 @@ export type CoverageViewCell = {
   count: number
   min: number
   max: number
-  /** `null` under a team lens — see the module comment. */
+  /** `null` under a lens without a requirement table — see the module comment. */
   status: CoverageStatus | null
 }
 
 export type CoverageViewRow = {
   shift: ShiftDef
   cells: CoverageViewCell[]
-  /** Period margins for this shift's row (0 under a lens). */
+  /** Period margins for this shift's row (0 under a lens that suppresses status). */
   shortDays: number
   overDays: number
 }
@@ -52,10 +62,10 @@ export type CoverageDayTotal = {
 export type CoverageView = {
   rows: CoverageViewRow[]
   dayTotals: CoverageDayTotal[]
-  /** Period headline (org scope only; 0 under a lens). */
+  /** Period headline (org scope only; 0 under a lens that suppresses status). */
   shortCells: number
   overCells: number
-  /** True when a team lens is active and statuses are suppressed. */
+  /** True when the scope carries no requirement table and statuses are suppressed. */
   scoped: boolean
 }
 
@@ -69,12 +79,20 @@ export function buildCoverageView(
   people: Person[],
   dates: BoardDate[],
   shifts: ShiftDef[],
-  table: CoverageTable,
+  /** The requirement table to judge against; `null` for a tag with none. */
+  table: CoverageTable | null,
   getAssignment: (personId: string, dateIso: string) => Assignment,
-  teamId: string,
+  scope: CoverageScope,
 ): CoverageView {
-  const scoped = teamId !== 'all'
-  const inScope = scoped ? people.filter((p) => p.teamId === teamId) : people
+  // A team lens has no per-team requirement, and a tag lens has none until the
+  // planner authors one — both read as "counts only", never a false "short".
+  const scoped = scope.kind === 'team' || table === null
+  const inScope =
+    scope.kind === 'all'
+      ? people
+      : scope.kind === 'team'
+        ? people.filter((p) => p.teamId === scope.id)
+        : activePeople(people).filter((p) => p.tagIds?.includes(scope.id))
 
   // One pass over people × dates, bucketed by shift code.
   const byShiftDate = new Map<string, Person[][]>()
@@ -98,7 +116,7 @@ export function buildCoverageView(
     let overDays = 0
     const cells = dates.map((date, dateIndex) => {
       const cellPeople = byShiftDate.get(shift.code)![dateIndex]!
-      const band = coverageBandFor(table, shift.code, date.iso, date.weekday)
+      const band = table ? coverageBandFor(table, shift.code, date.iso, date.weekday) : UNCONSTRAINED_BAND
       const status = scoped ? null : statusOf(cellPeople.length, band.min, band.max)
       if (status === 'short') {
         shortDays++

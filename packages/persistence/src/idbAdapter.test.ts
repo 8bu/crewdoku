@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
-import type { Assignment, Schedule, Workspace } from '@crewdoku/domain'
+import type { Assignment, CoverageTable, Schedule, Tag, TagGroup, Workspace } from '@crewdoku/domain'
 import {
   assignmentKey,
   DEFAULT_SHIFTS,
@@ -25,6 +25,7 @@ function makeRichFixture(): Workspace {
     avoids: ['LATE'],
     useTeamPreference: false,
     removed: false,
+    tagIds: ['tag-spanish'],
   })
 
   const bob = makePerson({
@@ -34,6 +35,7 @@ function makeRichFixture(): Workspace {
     ineligible: ['EARLY', 'MID'],
     timeOff: ['2026-09-02'],
     removed: true,
+    tagIds: ['tag-student'],
   })
 
   const team = makeTeam({
@@ -98,11 +100,45 @@ function makeRichFixture(): Workspace {
     LATE: { min: 2, max: 5 },
   }
 
+  const tagGroups: TagGroup[] = [{ id: 'taggroup-lang', name: 'Languages', exclusive: true }]
+  const tags: Tag[] = [
+    {
+      id: 'tag-spanish',
+      name: 'Spanish',
+      groupId: 'taggroup-lang',
+      rules: [
+        { id: 'rule-always', kind: 'want', shift: 'EARLY', when: { type: 'always' } },
+        { id: 'rule-date', kind: 'avoid', shift: null, when: { type: 'date', iso: '2026-09-03' } },
+        { id: 'rule-weekly', kind: 'avoid', shift: 'NIGHT', when: { type: 'weekly', weekdays: [0, 6] } },
+        { id: 'rule-monthly-day', kind: 'want', shift: 'MID', when: { type: 'monthlyDay', day: 15 } },
+        {
+          id: 'rule-monthly-nth',
+          kind: 'avoid',
+          shift: 'LATE',
+          when: { type: 'monthlyNth', nth: -1, weekday: 5 },
+          strict: true,
+        },
+        { id: 'rule-yearly', kind: 'avoid', shift: 'EARLY', when: { type: 'yearly', month: 12, day: 25 } },
+      ],
+    },
+    { id: 'tag-student', name: 'Student', rules: [] },
+  ]
+
+  const tagCoverage: Record<string, CoverageTable> = {
+    'tag-spanish': {
+      byDow: { 1: { MID: { min: 1, max: Infinity } } },
+      dateOverrides: { '2026-09-02': { EARLY: { min: 2, max: 3 } } },
+    },
+  }
+
   return {
     people: [alice, bob],
     teams: [team],
+    tagGroups,
+    tags,
     shifts: [...DEFAULT_SHIFTS],
     coverage,
+    tagCoverage,
     settings: {
       ...DEFAULT_SOLVE_SETTINGS,
       hardRules: {
@@ -127,10 +163,15 @@ describe('IdbWorkspaceStorage', () => {
     if (loaded !== null) {
       expect(loaded.people).toEqual(fixture.people)
       expect(loaded.teams).toEqual(fixture.teams)
+      expect(loaded.tagGroups).toEqual(fixture.tagGroups)
+      expect(loaded.tags).toEqual(fixture.tags)
       expect(loaded.shifts).toEqual(fixture.shifts)
       expect(loaded.settings).toEqual(fixture.settings)
       expect(loaded.periods).toEqual(fixture.periods)
       expect(loaded.coverage).toEqual(fixture.coverage)
+      expect(loaded.tagCoverage).toEqual(fixture.tagCoverage)
+      expect(loaded.tagCoverage['tag-spanish']?.byDow[1]?.['MID']?.max).toBe(Infinity)
+      expect(loaded.people[0]?.tagIds).toEqual(['tag-spanish'])
 
       // Map key sets and assignments preserved exactly
       expect([...loaded.schedules.keys()].sort()).toEqual([...fixture.schedules.keys()].sort())

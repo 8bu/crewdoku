@@ -1,9 +1,9 @@
 /**
  * @crewdoku/domain — rule checks, constraints, and soft goal definitions.
  *
- * Implements hard rule checks (H1, H2, H3, H5), eligibility flagging, and
- * soft goal definitions (S1–S5). Pure domain logic; depends only on sibling
- * domain modules (calendar, entities, schedule).
+ * Implements hard rule checks (H1, H2, H3, H5, H6, H7), eligibility flagging,
+ * and soft goal definitions (S1–S6). Pure domain logic; depends only on
+ * sibling domain modules (calendar, entities, schedule, tags).
  *
  * Semantics ported faithfully from prototype modules:
  * - proto/src/board/coverage.ts
@@ -23,10 +23,13 @@ import type {
   ShiftDef,
   SoftGoalId,
   SolveSettings,
+  Team,
 } from './entities'
 import { coverageBandFor, OFF_CODE } from './entities'
 import type { Schedule, ScheduleBoundary } from './schedule'
-import { assignmentKey, getAssignment } from './schedule'
+import { activePeople, assignmentKey, getAssignment } from './schedule'
+import type { Tag } from './tags'
+import { cellPreference, personTags, tagRuleApplies } from './tags'
 
 const WEEKDAY_NAMES: readonly string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -156,6 +159,19 @@ export type WorkspaceSlice = {
   settings: SolveSettings
   period: { start: ISODate; end: ISODate }
   schedule: Schedule
+  /**
+   * The team catalog, used to resolve the base preference (S2) a person runs
+   * on. Absent means every person reads their own `wants`/`avoids` — the same
+   * result `basePreference` gives when no team is found.
+   */
+  teams?: readonly Team[]
+  /** The tag catalog, in workspace order (tags.ts). Absent means no tags. */
+  tags?: readonly Tag[]
+  /**
+   * Per-tag coverage band tables (H7), keyed by `Tag.id`; a tag without an
+   * entry has no requirement. Absent means no tag coverage at all.
+   */
+  tagCoverage?: Readonly<Record<string, CoverageTable>>
   /**
    * The shifts people work on the days just outside the period, from the
    * neighbouring periods' schedules. H3 rest is the only rule that looks
@@ -451,6 +467,134 @@ export function checkEligibility(slice: WorkspaceSlice): Violation[] {
 }
 
 /**
+ * H6 Strict Tag Avoids.
+ *
+ * A tag may carry a strict avoid ("this group never works Night"). For each
+ * active person and each worked cell, the cell preference is resolved through
+ * `cellPreference` — the only place where "any avoid beats any want" lives —
+ * and a strict avoid forbids the cell. The message names the first tag, in
+ * workspace tag order, whose strict rule matched.
+ *
+ * While H6 is off, strict avoids fold into ordinary soft tag avoids (S6), so
+ * this check reports nothing.
+ */
+export function checkTagRules(slice: WorkspaceSlice): Violation[] {
+  if (!slice.settings.hardRules.enabled.H6) return []
+
+  const tags = slice.tags ?? []
+  if (tags.length === 0) return []
+
+  const teamById = new Map((slice.teams ?? []).map((team) => [team.id, team]))
+  const violations: Violation[] = []
+  const dates = eachDate(slice.period.start, slice.period.end)
+
+  for (const person of activePeople(slice.people)) {
+    const held = personTags(person, tags)
+    if (held.length === 0) continue
+    const team = teamById.get(person.teamId)
+
+    for (const iso of dates) {
+      const assignment = getAssignment(slice.schedule, person.id, iso)
+      if (assignment.code === OFF_CODE) continue
+      if (!cellPreference(person, team, held, assignment.code, iso, true).strictAvoid) continue
+
+      const blamed = held.find((tag) =>
+        tag.rules.some(
+          (rule) =>
+            rule.kind === 'avoid' && rule.strict === true && tagRuleApplies(rule, assignment.code, iso),
+        ),
+      )
+      if (!blamed) continue
+
+      violations.push({
+        id: `H6|${person.id}|${iso}`,
+        ruleId: 'H6',
+        personId: person.id,
+        iso,
+        shiftCode: assignment.code,
+        message: `${person.name} is scheduled for ${assignment.code} on ${formatIsoDate(iso)}, but the tag ${blamed.name} strictly avoids that shift.`,
+      })
+    }
+  }
+
+  return violations
+}
+
+/**
+ * H7 Tag Coverage.
+ *
+ * A tag may carry its own coverage table ("at least two of this group per
+ * shift"). For each tag with a table, each date and shift counts the active
+ * people holding that tag and checks `coverageBandFor` exactly like H1.
+ * Violations are workspace-level (`personId: null`) and name the tag.
+ */
+export function checkTagCoverage(slice: WorkspaceSlice): Violation[] {
+  if (!slice.settings.hardRules.enabled.H7) return []
+
+  const tables = slice.tagCoverage
+  if (!tables) return []
+  const tagged = (slice.tags ?? []).filter((tag) => tables[tag.id] !== undefined)
+  if (tagged.length === 0) return []
+
+  const people = activePeople(slice.people)
+  const violations: Violation[] = []
+  const dates = eachDate(slice.period.start, slice.period.end)
+
+  for (const tag of tagged) {
+    const table = tables[tag.id]
+    if (!table) continue
+    const holders = people.filter((person) => person.tagIds?.includes(tag.id) === true)
+
+    for (const iso of dates) {
+      const dow = weekdayOf(iso)
+      const counts: Record<string, number> = Object.fromEntries(slice.shifts.map((s) => [s.code, 0]))
+
+      for (const person of holders) {
+        const assignment = getAssignment(slice.schedule, person.id, iso)
+        if (assignment.code in counts) {
+          counts[assignment.code] = (counts[assignment.code] ?? 0) + 1
+        }
+      }
+
+      for (const s of slice.shifts) {
+        const band = coverageBandFor(table, s.code, iso, dow)
+        const count = counts[s.code] ?? 0
+
+        if (count < band.min) {
+          const personNoun = count === 1 ? 'person' : 'people'
+          violations.push({
+            id: `H7|${tag.id}|${iso}|${s.code}|short`,
+            ruleId: 'H7',
+            personId: null,
+            iso,
+            shiftCode: s.code,
+            count,
+            min: band.min,
+            max: band.max,
+            message: `${tag.name}: ${s.code} on ${formatIsoDate(iso)} has ${count} ${personNoun} holding this tag; it needs at least ${band.min}.`,
+          })
+        } else if (count > band.max) {
+          const personNoun = count === 1 ? 'person' : 'people'
+          violations.push({
+            id: `H7|${tag.id}|${iso}|${s.code}|over`,
+            ruleId: 'H7',
+            personId: null,
+            iso,
+            shiftCode: s.code,
+            count,
+            min: band.min,
+            max: band.max,
+            message: `${tag.name}: ${s.code} on ${formatIsoDate(iso)} has ${count} ${personNoun} holding this tag; it needs at most ${band.max}.`,
+          })
+        }
+      }
+    }
+  }
+
+  return violations
+}
+
+/**
  * Evaluates all enabled hard rules and eligibility checks across one period's schedule.
  * Returns violations sorted by date then person id (with null personId coming first).
  *
@@ -463,6 +607,8 @@ export function checkSchedule(slice: WorkspaceSlice): Violation[] {
     ...checkH3Rest(slice),
     ...checkH5TimeOff(slice),
     ...checkEligibility(slice),
+    ...checkTagRules(slice),
+    ...checkTagCoverage(slice),
   ]
 
   return violations.sort(
@@ -482,7 +628,7 @@ export const H4_STRUCTURAL_NOTE: string =
   'H4 (one shift per person per day) is structural: Schedule is keyed by personId|iso, making multi-shift assignments unrepresentable.'
 
 /**
- * Soft Goal Definitions for S1–S5 (Ticket 05 contract, no scoring math).
+ * Soft Goal Definitions for S1–S6 (Ticket 05 contract, no scoring math).
  * Each record defines the direction of optimization and precisely what metric is measured.
  */
 export type SoftGoalDefinition = {
@@ -522,10 +668,18 @@ export const SOFT_GOAL_S5: SoftGoalDefinition = {
   summary: 'Penalized shift-to-shift transitions across consecutive days',
 }
 
+export const SOFT_GOAL_S6: SoftGoalDefinition = {
+  id: 'S6',
+  direction: 'maximize',
+  summary:
+    'Group preferences honoring the tag rules of the tags a person holds, stacked on the team or personal preference (S2), with any avoid beating any want',
+}
+
 export const SOFT_GOAL_DEFINITIONS: Record<SoftGoalId, SoftGoalDefinition> = {
   S1: SOFT_GOAL_S1,
   S2: SOFT_GOAL_S2,
   S3: SOFT_GOAL_S3,
   S4: SOFT_GOAL_S4,
   S5: SOFT_GOAL_S5,
+  S6: SOFT_GOAL_S6,
 }

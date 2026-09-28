@@ -11,6 +11,8 @@ import { workspace } from './workspace'
 import { tour } from './tour'
 import { scheduleFilters } from './scheduleFilters'
 import { calendar } from './calendar'
+import { tags } from './tags'
+import { tagRules } from './tagRules'
 
 /**
  * The app's message catalogs, composed from per-area modules. Keys are
@@ -18,7 +20,7 @@ import { calendar } from './calendar'
  * can be authored independently and never collide when merged. Each area
  * module carries the same keys in every locale (guarded by `catalog.test.ts`).
  */
-const AREAS: AreaCatalog[] = [shell, chrome, board, boardPanels, settings, onbex, rtc, workspace, tour, scheduleFilters, calendar]
+const AREAS: AreaCatalog[] = [shell, chrome, board, boardPanels, settings, onbex, rtc, workspace, tour, scheduleFilters, calendar, tags, tagRules]
 
 function compose(locale: LocaleId): Record<string, string> {
   return Object.assign({}, ...AREAS.map((area) => area[locale]))

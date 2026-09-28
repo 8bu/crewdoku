@@ -7,6 +7,7 @@ import {
   type ScheduleBoundary,
   type ShiftDef,
   type SolveSettings,
+  type Tag,
   type Team,
 } from '@crewdoku/domain'
 import type { ModelInput } from '@crewdoku/solver'
@@ -14,8 +15,12 @@ import type { ModelInput } from '@crewdoku/solver'
 export type ModelInputParts = {
   people: readonly Person[]
   teams: readonly Team[]
+  /** The tag catalog; each person's own tags live on `Person.tagIds`. */
+  tags: readonly Tag[]
   shifts: readonly ShiftDef[]
   coverage: CoverageTable
+  /** Per-tag coverage bands (H7), keyed by `Tag.id`. */
+  tagCoverage: Record<string, CoverageTable>
   settings: SolveSettings
   /** The period's calendar dates, in order — the board's own date column. */
   dates: readonly ISODate[]
@@ -45,6 +50,8 @@ export function buildModelInput(parts: ModelInputParts): ModelInput {
     people: activePeople(parts.people),
     shifts: parts.shifts,
     coverage: parts.coverage,
+    tags: parts.tags,
+    tagCoverage: parts.tagCoverage,
     settings: parts.settings,
     period: { start, end },
     current: parts.current,

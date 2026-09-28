@@ -52,6 +52,8 @@ const SOLVE_TIMEOUT_MS = 60_000
 
 const BAKE = 'BAKE'
 const CLOSE = 'CLOSE'
+/** Monday–Friday: the weekdays the sample's tag rules and coverage name. */
+const WEEKDAYS = [1, 2, 3, 4, 5]
 
 /** The sample's one period, looked up by the seed's own id. */
 function periodOf(seed: SampleSeed) {
@@ -68,8 +70,10 @@ function modelInputFor(seed: SampleSeed): ModelInput {
   return buildModelInput({
     people: seed.workspace.people,
     teams: seed.workspace.teams,
+    tags: seed.workspace.tags,
     shifts: seed.workspace.shifts,
     coverage: seed.workspace.coverage,
+    tagCoverage: seed.workspace.tagCoverage,
     settings: seed.workspace.settings,
     dates: eachDate(period.start, period.end),
     current: emptySchedule(activePeople(seed.workspace.people), period.start, period.end),
@@ -173,6 +177,32 @@ describe.each(START_DATES)('sample fortnight starting %s', (start) => {
       // The demo shows the whole catalog, never a board that quietly drops a shift.
       const usedCodes = new Set(cells.map((cell) => cell.code))
       expect([...usedCodes].sort()).toEqual(input.shifts.map((shift) => shift.code).sort())
+
+      // Tags: every weekday mid shift carries a Spanish speaker (H7 coverage),
+      // and no student works the Monday mid shift (their strict H6 avoid).
+      const spanish = seed.workspace.tags.find((tag) => tag.name === 'Spanish')
+      const student = seed.workspace.tags.find((tag) => tag.name === 'Student')
+      if (spanish === undefined || student === undefined) {
+        throw new Error('sample workspace is missing its tags')
+      }
+      const holdsTag = (person: Person, tagId: string): boolean => person.tagIds?.includes(tagId) === true
+
+      // Every weekday whose main table still asks for a mid shift carries a
+      // Spanish speaker. The short day zeroes MID out in the main table, and
+      // the tag table follows it, so that date is out of scope.
+      const coveredDates = new Set(
+        cells.filter((cell) => cell.code === 'MID' && holdsTag(cell.person, spanish.id)).map((cell) => cell.iso),
+      )
+      const requiredDates = eachDate(input.period.start, input.period.end).filter(
+        (iso) => WEEKDAYS.includes(weekdayOf(iso)) && coverageBandFor(input.coverage, 'MID', iso, weekdayOf(iso)).max > 0,
+      )
+      expect(requiredDates.length).toBeGreaterThan(0)
+      expect(requiredDates.filter((iso) => !coveredDates.has(iso))).toEqual([])
+
+      const strictBreaks = cells.filter(
+        (cell) => cell.code === 'MID' && weekdayOf(cell.iso) === 1 && holdsTag(cell.person, student.id),
+      )
+      expect(describeCells(strictBreaks)).toEqual([])
     },
     SOLVE_TIMEOUT_MS,
   )
@@ -213,6 +243,34 @@ describe('sample workspace showcase', () => {
     // A dated coverage override inside the period, so the table is exercised too.
     const overrides = Object.keys(workspace.coverage.dateOverrides)
     expect(overrides.filter((iso) => iso >= period.start && iso <= period.end).length).toBeGreaterThanOrEqual(1)
+
+    // Tags: one non-exclusive language group with a covered tag, and a loose
+    // student tag carrying a soft avoid plus one strict avoid — deliberately
+    // neutral content, no religion or ethnicity.
+    expect(workspace.tagGroups.map((group) => group.name)).toEqual(['Languages'])
+    expect(workspace.tagGroups.every((group) => group.exclusive === false)).toBe(true)
+    const spanish = workspace.tags.find((tag) => tag.name === 'Spanish')
+    const student = workspace.tags.find((tag) => tag.name === 'Student')
+    if (spanish === undefined || student === undefined) throw new Error('expected both sample tags')
+    expect(spanish.groupId).toBe(workspace.tagGroups[0]?.id)
+    expect(student.groupId).toBeUndefined()
+    expect(student.rules.some((rule) => rule.kind === 'avoid' && rule.strict !== true)).toBe(true)
+    expect(student.rules.some((rule) => rule.kind === 'avoid' && rule.strict === true)).toBe(true)
+    // The language tag is covered on the weekday mid shift.
+    const spanishBands = workspace.tagCoverage[spanish.id]
+    expect(spanishBands).toBeDefined()
+    expect(WEEKDAYS.every((dow) => spanishBands?.byDow[dow]?.['MID'] !== undefined)).toBe(true)
+
+    // A few people hold tags, and every held id resolves to a catalog entry.
+    const catalogIds = new Set(workspace.tags.map((tag) => tag.id))
+    const heldIds = active.flatMap((person) => person.tagIds ?? [])
+    expect(new Set(heldIds).size).toBeGreaterThanOrEqual(2)
+    expect(heldIds.every((id) => catalogIds.has(id))).toBe(true)
+    expect(active.filter((person) => (person.tagIds ?? []).includes(spanish.id)).length).toBeGreaterThanOrEqual(2)
+    expect(active.filter((person) => (person.tagIds ?? []).includes(student.id)).length).toBeGreaterThanOrEqual(1)
+
+    // Group preferences (S6) are ranked in the sample's soft goals.
+    expect(workspace.settings.softGoalOrder).toContain('S6')
 
     // The seed points at the one period it built.
     expect(workspace.periods.filter((candidate) => candidate.id === seed.periodId)).toHaveLength(1)

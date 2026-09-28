@@ -1,10 +1,10 @@
 import { ChevronUp, ChevronDown } from '../../ui/icons'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Input } from '../../ui/Input'
 import { useIsNarrow } from '../../ui/useIsNarrow'
 import type { DragEvent } from 'react'
 import { HARD_RULES } from '../../state/solveSettings'
-import type { HardRuleSettings, SoftGoalId } from '@crewdoku/domain'
+import { SOFT_GOAL_IDS, type HardRuleSettings, type SoftGoalId } from '@crewdoku/domain'
 import { useT } from '../../i18n/useT'
 
 /**
@@ -41,8 +41,23 @@ export function AdvancedRules({
   const isNarrow = useIsNarrow()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
 
+  // A workspace persisted before a goal existed can carry an order missing that
+  // id; merge the catalog back in so every goal always has a row, and the next
+  // reorder writes the healed list back.
+  const order = useMemo(() => {
+    const seen = new Set<SoftGoalId>()
+    const merged: SoftGoalId[] = []
+    for (const id of softGoalOrder) {
+      if (seen.has(id)) continue
+      seen.add(id)
+      merged.push(id)
+    }
+    for (const id of SOFT_GOAL_IDS) if (!seen.has(id)) merged.push(id)
+    return merged
+  }, [softGoalOrder])
+
   function move(index: number, delta: number) {
-    const next = [...softGoalOrder]
+    const next = [...order]
     const target = index + delta
     if (target < 0 || target >= next.length) return
     const [item] = next.splice(index, 1)
@@ -52,7 +67,7 @@ export function AdvancedRules({
 
   function handleDrop(index: number) {
     if (dragIndex === null || dragIndex === index) return
-    const next = [...softGoalOrder]
+    const next = [...order]
     const [item] = next.splice(dragIndex, 1)
     next.splice(index, 0, item!)
     onReorderSoftGoals(next)
@@ -127,7 +142,7 @@ export function AdvancedRules({
             {t('settings.advanced.softGoals')}
           </h3>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {softGoalOrder.map((id, i) => {
+            {order.map((id, i) => {
               const goalLabel = t(`settings.goal.${id}.label`)
               const goalDesc = t(`settings.goal.${id}.desc`)
               return (
@@ -165,7 +180,7 @@ export function AdvancedRules({
                       type="button"
                       aria-label={t('settings.advanced.moveDown', { name: goalLabel })}
                       onClick={() => move(i, 1)}
-                      disabled={i === softGoalOrder.length - 1}
+                      disabled={i === order.length - 1}
                       className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-base-content/50 transition-colors duration-150 hover:bg-base-200 hover:text-base-content disabled:cursor-not-allowed disabled:text-base-300 md:h-3.5 md:w-[22px] md:rounded-none md:hover:bg-transparent"
                     >
                       <ChevronDown className="h-3.5 w-3.5" />

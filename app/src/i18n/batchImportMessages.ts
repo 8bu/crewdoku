@@ -39,5 +39,17 @@ export function batchImportWarningText(t: Translate, warning: BatchImportWarning
       return t('rtc.batch.warn.teamAutoCreated', { name: warning.name })
     case 'unknownPerson':
       return t('rtc.batch.warn.unknownPerson', { row: warning.row, name: warning.name })
+    case 'unknownTag':
+      return t('rtc.batch.warn.unknownTag', { row: warning.row, name: warning.name })
+    case 'tagGroupExclusiveConflict':
+      return t('rtc.batch.warn.tagGroupExclusiveConflict', { name: warning.name })
+    case 'badTagRuleKind':
+      return t('rtc.batch.warn.badTagRuleKind', { row: warning.row, value: warning.value })
+    case 'badTagRuleRepeat':
+      return t('rtc.batch.warn.badTagRuleRepeat', { row: warning.row, value: warning.value })
+    case 'badTagRuleWhen':
+      return t('rtc.batch.warn.badTagRuleWhen', { row: warning.row, value: warning.value })
+    case 'strictOnWant':
+      return t('rtc.batch.warn.strictOnWant', { row: warning.row })
   }
 }

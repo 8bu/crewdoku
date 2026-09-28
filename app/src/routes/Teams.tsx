@@ -1,6 +1,7 @@
 import { Upload, Plus, ChevronLeft, ChevronRight } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useIsNarrow } from '../ui/useIsNarrow'
 import { useAtomValue } from 'jotai'
 import { selectedPeriodAtom, type Period } from '../state/shell'
@@ -8,13 +9,16 @@ import { UNASSIGNED_TEAM_ID, type Person } from '@crewdoku/domain'
 import { UNASSIGNED_TEAM } from '../board/mockBoard'
 import { Stub } from './Stub'
 import { useTeamsController } from './teams/useTeamsController'
+import { TagsView } from './teams/TagsView'
 import { DeleteTeamPopover } from './teams/DeleteTeamPopover'
+import { DeleteButton } from '../ui/DeleteButton'
 import { Select } from '../ui/Select'
 import { Input } from '../ui/Input'
 import { AioImportModal } from '../ui/AioImportModal'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
+import { useTagGroups, useTags } from '../state/tags'
 import { track, usePageView } from '../analytics'
 
 /**
@@ -54,7 +58,15 @@ function TeamsPage({ period }: { period: Period }) {
   const [people, setPeople] = useRosterPeople(c.people)
   const [teams, setTeams] = useRosterTeams(c.teams)
   const [shifts] = useRosterShifts(c.shifts)
+  // The tag catalog comes straight from its own atoms: this page only writes
+  // them when an import brings tags in, everything else lives in TagsView.
+  const [tagGroups, setTagGroups] = useTagGroups()
+  const [tags, setTags] = useTags()
   const isNarrow = useIsNarrow()
+  // The second half of this page is a URL, not local state: reloading, or
+  // coming back to a bookmarked link, lands on the same half.
+  const [params] = useSearchParams()
+  const tagsView = params.get('view') === 'tags'
   const sidebarTeams = [...c.teams, UNASSIGNED_TEAM]
   const [selectedId, setSelectedId] = useState(c.teams[0]?.id ?? UNASSIGNED_TEAM_ID)
   // Below `md` the two panes can't sit side by side, so they become a
@@ -77,6 +89,10 @@ function TeamsPage({ period }: { period: Period }) {
     return sidebarTeams.find((t) => t.id === teamId)?.name || t('rtc.common.unnamed')
   }
 
+  // The Tags half is its own component with its own controller, so the switch
+  // renders it instead of this page — the two views keep their own panes.
+  if (tagsView) return <TagsView period={period} viewSwitch={<TeamsTagsSwitch tagsView />} />
+
   return (
     <section className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-base-300 px-4 py-2 md:h-12 md:flex-nowrap md:py-0">
@@ -84,6 +100,7 @@ function TeamsPage({ period }: { period: Period }) {
         <span className="text-xs tabular-nums text-[color:var(--text-dim)]">
           {c.teams.length === 1 ? t('rtc.teams.count.team', { count: c.teams.length }) : t('rtc.teams.count.teams', { count: c.teams.length })} · {c.activePeople.length === 1 ? t('rtc.teams.count.person', { count: c.activePeople.length }) : t('rtc.teams.count.people', { count: c.activePeople.length })}
         </span>
+        <TeamsTagsSwitch tagsView={false} />
         <div className="flex w-full flex-wrap items-center gap-2 md:ml-auto md:w-auto md:flex-nowrap">
           <button type="button" onClick={() => setImportOpen(true)} className="btn btn-ghost btn-sm min-h-11 flex-1 gap-1.5 md:min-h-0 md:flex-initial">
             <Upload className="h-4 w-4" />
@@ -248,15 +265,12 @@ function TeamsPage({ period }: { period: Period }) {
 
               {!isUnassigned && (
                 <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => c.startDelete(selected.id, e.currentTarget)}
+                  <DeleteButton
+                    label={t('rtc.teams.deleteTeam')}
+                    onClick={(anchor) => c.startDelete(selected.id, anchor)}
                     disabled={c.teams.length <= 1}
                     title={c.teams.length <= 1 ? t('rtc.teams.cantDeleteLastTeam') : undefined}
-                    className="inline-flex min-h-11 cursor-pointer items-center self-start rounded-md border-none bg-transparent px-3 py-0.5 text-2xs font-semibold uppercase tracking-wide text-base-content/40 transition-colors duration-150 hover:text-error disabled:cursor-not-allowed disabled:text-base-300 md:min-h-0 md:px-1"
-                  >
-                    {t('rtc.teams.deleteTeam')}
-                  </button>
+                  />
                   {/* A `title` never fires on touch — the why-won't-this-work
                       answer has to be on the page itself below `md`. */}
                   {c.teams.length <= 1 && (
@@ -291,15 +305,44 @@ function TeamsPage({ period }: { period: Period }) {
           people={people}
           teams={teams}
           shifts={shifts}
+          tagGroups={tagGroups}
+          tags={tags}
           onApply={(r, m) => {
             setPeople(() => r.people)
             setTeams(() => r.teams)
+            setTagGroups(() => r.tagGroups)
+            setTags(() => r.tags)
             track('roster_imported', { source: m.source, rows: m.peopleAdded })
           }}
           onCancel={() => setImportOpen(false)}
         />
       )}
     </section>
+  )
+}
+
+/**
+ * Teams | Tags — the same join of two `btn-xs` buttons the board/calendar
+ * switch uses, shared by both halves of the page (each renders it in its own
+ * header, so the control never moves under the cursor when the view flips).
+ *
+ * Links, not buttons: each half is a URL, so a reload, a bookmark, or a
+ * middle-click all land where they promise. `?view=tags` is the whole state —
+ * the tag catalog itself is persisted with the workspace.
+ */
+function TeamsTagsSwitch({ tagsView }: { tagsView: boolean }) {
+  const t = useT()
+  const half = (active: boolean) =>
+    `btn btn-xs join-item px-2.5 no-underline ${active ? 'btn-primary' : 'btn-ghost text-base-content/60'}`
+  return (
+    <div role="group" aria-label={t('tags.viewSwitchAria')} className="join shrink-0">
+      <Link to="/teams" aria-current={tagsView ? undefined : 'page'} className={half(!tagsView)}>
+        {t('rtc.teams.title')}
+      </Link>
+      <Link to="/teams?view=tags" aria-current={tagsView ? 'page' : undefined} className={half(tagsView)}>
+        {t('tags.title')}
+      </Link>
+    </div>
   )
 }
 

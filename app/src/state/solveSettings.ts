@@ -9,9 +9,9 @@ import {
 
 /**
  * Solve-settings presentation. The rule set, its shapes, and the defaults now
- * live in `@crewdoku/domain` (the enforced hard rules are H1, H2, H3, H5; H4 is
- * structural and H6/eligibility is a flagged capability fact, not a solver
- * rule). This module keeps only the UI copy for those rules and the
+ * live in `@crewdoku/domain` (the enforced hard rules are H1, H2, H3, H5, H6,
+ * H7; H4 is structural and eligibility is a flagged capability fact, not a
+ * solver rule). This module keeps only the UI copy for those rules and the
  * workspace-global atom + hook. Ticket 02 replaces this memory atom with
  * persistence-backed state.
  */
@@ -37,6 +37,8 @@ export const HARD_RULES: HardRuleDef[] = [
   { id: 'H3', label: 'Rest between shifts', description: 'A minimum number of hours between one shift ending and the next starting.' },
   { id: 'H4', label: 'One shift per day', description: "Every person works at most one shift a day — always true; there's nowhere to put a second.", locked: true },
   { id: 'H5', label: 'Time off & unavailability', description: 'Approved time off and recurring days off are never scheduled.' },
+  { id: 'H6', label: 'Strict tag wishes', description: "A tag's strict avoid is never broken — no one holding that tag works the shift." },
+  { id: 'H7', label: 'Tag coverage', description: "Every shift meets each tag's minimum and maximum headcount for the day." },
 ]
 
 export type SoftGoalDef = {
@@ -51,6 +53,7 @@ export const SOFT_GOALS: SoftGoalDef[] = [
   { id: 'S3', label: 'Stability', description: 'Change as little as possible from the current schedule.' },
   { id: 'S4', label: 'Weekend fairness', description: 'Spread weekend shifts evenly.' },
   { id: 'S5', label: 'Sequence smoothness', description: 'Avoid awkward shift-to-shift transitions.' },
+  { id: 'S6', label: 'Group preferences', description: 'Honour what people want and avoid through a shared tag, where possible.' },
 ]
 
 export const solveSettingsAtom = atom<SolveSettings | null>(null)

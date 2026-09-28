@@ -18,6 +18,16 @@ app map must plan around.
    than Optimal/Infeasible rejects with an Error naming the status — solver
    errors are bugs, not planner-facing states.
 
+   `ModelInput` carries the optional tag dimension beside the team one:
+   `tags?: readonly Tag[]` (the catalog whose rules are soft S6 wants/avoids,
+   with `strict` avoids becoming hard H6) and
+   `tagCoverage?: Readonly<Record<Tag.id, CoverageTable>>` (the per-tag band,
+   hard H7). Both are optional: absent means the LP is what it always was.
+   Tags stack on top of the team/personal preference — S2 prices the base
+   wants/avoids and S6 the tag ones — and the single precedence rule ("any
+   avoid beats any want") comes from `cellPreference` in `@crewdoku/domain`,
+   never re-derived in the solver.
+
 2. **Storage port** (`@crewdoku/persistence`):
    `WorkspaceStorage` (`load(): Promise<Workspace | null>` /
    `save(workspace)`), implemented by `IdbWorkspaceStorage` (raw IndexedDB,
@@ -29,8 +39,9 @@ app map must plan around.
 
 3. **Domain** (`@crewdoku/domain`):
    Entities, calendar, the schedule shape, and the independent oracle:
-   `checkSchedule` reports H1/H2/H3/H5 violations plus the eligibility
-   capability flag (there is no H6 rule); `diffSchedules` is what the Ledger
+   `checkSchedule` reports H1/H2/H3/H5 violations, the tag rules (H6 strict tag
+   avoids, H7 tag coverage) and the eligibility capability flag (H4 is
+   structural, not a toggle). `diffSchedules` is what the Ledger
    computes changes from. Rest (H3) is the one rule that looks past a
    period's edges: an optional `ScheduleBoundary` (the neighbouring
    periods' shifts on `start - 1` and `end + 1`) on `WorkspaceSlice.boundary`
@@ -71,8 +82,8 @@ Keeps (from the prototype):
   proto's `SolverPort` into `runSolve`/`SolveOutcome`.
 - Pins-sacred semantics: a pinned cell is never moved by the solver, even
   when it breaks a rule (the checker flags it instead).
-- The settings surface exactly (H1 band, H2 hours, H3 rest, H5 time off,
-  S1–S5 drag-rank; no H6).
+- The settings surface (H1 band, H2 hours, H3 rest, H5 time off, H6 strict tag
+  avoids, H7 tag coverage, S1–S6 drag-rank).
 - The visual language (proto's tokens/`styles.css`) and the export matrix
   builders — as specification for the rebuild, owned by the app map.
 
@@ -89,7 +100,8 @@ Throwaways:
   `CancelledError`, `toHighsSolve`, `HighsSolve`.
 - `@crewdoku/domain`: `Workspace`, `emptyWorkspace`, `Schedule`,
   `Assignment`, `Person`, `Team`, `ShiftDef`, `Period`, `CoverageTable`,
-  `SolveSettings`, `checkSchedule`, `diffSchedules`, `emptySchedule`,
+  `SolveSettings`, `Tag`, `TagGroup`, `TagRule`, `TagWhen`, `cellPreference`,
+  `checkSchedule`, `diffSchedules`, `emptySchedule`,
   `getAssignment`, `assignmentKey`.
 - `@crewdoku/persistence`: `WorkspaceStorage`, `IdbWorkspaceStorage`,
   `WorkspaceDTO`, `migrate`, `exportWorkspaceFile`, `importWorkspaceFile`,

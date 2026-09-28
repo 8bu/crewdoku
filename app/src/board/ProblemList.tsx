@@ -45,6 +45,26 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
   const isNarrow = useIsNarrow()
   const count = violations.length
   const flagged = count > 0
+
+  // The tag kinds carry `kind`+`params` instead of a finished sentence, so
+  // their line reads in the active locale; every older kind keeps the English
+  // `message` the board's tips and mobile issue lists already show.
+  const problemText = (violation: Violation): string => {
+    const params = violation.params
+    if (violation.kind === 'tagAvoid' && params) return t('board.problems.tagAvoid', params)
+    if (violation.kind === 'tagCoverage' && params) {
+      // Both numbers in the sentence are headcounts, so they take the same
+      // "1 person / 3 people" noun the infeasible panel's sentences use.
+      const countNoun = (n: number): string =>
+        t(n === 1 ? 'panels.noun.person_one' : 'panels.noun.person_other', { n })
+      return t(params.band === 'max' ? 'board.problems.tagCoverageOver' : 'board.problems.tagCoverageShort', {
+        ...params,
+        limit: countNoun(Number(params.limit)),
+        count: countNoun(Number(params.count)),
+      })
+    }
+    return violation.message
+  }
   // Shell renders the header slot only when narrow; grab it post-commit since
   // that ancestor commits in the same pass as this node (null on first render).
   const [slot, setSlot] = useState<HTMLElement | null>(null)
@@ -70,7 +90,7 @@ export function ProblemList({ violations, open, onToggle, onSelect, showIssues, 
                 if (isNarrow) onToggle()
               }}
             >
-              {violation.message}
+              {problemText(violation)}
             </button>
           </li>
         ))}

@@ -10,7 +10,7 @@
  * touching the roster.
  */
 import { useEffect, useRef, useState } from 'react'
-import type { Person, ShiftDef, Team } from '@crewdoku/domain'
+import type { Person, ShiftDef, Tag, TagGroup, Team } from '@crewdoku/domain'
 import {
   applyBatchImport,
   parseWorkbook,
@@ -27,8 +27,10 @@ export type AioImportModalProps = {
   people: Person[]
   teams: Team[]
   shifts: ShiftDef[]
+  tagGroups: TagGroup[]
+  tags: Tag[]
   onApply: (
-    result: { people: Person[]; teams: Team[] },
+    result: { people: Person[]; teams: Team[]; tagGroups: TagGroup[]; tags: Tag[] },
     meta: {
       source: 'xlsx' | 'csv'
       teamsCreated: number
@@ -65,7 +67,7 @@ function csvSheets(text: string): Record<string, string[][]> {
 }
 
 export function AioImportModal(props: AioImportModalProps) {
-  const { people, teams, shifts, onApply, onCancel } = props
+  const { people, teams, shifts, tagGroups, tags, onApply, onCancel } = props
   const t = useT()
   const modalRef = useRef<HTMLDivElement>(null)
   const [parsed, setParsed] = useState<ParsedWorkbook | null>(null)
@@ -84,7 +86,7 @@ export function AioImportModal(props: AioImportModalProps) {
     try {
       await downloadImportTemplate(
         TEMPLATE_FILE_NAME,
-        buildImportWorkbook({ shifts, teams, people }),
+        buildImportWorkbook({ shifts, teams, people, tagGroups, tags }),
       )
     } catch (error) {
       // A blocked download must not interrupt the import the user came here for;
@@ -100,7 +102,11 @@ export function AioImportModal(props: AioImportModalProps) {
     try {
       const sheets = source === 'xlsx' ? await readWorkbookSheets(file) : csvSheets(await file.text())
       const parse = parseWorkbook(sheets)
-      setParsed({ source, parse, result: applyBatchImport(people, teams, shifts, parse) })
+      setParsed({
+        source,
+        parse,
+        result: applyBatchImport(people, teams, shifts, parse, { tagGroups, tags }),
+      })
     } catch (error) {
       // Either the reader rejected the bytes or `file.text()` failed — both mean
       // the file is not something we can import, which is all the user needs.
@@ -112,9 +118,17 @@ export function AioImportModal(props: AioImportModalProps) {
     }
   }
 
-  /** What the import would change, in one line: people, new teams, updated teams and warnings, each pluralised per its own count. */
+  /** What the import would change, in one line: people, new teams, updated teams, new tag groups/tags, tag rule lines and warnings, each pluralised per its own count. */
   function summaryLine(result: BatchImportResult): string {
-    const { teamsCreated, teamsUpdated, teamsAutoCreated, peopleAdded } = result.counts
+    const {
+      teamsCreated,
+      teamsUpdated,
+      teamsAutoCreated,
+      peopleAdded,
+      tagGroupsCreated,
+      tagsCreated,
+      tagRulesImported,
+    } = result.counts
     const newTeams = teamsCreated + teamsAutoCreated
     const warnings = result.warnings.length
     const parts = [
@@ -125,6 +139,25 @@ export function AioImportModal(props: AioImportModalProps) {
       parts.push(
         t(teamsUpdated === 1 ? 'rtc.batch.summary.updatedTeam' : 'rtc.batch.summary.updatedTeams', {
           count: teamsUpdated,
+        }),
+      )
+    }
+    if (tagGroupsCreated > 0) {
+      parts.push(
+        t(tagGroupsCreated === 1 ? 'rtc.batch.summary.newTagGroup' : 'rtc.batch.summary.newTagGroups', {
+          count: tagGroupsCreated,
+        }),
+      )
+    }
+    if (tagsCreated > 0) {
+      parts.push(
+        t(tagsCreated === 1 ? 'rtc.batch.summary.newTag' : 'rtc.batch.summary.newTags', { count: tagsCreated }),
+      )
+    }
+    if (tagRulesImported > 0) {
+      parts.push(
+        t(tagRulesImported === 1 ? 'rtc.batch.summary.tagRule' : 'rtc.batch.summary.tagRules', {
+          count: tagRulesImported,
         }),
       )
     }
@@ -139,7 +172,13 @@ export function AioImportModal(props: AioImportModalProps) {
   const errors = parsed?.parse.errors ?? []
   const counts = parsed?.result.counts
   const changes = counts
-    ? counts.peopleAdded + counts.teamsCreated + counts.teamsUpdated + counts.teamsAutoCreated
+    ? counts.peopleAdded +
+      counts.teamsCreated +
+      counts.teamsUpdated +
+      counts.teamsAutoCreated +
+      counts.tagGroupsCreated +
+      counts.tagsCreated +
+      counts.tagRulesImported
     : 0
   const canApply = parsed !== null && errors.length === 0 && changes > 0
 
@@ -241,7 +280,12 @@ export function AioImportModal(props: AioImportModalProps) {
               if (!parsed) return
               const result = parsed.result
               onApply(
-                { people: result.people, teams: result.teams },
+                {
+                  people: result.people,
+                  teams: result.teams,
+                  tagGroups: result.tagGroups,
+                  tags: result.tags,
+                },
                 {
                   source: parsed.source,
                   teamsCreated: result.counts.teamsCreated,

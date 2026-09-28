@@ -34,9 +34,10 @@ describe('coverageBandFor', () => {
 
 describe('solve settings defaults', () => {
   it('enables every hard rule and soft goal, in the canonical order', () => {
-    expect(HARD_RULE_IDS).toEqual(['H1', 'H2', 'H3', 'H5'])
+    expect(HARD_RULE_IDS).toEqual(['H1', 'H2', 'H3', 'H5', 'H6', 'H7'])
     for (const id of HARD_RULE_IDS) expect(DEFAULT_SOLVE_SETTINGS.hardRules.enabled[id]).toBe(true)
-    expect(DEFAULT_SOLVE_SETTINGS.softGoalOrder).toEqual(SOFT_GOAL_IDS)
+    expect(SOFT_GOAL_IDS).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6'])
+    expect(DEFAULT_SOLVE_SETTINGS.softGoalOrder).toEqual(['S1', 'S6', 'S2', 'S3', 'S4', 'S5'])
     for (const id of SOFT_GOAL_IDS) expect(DEFAULT_SOLVE_SETTINGS.softGoalEnabled[id]).toBe(true)
   })
 })

@@ -9,8 +9,8 @@ import type { SoftGoalId, SolveSettings } from '@crewdoku/domain'
  * Disabled goals receive weight 0 (and emit no aux rows).
  *
  * Example:
- * - All 5 enabled: [10000, 1000, 100, 10, 1] in softGoalOrder sequence.
- * - If e.g. 1 disabled, n = 4: [1000, 100, 10, 1] for enabled goals, 0 for disabled.
+ * - All 6 enabled: [100000, 10000, 1000, 100, 10, 1] in softGoalOrder sequence.
+ * - If e.g. 1 disabled, n = 5: [10000, 1000, 100, 10, 1] for enabled goals, 0 for disabled.
  */
 export function rankWeights(settings: SolveSettings): Record<SoftGoalId, number> {
   const result: Record<SoftGoalId, number> = {
@@ -19,6 +19,7 @@ export function rankWeights(settings: SolveSettings): Record<SoftGoalId, number>
     S3: 0,
     S4: 0,
     S5: 0,
+    S6: 0,
   }
 
   const enabledInOrder = settings.softGoalOrder.filter(

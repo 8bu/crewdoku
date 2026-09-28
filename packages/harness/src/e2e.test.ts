@@ -6,8 +6,10 @@ import {
   activePeople,
   assignmentKey,
   checkSchedule,
+  eachDate,
   emptySchedule,
   getAssignment,
+  weekdayOf,
 } from '@crewdoku/domain'
 import {
   exportWorkspaceFile,
@@ -39,6 +41,8 @@ function workspaceToModelInput(w: Workspace): ModelInput {
     people: active,
     shifts: w.shifts,
     coverage: w.coverage,
+    tags: w.tags,
+    tagCoverage: w.tagCoverage,
     settings: w.settings,
     period: { start: period.start, end: period.end },
     current,
@@ -53,6 +57,12 @@ describe('Harness E2E (12 people × 14 days)', () => {
     const period = workspace.periods[0]
     expect(period).toBeDefined()
     if (period === undefined) return
+
+    // The fixture carries a real tag story, so the round-trips below are not vacuous.
+    expect(workspace.tagGroups.length).toBeGreaterThan(0)
+    expect(workspace.tags.length).toBeGreaterThan(0)
+    expect(Object.keys(workspace.tagCoverage).length).toBeGreaterThan(0)
+    expect(workspace.people.some((p) => (p.tagIds ?? []).length > 0)).toBe(true)
 
     // 2. Build model input from workspace
     const input = workspaceToModelInput(workspace)
@@ -90,9 +100,24 @@ describe('Harness E2E (12 people × 14 days)', () => {
       schedule: proposal.schedule,
     })
     const hardViolations = violations.filter((v) =>
-      ['H1', 'H2', 'H3', 'H5'].includes(v.ruleId),
+      ['H1', 'H2', 'H3', 'H5', 'H6', 'H7'].includes(v.ruleId),
     )
     expect(hardViolations).toHaveLength(0)
+
+    // Tag coverage (H7) came through the same pipe: Tuesday's early shift is
+    // staffed by someone who holds the covered tag.
+    const spanishIds = input.people
+      .filter((p) => (p.tagIds ?? []).includes('tag-spanish'))
+      .map((p) => p.id)
+    expect(spanishIds.length).toBeGreaterThan(0)
+    const tuesday = eachDate(input.period.start, input.period.end).find((iso) => weekdayOf(iso) === 2)
+    expect(tuesday).toBeDefined()
+    if (tuesday !== undefined) {
+      const covered = spanishIds.filter(
+        (id) => proposal.schedule.get(assignmentKey(id, tuesday))?.code === 'EARLY',
+      )
+      expect(covered.length).toBeGreaterThanOrEqual(1)
+    }
 
     // 6. Infeasible path: tightenCoverage -> runSolve -> infeasible -> apply relaxation loop -> legal
     // This mirrors the app's pick-one-relaxation-and-re-run loop: a bounded loop (max 5)
@@ -133,7 +158,7 @@ describe('Harness E2E (12 people × 14 days)', () => {
       schedule: relaxedProposal.schedule,
     })
     const relaxedHardViolations = relaxedViolations.filter((v) =>
-      ['H1', 'H2', 'H3', 'H5'].includes(v.ruleId),
+      ['H1', 'H2', 'H3', 'H5', 'H6', 'H7'].includes(v.ruleId),
     )
     expect(relaxedHardViolations).toHaveLength(0)
 
@@ -152,6 +177,9 @@ describe('Harness E2E (12 people × 14 days)', () => {
 
     expect(loadedWorkspace.people).toEqual(workspaceWithProposal.people)
     expect(loadedWorkspace.teams).toEqual(workspaceWithProposal.teams)
+    expect(loadedWorkspace.tagGroups).toEqual(workspaceWithProposal.tagGroups)
+    expect(loadedWorkspace.tags).toEqual(workspaceWithProposal.tags)
+    expect(loadedWorkspace.tagCoverage).toEqual(workspaceWithProposal.tagCoverage)
     expect(loadedWorkspace.shifts).toEqual(workspaceWithProposal.shifts)
     expect(loadedWorkspace.coverage).toEqual(workspaceWithProposal.coverage)
     expect(loadedWorkspace.settings).toEqual(workspaceWithProposal.settings)
@@ -174,6 +202,9 @@ describe('Harness E2E (12 people × 14 days)', () => {
     const importedWorkspace = importResult.workspace
     expect(importedWorkspace.people).toEqual(workspaceWithProposal.people)
     expect(importedWorkspace.teams).toEqual(workspaceWithProposal.teams)
+    expect(importedWorkspace.tagGroups).toEqual(workspaceWithProposal.tagGroups)
+    expect(importedWorkspace.tags).toEqual(workspaceWithProposal.tags)
+    expect(importedWorkspace.tagCoverage).toEqual(workspaceWithProposal.tagCoverage)
     expect(importedWorkspace.shifts).toEqual(workspaceWithProposal.shifts)
     expect(importedWorkspace.coverage).toEqual(workspaceWithProposal.coverage)
     expect(importedWorkspace.settings).toEqual(workspaceWithProposal.settings)

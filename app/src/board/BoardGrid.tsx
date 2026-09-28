@@ -26,6 +26,7 @@ import { useScheduleBoundary } from '../state/scheduleView'
 import { filterPeople, matchesShiftFilter, useScheduleFilters } from '../state/scheduleFilters'
 import { periodsAtom } from '../state/shell'
 import { useCoverageRules } from '../state/coverageRules'
+import { useTagCoverage, useTags } from '../state/tags'
 import { useSolveSettings } from '../state/solveSettings'
 import { useSettingsDirty } from '../state/settingsDirty'
 import { useTakeAutoGenerateOnMount } from '../state/onboarding'
@@ -154,6 +155,10 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   const [shifts] = useRosterShifts(DEFAULT_SHIFTS)
   const defaultCoverage = useMemo(() => defaultCoverageTable(DEFAULT_SHIFTS, data.teams.length), [data.teams.length])
   const [coverageTable] = useCoverageRules(defaultCoverage)
+  // Tags are workspace-global like teams: the solver's H6/H7 rules read them,
+  // and the board's own tag checks must see the same catalog the checker does.
+  const [tags] = useTags()
+  const [tagCoverage] = useTagCoverage()
   const [solveSettings] = useSolveSettings()
   const [settingsDirty, setSettingsDirty] = useSettingsDirty(periodId)
   const shiftColorByCode = useMemo(
@@ -333,6 +338,8 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       dates: data.dates.map((date) => date.iso),
       current: schedule,
       boundary,
+      tags,
+      tagCoverage,
     })
     const input = relaxTransformRef.current ? relaxTransformRef.current(base) : base
     return solve(input, onLog)
@@ -415,17 +422,18 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
         solveSettings.hardRules.maxHoursPerWeek,
         solveSettings.hardRules.minRestHours,
         boundary,
+        { tags, teams, tagCoverage },
       ),
-    [people, data.dates, getDisplayAssignment, shifts, solveSettings.hardRules, boundary],
+    [people, data.dates, getDisplayAssignment, shifts, solveSettings.hardRules, boundary, tags, teams, tagCoverage],
   )
   // Each violation gets exactly one detail surface (8bu: the row tooltip
   // "should list only errors that doesn't has placed on the board"): a
   // violation whose person/date cell renders on the board is told by that
   // cell's red dot + hover, and only there. The pinned right column carries
-  // the remainder — violations with no board cell to live on. Every current
-  // rule kind anchors to a cell, so that remainder is empty today; the lane
-  // exists so a future period-scoped check (no single guilty cell) has a
-  // home without re-plumbing the board.
+  // the remainder — violations with no board cell to live on. Person-scoped
+  // kinds all anchor to a cell; the tag-coverage band (H7) is workspace-level
+  // and lands in the remainder, keyed `null`, where only the problem list can
+  // show it.
   const violationPlacement = useMemo(
     () =>
       partitionViolationsForBoard(
@@ -441,7 +449,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   // warning triangle in their name cell and as the person sheet's Issues list
   // instead (the desktop cell's red dot + hover tip stays the desktop surface).
   const violationsByPerson = useMemo(() => {
-    const m = new Map<string, Violation[]>()
+    const m = new Map<string | null, Violation[]>()
     for (const v of violations) {
       const arr = m.get(v.personId)
       if (arr) arr.push(v)
@@ -749,6 +757,15 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
   // unfold.
   const revealViolation = useCallback(
     (violation: Violation) => {
+      // Workspace-level breaks (H7 tag coverage) blame no one cell, so they
+      // scroll their date column into view — the same header-cell jump the
+      // Coverage view's cross-route drill uses.
+      if (violation.personId === null) {
+        rootRef.current
+          ?.querySelector<HTMLElement>(`.cd-header-cell[data-date-iso="${violation.dateIso}"]`)
+          ?.scrollIntoView({ block: 'nearest', inline: 'center' })
+        return
+      }
       const person = people.find((p) => p.id === violation.personId)
       if (!person) return
       const folded = collapsed.has(person.teamId)
@@ -765,7 +782,7 @@ export function BoardGrid({ periodId, initial }: BoardGridProps) {
       }
       editing.selectByIds(violation.personId, violation.dateIso)
     },
-    [people, collapsed, editing, revealPersonRow],
+    [people, collapsed, editing, revealPersonRow, rootRef],
   )
 
   useEffect(() => {

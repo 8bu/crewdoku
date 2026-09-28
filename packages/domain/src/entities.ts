@@ -64,8 +64,8 @@ export type Person = {
   /**
    * Shift codes this person cannot work (no certification). A capability
    * fact, not a solver rule: hand-edits against it are accepted and
-   * flagged (`Assignment.ineligible`); the engine has no H6 constraint
-   * (settled while charting — the rule set is H1–H5).
+   * flagged (`Assignment.ineligible`); no hard rule enforces it (H6 is
+   * strict tag avoids, a different concept).
    */
   ineligible: ShiftCode[]
   /** Approved days off, ISO dates. Most people have none. */
@@ -78,6 +78,8 @@ export type Person = {
   avoids?: ShiftCode[]
   /** True: preference is the team's default. False: `wants`/`avoids` are their own. */
   useTeamPreference?: boolean
+  /** `Tag.id`s this person holds, any number (at most one per exclusive group). */
+  tagIds?: string[]
   /**
    * Soft-removed (UI ticket 16): excluded from future solves, never
    * deleted — existing assignments and history stay intact.
@@ -120,18 +122,19 @@ export function coverageBandFor(
 }
 
 /**
- * The rule set, exactly the prototype's settings surface: H1 coverage band,
- * H2 weekly hours, H3 rest, H5 time off. H4 (one shift per person per day)
- * is structural — the schedule shape cannot represent a violation — so it
- * carries no toggle here. There is no H6 (settled while charting).
+ * The rule set: H1 coverage band, H2 weekly hours, H3 rest, H5 time off,
+ * H6 strict tag avoids, H7 tag coverage band. H4 (one shift per person per
+ * day) is structural — the schedule shape cannot represent a violation — so
+ * it carries no toggle here.
  */
-export type HardRuleId = 'H1' | 'H2' | 'H3' | 'H5'
+export type HardRuleId = 'H1' | 'H2' | 'H3' | 'H5' | 'H6' | 'H7'
 
-export const HARD_RULE_IDS: readonly HardRuleId[] = ['H1', 'H2', 'H3', 'H5']
+export const HARD_RULE_IDS: readonly HardRuleId[] = ['H1', 'H2', 'H3', 'H5', 'H6', 'H7']
 
-export type SoftGoalId = 'S1' | 'S2' | 'S3' | 'S4' | 'S5'
+/** S6 is tag preferences ("Group preferences"). */
+export type SoftGoalId = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6'
 
-export const SOFT_GOAL_IDS: readonly SoftGoalId[] = ['S1', 'S2', 'S3', 'S4', 'S5']
+export const SOFT_GOAL_IDS: readonly SoftGoalId[] = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6']
 
 export type HardRuleSettings = {
   enabled: Record<HardRuleId, boolean>
@@ -141,17 +144,17 @@ export type HardRuleSettings = {
 
 export type SolveSettings = {
   hardRules: HardRuleSettings
-  /** Ranked, index 0 = highest priority. Always all five ids, just reordered. */
+  /** Ranked, index 0 = highest priority. Always every `SOFT_GOAL_IDS` id, just reordered. */
   softGoalOrder: SoftGoalId[]
   softGoalEnabled: Record<SoftGoalId, boolean>
 }
 
 export const DEFAULT_SOLVE_SETTINGS: SolveSettings = {
   hardRules: {
-    enabled: { H1: true, H2: true, H3: true, H5: true },
+    enabled: { H1: true, H2: true, H3: true, H5: true, H6: true, H7: true },
     maxHoursPerWeek: 40,
     minRestHours: 11,
   },
-  softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5'],
-  softGoalEnabled: { S1: true, S2: true, S3: true, S4: true, S5: true },
+  softGoalOrder: ['S1', 'S6', 'S2', 'S3', 'S4', 'S5'],
+  softGoalEnabled: { S1: true, S2: true, S3: true, S4: true, S5: true, S6: true },
 }

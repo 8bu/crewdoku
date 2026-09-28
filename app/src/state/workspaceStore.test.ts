@@ -1,26 +1,32 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultStore } from 'jotai'
 import {
   emptyWorkspace,
   makePerson,
+  makeTag,
+  makeTagGroup,
   type Workspace,
   type WorkspaceRegistry,
 } from '@crewdoku/domain'
 import type { MultiWorkspaceStorage } from '@crewdoku/persistence'
 import {
   bootWorkspace,
+  collectWorkspace,
   createOrg,
   createWorkspace,
   deleteOrg,
   deleteWorkspace,
+  hydrate,
   leaveOrg,
   selectOrg,
+  startAutosave,
   startSampleWorkspace,
   switchWorkspace,
 } from './workspaceStore'
 import { activeOrgIdAtom, activeWorkspaceIdAtom, orgsAtom, workspaceMetasAtom } from './orgStore'
 import { peopleAtom } from './roster'
 import { teamsAtom } from './teams'
+import { tagCoverageAtom, tagGroupsAtom, tagsAtom } from './tags'
 import { shiftsAtom } from './shifts'
 import { periodsAtom } from './shell'
 import { scheduleByPeriodAtom } from './schedule'
@@ -78,6 +84,9 @@ beforeEach(() => {
   store.set(scheduleByPeriodAtom, {})
   store.set(overridesByPeriodAtom, {})
   store.set(teamsAtom, [])
+  store.set(tagGroupsAtom, null)
+  store.set(tagsAtom, null)
+  store.set(tagCoverageAtom, null)
   store.set(shiftsAtom, null)
   store.set(autoGenerateOnMountAtom, new Set<string>())
   store.set(workspaceOnboardedAtom, false)
@@ -285,6 +294,20 @@ describe('startSampleWorkspace', () => {
     expect((store.get(teamsAtom) ?? []).map((t) => t.name)).toEqual(['Front of house', 'Kitchen', 'Bakery'])
     expect((store.get(shiftsAtom) ?? []).map((s) => s.code)).toEqual(['OPEN', 'MID', 'CLOSE', 'BAKE'])
 
+    // The tag showcase lands too: the language group, both tags with their rule
+    // lines and coverage, and the people who hold them.
+    expect((store.get(tagGroupsAtom) ?? []).map((g) => g.name)).toEqual(['Languages'])
+    const tags = store.get(tagsAtom) ?? []
+    expect(tags.map((t) => t.name)).toEqual(['Spanish', 'Student'])
+    const spanish = tags.find((t) => t.name === 'Spanish')
+    const student = tags.find((t) => t.name === 'Student')
+    if (!spanish || !student) throw new Error('expected both sample tags')
+    expect(store.get(tagCoverageAtom)?.[spanish.id]?.byDow[1]).toBeDefined()
+    expect(student.rules.some((rule) => rule.strict === true)).toBe(true)
+    const heldTagIds = new Set(people.flatMap((p) => p.tagIds ?? []))
+    expect(heldTagIds.has(spanish.id)).toBe(true)
+    expect(heldTagIds.has(student.id)).toBe(true)
+
     // The wizard stays shut (roster present) and the one seeded period is armed
     // to auto-solve once on the board's next mount.
     expect(store.get(workspaceOnboardedAtom)).toBe(true)
@@ -297,5 +320,52 @@ describe('startSampleWorkspace', () => {
     // The seeded aggregate is persisted so a reload restores the sample.
     expect(storage.registry?.activeWorkspaceId).toBe(meta.id)
     expect(storage.workspaces.get(meta.id)?.people.length).toBe((store.get(peopleAtom) ?? []).length)
+  })
+})
+
+describe('tags', () => {
+  it('collects the tag catalog out of the atoms and hydrates it back', () => {
+    const group = makeTagGroup('Languages')
+    const tag = makeTag('Spanish', group.id)
+    const coverage = { byDow: { 1: { MID: { min: 1, max: 2 } } }, dateOverrides: {} }
+    store.set(tagGroupsAtom, [group])
+    store.set(tagsAtom, [tag])
+    store.set(tagCoverageAtom, { [tag.id]: coverage })
+
+    const collected = collectWorkspace(store)
+    expect(collected.tagGroups).toEqual([group])
+    expect(collected.tags).toEqual([tag])
+    expect(collected.tagCoverage[tag.id]).toEqual(coverage)
+
+    // Round-trip: clearing the atoms then hydrating the collected workspace
+    // restores exactly what was read.
+    store.set(tagGroupsAtom, null)
+    store.set(tagsAtom, null)
+    store.set(tagCoverageAtom, null)
+    hydrate(store, collected)
+    expect(store.get(tagGroupsAtom)).toEqual([group])
+    expect(store.get(tagsAtom)).toEqual([tag])
+    expect(store.get(tagCoverageAtom)).toEqual({ [tag.id]: coverage })
+  })
+
+  it('autosaves the active workspace when a tag atom changes', async () => {
+    const storage = new FakeStorage()
+    await bootWorkspace(storage)
+    const org = createOrg('Acme')
+    const meta = await createWorkspace(org.id, 'Main')
+
+    // The boot autosave debounces on the real clock; drive this one by hand.
+    vi.useFakeTimers()
+    try {
+      const stop = startAutosave(store, 0)
+      const tag = makeTag('Spanish')
+      store.set(tagsAtom, [tag])
+      vi.runOnlyPendingTimers()
+      stop()
+
+      expect(storage.workspaces.get(meta.id)?.tags).toEqual([tag])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

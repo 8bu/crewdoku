@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { OFF_CODE, UNASSIGNED_TEAM_ID, type Person, type ShiftDef, type Team } from '@crewdoku/domain'
+import {
+  OFF_CODE,
+  UNASSIGNED_TEAM_ID,
+  type Person,
+  type ShiftDef,
+  type Tag,
+  type TagGroup,
+  type Team,
+} from '@crewdoku/domain'
 import { buildDefinedNames, buildImportWorkbook, buildTemplateValidations, type ImportWorkbook } from './importTemplate'
+import { applyBatchImport, parseWorkbook } from '../board/roster/batchImport'
 
 const SHIFTS: ShiftDef[] = [
   { code: 'OPEN', label: 'Opening', start: '0900', end: '1500' },
@@ -13,6 +22,35 @@ const TEAMS: Team[] = [
   { id: 't2', name: 'Counter', wants: [], avoids: [] },
 ]
 
+const TAG_GROUPS: TagGroup[] = [
+  { id: 'g1', name: 'Languages', exclusive: false },
+  { id: 'g2', name: 'Faith', exclusive: true },
+]
+
+const TAGS: Tag[] = [
+  {
+    id: 'tg1',
+    name: 'Spanish speaker',
+    groupId: 'g1',
+    rules: [{ id: 'tr1', kind: 'avoid', shift: 'CLOSE', when: { type: 'weekly', weekdays: [5] } }],
+  },
+  {
+    id: 'tg2',
+    name: 'Ramadan',
+    groupId: 'g2',
+    rules: [
+      {
+        id: 'tr2',
+        kind: 'avoid',
+        shift: null,
+        when: { type: 'monthlyNth', nth: -1, weekday: 5 },
+        strict: true,
+      },
+    ],
+  },
+  { id: 'tg3', name: 'Student', rules: [{ id: 'tr3', kind: 'want', shift: 'OPEN', when: { type: 'yearly', month: 9, day: 1 } }] },
+]
+
 const PEOPLE: Person[] = [
   {
     id: 'p1',
@@ -23,6 +61,7 @@ const PEOPLE: Person[] = [
     recurringOff: [0, 6],
     wants: ['OPEN', 'MID'],
     useTeamPreference: false,
+    tagIds: ['tg1', 'tg3'],
   },
   { id: 'p2', name: 'Bo', teamId: UNASSIGNED_TEAM_ID, ineligible: [] },
   // Removed people are gone from the roster, so their dates are gone too.
@@ -33,11 +72,24 @@ function rowsOf(wb: ImportWorkbook, sheetName: string): string[][] {
   return wb.sheets.find((sheet) => sheet.name === sheetName)!.rows
 }
 
-const POPULATED = buildImportWorkbook({ shifts: SHIFTS, teams: TEAMS, people: PEOPLE })
+const POPULATED = buildImportWorkbook({
+  shifts: SHIFTS,
+  teams: TEAMS,
+  people: PEOPLE,
+  tagGroups: TAG_GROUPS,
+  tags: TAGS,
+})
 
 describe('buildImportWorkbook', () => {
-  it('emits Teams, People, TimeOff and Shifts with the exact contract headers', () => {
-    expect(POPULATED.sheets.map((sheet) => sheet.name)).toEqual(['Teams', 'People', 'TimeOff', 'Shifts'])
+  it('emits Teams, People, TimeOff, Tags, TagRules and Shifts with the exact contract headers', () => {
+    expect(POPULATED.sheets.map((sheet) => sheet.name)).toEqual([
+      'Teams',
+      'People',
+      'TimeOff',
+      'Tags',
+      'TagRules',
+      'Shifts',
+    ])
     expect(rowsOf(POPULATED, 'Teams')[0]).toEqual(['name', 'wants', 'avoids'])
     expect(rowsOf(POPULATED, 'People')[0]).toEqual([
       'name',
@@ -47,8 +99,11 @@ describe('buildImportWorkbook', () => {
       'avoids',
       'useTeamPreference',
       'recurringOff',
+      'tags',
     ])
     expect(rowsOf(POPULATED, 'TimeOff')[0]).toEqual(['person', 'date'])
+    expect(rowsOf(POPULATED, 'Tags')[0]).toEqual(['name', 'group', 'exclusive'])
+    expect(rowsOf(POPULATED, 'TagRules')[0]).toEqual(['tag', 'kind', 'shift', 'repeat', 'on', 'strict'])
     expect(rowsOf(POPULATED, 'Shifts')[0]).toEqual(['code', 'label', 'start', 'end'])
   })
 
@@ -68,10 +123,10 @@ describe('buildImportWorkbook', () => {
 
   it('writes one People row per active person, resolved and serialized', () => {
     expect(rowsOf(POPULATED, 'People')).toEqual([
-      ['name', 'team', 'ineligible', 'wants', 'avoids', 'useTeamPreference', 'recurringOff'],
-      ['Ada', 'Bakery', 'CLOSE MID', 'OPEN MID', '', 'no', 'Sun Sat'],
-      // No team -> blank cell, no own preference -> inherits (yes), no rows -> blank cells.
-      ['Bo', '', '', '', '', 'yes', ''],
+      ['name', 'team', 'ineligible', 'wants', 'avoids', 'useTeamPreference', 'recurringOff', 'tags'],
+      ['Ada', 'Bakery', 'CLOSE MID', 'OPEN MID', '', 'no', 'Sun Sat', 'Spanish speaker, Student'],
+      // No team -> blank cell, no own preference -> inherits (yes), no tags -> blank cell.
+      ['Bo', '', '', '', '', 'yes', '', ''],
     ])
   })
 
@@ -80,8 +135,30 @@ describe('buildImportWorkbook', () => {
       shifts: SHIFTS,
       teams: TEAMS,
       people: [{ id: 'p9', name: 'Dot', teamId: 't1', ineligible: [], avoids: [OFF_CODE, 'CLOSE'], recurringOff: [7, -1, 3] }],
+      tagGroups: TAG_GROUPS,
+      tags: TAGS,
     })
-    expect(rowsOf(wb, 'People')[1]).toEqual(['Dot', 'Bakery', '', '', 'CLOSE', 'yes', 'Wed'])
+    expect(rowsOf(wb, 'People')[1]).toEqual(['Dot', 'Bakery', '', '', 'CLOSE', 'yes', 'Wed', ''])
+  })
+
+  it('writes the tag catalog with each tag group and its one-per-person flag', () => {
+    expect(rowsOf(POPULATED, 'Tags')).toEqual([
+      ['name', 'group', 'exclusive'],
+      ['Spanish speaker', 'Languages', 'no'],
+      ['Ramadan', 'Faith', 'yes'],
+      // A loose tag names no group, so its exclusive cell stays blank.
+      ['Student', '', ''],
+    ])
+  })
+
+  it('writes one TagRules row per rule line, with the when encoded back to its repeat form', () => {
+    expect(rowsOf(POPULATED, 'TagRules')).toEqual([
+      ['tag', 'kind', 'shift', 'repeat', 'on', 'strict'],
+      ['Spanish speaker', 'avoid', 'CLOSE', 'weekly', 'Fri', 'no'],
+      // No shift is the rule's `any`, and `monthlyNth` writes its ordinal word.
+      ['Ramadan', 'avoid', 'any', 'monthly', 'last Fri', 'yes'],
+      ['Student', 'want', 'OPEN', 'yearly', '09-01', 'no'],
+    ])
   })
 
   it('gives every date off its own TimeOff row, for active people only', () => {
@@ -93,7 +170,7 @@ describe('buildImportWorkbook', () => {
   })
 
   it('falls back to illustrative rows on an empty workspace, all referencing real codes and teams', () => {
-    const empty = buildImportWorkbook({ shifts: SHIFTS, teams: [], people: [] })
+    const empty = buildImportWorkbook({ shifts: SHIFTS, teams: [], people: [], tagGroups: [], tags: [] })
     const teams = rowsOf(empty, 'Teams')
     const people = rowsOf(empty, 'People')
     const shifts = rowsOf(empty, 'Shifts')
@@ -104,16 +181,36 @@ describe('buildImportWorkbook', () => {
 
     const codes = new Set(shifts.slice(1).map((row) => row[0]))
     const teamNames = new Set(teams.slice(1).map((row) => row[0]))
+    const tagNames = new Set(rowsOf(empty, 'Tags').slice(1).map((row) => row[0]))
     for (const row of people.slice(1)) {
       expect(teamNames.has(row[1]!)).toBe(true)
       for (const cell of [row[2], row[3], row[4]]) {
         for (const code of (cell ?? '').split(/\s+/).filter(Boolean)) expect(codes.has(code)).toBe(true)
       }
+      // Every tag a person wears is one the Tags sheet defines.
+      for (const name of (row[7] ?? '').split(',').map((tag) => tag.trim()).filter(Boolean)) {
+        expect(tagNames.has(name)).toBe(true)
+      }
     }
   })
 
+  it('illustrates the tag sheets on an empty workspace: a grouped tag, a loose tag and a rule line', () => {
+    const empty = buildImportWorkbook({ shifts: SHIFTS, teams: [], people: [], tagGroups: [], tags: [] })
+
+    expect(rowsOf(empty, 'Tags')).toEqual([
+      ['name', 'group', 'exclusive'],
+      ['Spanish speaker', 'Languages', 'no'],
+      ['Student', '', ''],
+    ])
+    expect(rowsOf(empty, 'TagRules')).toEqual([
+      ['tag', 'kind', 'shift', 'repeat', 'on', 'strict'],
+      // A real catalog code, an `on` the parser reads back, and a tag the Tags sheet defines.
+      ['Student', 'avoid', SHIFTS[0]!.code, 'weekly', 'Mon Tue', 'no'],
+    ])
+  })
+
   it('illustrates time off on an empty workspace with dates for a person the People sheet has', () => {
-    const empty = buildImportWorkbook({ shifts: SHIFTS, teams: [], people: [] })
+    const empty = buildImportWorkbook({ shifts: SHIFTS, teams: [], people: [], tagGroups: [], tags: [] })
     const timeOff = rowsOf(empty, 'TimeOff')
     const personNames = new Set(rowsOf(empty, 'People').slice(1).map((row) => row[0]))
 
@@ -129,39 +226,92 @@ describe('buildImportWorkbook', () => {
   })
 
   it('is deterministic', () => {
-    expect(buildImportWorkbook({ shifts: SHIFTS, teams: TEAMS, people: PEOPLE })).toEqual(POPULATED)
+    expect(
+      buildImportWorkbook({ shifts: SHIFTS, teams: TEAMS, people: PEOPLE, tagGroups: TAG_GROUPS, tags: TAGS }),
+    ).toEqual(POPULATED)
+  })
+
+  it('round-trips: the workbook it writes comes back with the same tags, rules and tag holders', () => {
+    const sheets = Object.fromEntries(POPULATED.sheets.map((sheet) => [sheet.name, sheet.rows]))
+    const parse = parseWorkbook(sheets)
+
+    expect(parse.errors).toEqual([])
+    expect(parse.warnings).toEqual([])
+
+    const result = applyBatchImport([], [], SHIFTS, parse, { tagGroups: TAG_GROUPS, tags: TAGS })
+    // Everything the sheet names already exists, so nothing is created twice…
+    expect(result.counts.tagGroupsCreated).toBe(0)
+    expect(result.counts.tagsCreated).toBe(0)
+    // …and each tag's rules are replaced, not appended to.
+    expect(result.counts.tagRulesImported).toBe(TAGS.reduce((total, tag) => total + tag.rules.length, 0))
+    expect(result.tagGroups).toEqual(TAG_GROUPS)
+    expect(result.tags.map((tag) => tag.name)).toEqual(TAGS.map((tag) => tag.name))
+    expect(result.tags[0]!.rules).toMatchObject([
+      { kind: 'avoid', shift: 'CLOSE', when: { type: 'weekly', weekdays: [5] } },
+    ])
+    expect(result.tags[1]!.rules).toMatchObject([
+      { kind: 'avoid', shift: null, when: { type: 'monthlyNth', nth: -1, weekday: 5 }, strict: true },
+    ])
+    expect(result.tags[2]!.rules).toMatchObject([
+      { kind: 'want', shift: 'OPEN', when: { type: 'yearly', month: 9, day: 1 } },
+    ])
+    expect(result.people.find((person) => person.name === 'Ada')!.tagIds).toEqual(['tg1', 'tg3'])
+
+    // Re-importing over its own result stays stable rather than growing rules.
+    const again = applyBatchImport([], [], SHIFTS, parse, { tagGroups: result.tagGroups, tags: result.tags })
+    expect(again.counts.tagsCreated).toBe(0)
+    expect(again.tags.map((tag) => tag.rules.length)).toEqual(result.tags.map((tag) => tag.rules.length))
   })
 })
 
 describe('buildTemplateValidations', () => {
   const dv = buildTemplateValidations(POPULATED)
 
-  it('points every code, team and person dropdown at a dynamic named range', () => {
+  it('points every code, team, person and tag dropdown at a dynamic named range', () => {
     expect(dv.Teams).toContain('sqref="B2:B1000"><formula1>ShiftCodes</formula1>')
     expect(dv.Teams).toContain('sqref="C2:C1000"><formula1>ShiftCodes</formula1>')
     expect(dv.People).toContain('sqref="B2:B1000"><formula1>TeamNames</formula1>')
     for (const col of ['C', 'D', 'E']) {
       expect(dv.People).toContain(`sqref="${col}2:${col}1000"><formula1>ShiftCodes</formula1>`)
     }
+    expect(dv.People).toContain('sqref="H2:H1000"><formula1>TagNames</formula1>')
     expect(dv.TimeOff).toContain('sqref="A2:A1000"><formula1>PersonNames</formula1>')
+    expect(dv.TagRules).toContain('sqref="A2:A1000"><formula1>TagNames</formula1>')
   })
 
-  it('uses inline literal lists for the yes/no and weekday columns, on the columns the headers put them', () => {
+  it('uses inline literal lists for the yes/no, weekday, rule kind and repeat columns', () => {
     expect(dv.People).toContain('sqref="F2:F1000"><formula1>&quot;yes,no&quot;</formula1>')
     // recurringOff moved to column G when time off became its own sheet.
     expect(dv.People).toContain('sqref="G2:G1000"><formula1>&quot;Sun,Mon,Tue,Wed,Thu,Fri,Sat&quot;</formula1>')
-    expect(dv.People).not.toContain('sqref="H2:H1000"')
+    expect(dv.Tags).toContain('sqref="C2:C1000"><formula1>&quot;yes,no&quot;</formula1>')
+    expect(dv.TagRules).toContain('sqref="B2:B1000"><formula1>&quot;avoid,want&quot;</formula1>')
+    expect(dv.TagRules).toContain(
+      'sqref="D2:D1000"><formula1>&quot;always,date,weekly,monthly,yearly&quot;</formula1>',
+    )
   })
 
-  it('never validates the reference-only Shifts sheet or the TimeOff date column', () => {
+  it('never validates the reference-only Shifts sheet, the TimeOff date column or the free-text TagRules columns', () => {
     expect(dv.Shifts).toBeUndefined()
     expect(dv.TimeOff).not.toContain('sqref="B2:B1000"')
+    // A rule's shift, `on` and `strict`/group cells are free text: the shift may
+    // be `any` or several codes, `on` a weekday list or an `MM-DD` date.
+    expect(dv.TagRules).not.toContain('sqref="C2:C1000"')
+    expect(dv.TagRules).not.toContain('sqref="E2:E1000"')
+    expect(dv.TagRules).not.toContain('sqref="F2:F1000"')
+    expect(dv.Tags).not.toContain('sqref="B2:B1000"')
+  })
+
+  it('keys every validation block by a sheet the workbook really has', () => {
+    const sheetNames = new Set(POPULATED.sheets.map((sheet) => sheet.name))
+    for (const name of Object.keys(dv)) expect(sheetNames.has(name)).toBe(true)
+    // A key that named no sheet would be injected nowhere, silently losing its dropdowns.
+    expect(Object.keys(dv).sort()).toEqual(['People', 'TagRules', 'Tags', 'Teams', 'TimeOff'])
   })
 
   it('never blocks entry, so multi-code cells still import (errors suppressed on every rule)', () => {
     const rules = Object.values(dv).join('')
     const total = [...rules.matchAll(/<dataValidation /g)].length
-    expect(total).toBe(9) // Teams 2 + People 6 + TimeOff 1
+    expect(total).toBe(14) // Teams 2 + People 7 + TimeOff 1 + Tags 1 + TagRules 3
     expect([...rules.matchAll(/showErrorMessage="0"/g)]).toHaveLength(total)
     expect(rules).not.toContain('showErrorMessage="1"')
   })
@@ -172,9 +322,14 @@ describe('buildDefinedNames', () => {
     const defined = [
       ...buildDefinedNames().matchAll(/<definedName name="([^"]+)">([^<]+)<\/definedName>/g),
     ].map((match): [string, string] => [match[1] ?? '', match[2] ?? ''])
-    expect(defined.map(([name]) => name)).toEqual(['ShiftCodes', 'TeamNames', 'PersonNames'])
+    expect(defined.map(([name]) => name)).toEqual(['ShiftCodes', 'TeamNames', 'PersonNames', 'TagNames'])
 
-    const sheetByRange: Record<string, string> = { ShiftCodes: 'Shifts', TeamNames: 'Teams', PersonNames: 'People' }
+    const sheetByRange: Record<string, string> = {
+      ShiftCodes: 'Shifts',
+      TeamNames: 'Teams',
+      PersonNames: 'People',
+      TagNames: 'Tags',
+    }
     for (const [name, formula] of defined) {
       expect(formula).toContain(`${sheetByRange[name]}!$A$2`)
       expect(formula).toContain('OFFSET(')

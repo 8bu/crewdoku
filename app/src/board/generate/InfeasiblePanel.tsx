@@ -80,6 +80,22 @@ export function InfeasiblePanel({ conflictCore, relaxations, onRelax, onDismiss 
           gap: p.gap ?? '',
           minRest: p.minRest ?? '',
         })
+      case 'tagAvoid.starvation':
+        return t('panels.conflict.tagAvoid.starvation', {
+          shift: p.shift ?? '',
+          date: p.date ?? '',
+          min: people(Number(p.min)),
+          available: people(Number(p.available)),
+          tag: p.tag ?? '',
+        })
+      case 'tagCoverage.starvation':
+        return t('panels.conflict.tagCoverage.starvation', {
+          tag: p.tag ?? '',
+          shift: p.shift ?? '',
+          date: p.date ?? '',
+          min: people(Number(p.min)),
+          available: people(Number(p.available)),
+        })
       default:
         return t('panels.conflict.fallback')
     }
@@ -104,6 +120,19 @@ export function InfeasiblePanel({ conflictCore, relaxations, onRelax, onDismiss 
         return t('panels.relax.fallbackH2', { to: p.to ?? '' })
       case 'fallbackH3':
         return t('panels.relax.fallbackH3', { to: p.to ?? '' })
+      case 'softenTagAvoid':
+        return t('panels.relax.softenTagAvoid', { tag: p.tag ?? '' })
+      case 'relaxTagCoverage':
+        return t('panels.relax.relaxTagCoverage', {
+          tag: p.tag ?? '',
+          shift: p.shift ?? '',
+          date: p.date ?? '',
+          min: p.min ?? '',
+        })
+      case 'fallbackH6':
+        return t('panels.relax.fallbackH6')
+      case 'fallbackH7':
+        return t('panels.relax.fallbackH7')
       default:
         return option.label
     }

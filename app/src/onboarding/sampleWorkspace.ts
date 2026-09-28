@@ -3,8 +3,9 @@
  * a rich, believable fortnight at Harbour Bakehouse that exercises every part
  * of the engine: four shifts across the clock (one overnight), three teams and
  * a floater, certifications, holiday blocks, recurring days off, personal and
- * team preferences, a soft-removed former staff member, weekend peaks, and two
- * one-off trading days.
+ * team preferences, a soft-removed former staff member, weekend peaks, two
+ * one-off trading days, and tags — a language group with its own weekday
+ * coverage and a student tag with soft and strict rule lines.
  *
  * Pure: every date is derived from `today` (the period start), ids are freshly
  * generated on every call, and nothing here reads or writes atoms or storage —
@@ -15,7 +16,11 @@ import {
   UNASSIGNED_TEAM_ID,
   addDays,
   makePerson,
+  makeTag,
+  makeTagGroup,
+  makeTagRule,
   makeTeam,
+  normalizeTagIds,
   type CoverageBand,
   type CoverageRow,
   type CoverageTable,
@@ -24,6 +29,10 @@ import {
   type ShiftCode,
   type ShiftDef,
   type SoftGoalId,
+  type Tag,
+  type TagGroup,
+  type TagRule,
+  type TagWhen,
   type Team,
   type Workspace,
 } from '@crewdoku/domain'
@@ -65,6 +74,63 @@ const SAMPLE_TEAMS: readonly SampleTeamSpec[] = [
   { name: 'Bakery', wants: [CODE_BAKE], avoids: [] },
 ]
 
+type SampleRuleSpec = {
+  kind: TagRule['kind']
+  /** `null` = any shift. */
+  shift: ShiftCode | null
+  when: TagWhen
+  strict?: boolean
+}
+
+type SampleTagSpec = {
+  name: string
+  /** A group in `SAMPLE_TAG_GROUPS`, or null for a loose tag. */
+  groupName: string | null
+  rules: readonly SampleRuleSpec[]
+  /** Per-weekday coverage bands (H7); a weekday left out carries no requirement. */
+  coverage?: Record<number, CoverageRow>
+}
+
+/** Tag groups, in workspace order. */
+const SAMPLE_TAG_GROUPS: readonly { name: string; exclusive: boolean }[] = [
+  // Loose by design: someone can speak both counter languages.
+  { name: 'Languages', exclusive: false },
+]
+
+/** Weekday mid-shift row the Spanish tag has to cover. */
+const MID_COVERED: CoverageRow = { [CODE_MID]: band(1, 5) }
+
+/**
+ * The sample's tags, in workspace order. Two stories, both neutral: a language
+ * the weekday lunch service needs on the mid shift, and a student whose classes
+ * rule out early openings and Monday mids. Tag ids are minted per call.
+ */
+const SAMPLE_TAGS: readonly SampleTagSpec[] = [
+  {
+    name: 'Spanish',
+    groupName: 'Languages',
+    // Coverage only — no preference lines on this one.
+    rules: [],
+    coverage: {
+      1: { ...MID_COVERED },
+      2: { ...MID_COVERED },
+      3: { ...MID_COVERED },
+      4: { ...MID_COVERED },
+      5: { ...MID_COVERED },
+    },
+  },
+  {
+    name: 'Student',
+    groupName: null,
+    rules: [
+      // Morning classes: no early openings on a weekday.
+      { kind: 'avoid', shift: CODE_OPEN, when: { type: 'weekly', weekdays: [1, 2, 3, 4, 5] } },
+      // Monday is a full teaching day, so the mid shift is off the table.
+      { kind: 'avoid', shift: CODE_MID, when: { type: 'weekly', weekdays: [1] }, strict: true },
+    ],
+  },
+]
+
 export type SamplePersonSpec = {
   name: string
   /** A team in `SAMPLE_TEAMS`, or null for the unassigned floater. */
@@ -80,6 +146,8 @@ export type SamplePersonSpec = {
   avoids?: ShiftCode[]
   useTeamPreference?: boolean
   removed?: boolean
+  /** Tags this person holds, by name; resolved to ids per call. */
+  tagNames?: string[]
 }
 
 /**
@@ -89,6 +157,9 @@ export type SamplePersonSpec = {
  * `ineligible` is the certification story: the four Bakery people and the
  * floater are the only ones who can work BAKE, and Amara is a new hire who has
  * not been trained on CLOSE yet.
+ *
+ * `tagNames` is the tag story: the counter's Spanish speakers cover the
+ * weekday lunch mid shift, and the two students carry the study rules.
  */
 export const SAMPLE_PEOPLE: readonly SamplePersonSpec[] = [
   // Front of house — the counter, the floor, the weekend brunch crush.
@@ -99,12 +170,19 @@ export const SAMPLE_PEOPLE: readonly SamplePersonSpec[] = [
     wants: [CODE_OPEN],
     avoids: [CODE_CLOSE],
     useTeamPreference: false,
+    tagNames: ['Spanish'],
   },
   { name: 'Liam Carter', teamName: 'Front of house', ineligible: [CODE_BAKE] },
   // Never Sundays: childcare.
-  { name: 'Sofia Delgado', teamName: 'Front of house', ineligible: [CODE_BAKE], recurringOff: [0] },
+  {
+    name: 'Sofia Delgado',
+    teamName: 'Front of house',
+    ineligible: [CODE_BAKE],
+    recurringOff: [0],
+    tagNames: ['Spanish'],
+  },
   { name: 'Noah Fischer', teamName: 'Front of house', ineligible: [CODE_BAKE], timeOffOffsets: [5] },
-  { name: 'Mia Okafor', teamName: 'Front of house', ineligible: [CODE_BAKE] },
+  { name: 'Mia Okafor', teamName: 'Front of house', ineligible: [CODE_BAKE], tagNames: ['Spanish'] },
   { name: 'Ethan Reyes', teamName: 'Front of house', ineligible: [CODE_BAKE] },
   // New hire: trained on the counter, not on the close-down.
   { name: 'Amara Diallo', teamName: 'Front of house', ineligible: [CODE_BAKE, CODE_CLOSE] },
@@ -121,16 +199,22 @@ export const SAMPLE_PEOPLE: readonly SamplePersonSpec[] = [
     useTeamPreference: false,
   },
   // College timetable: no Mondays or Tuesdays.
-  { name: 'Lucas Moreau', teamName: 'Kitchen', ineligible: [CODE_BAKE], recurringOff: [1, 2] },
+  {
+    name: 'Lucas Moreau',
+    teamName: 'Kitchen',
+    ineligible: [CODE_BAKE],
+    recurringOff: [1, 2],
+    tagNames: ['Student'],
+  },
   { name: 'Priya Nair', teamName: 'Kitchen', ineligible: [CODE_BAKE] },
-  { name: 'Chloe Martin', teamName: 'Kitchen', ineligible: [CODE_BAKE] },
+  { name: 'Chloe Martin', teamName: 'Kitchen', ineligible: [CODE_BAKE], tagNames: ['Student'] },
   { name: 'Diego Alvarez', teamName: 'Kitchen', ineligible: [CODE_BAKE] },
 
   // Bakery — the overnight bake, and the only certified BAKE crew.
   // Four-day family trip inside the period.
   { name: 'Alice Fontaine', teamName: 'Bakery', timeOffOffsets: [3, 4, 5, 6] },
   { name: 'Nikolai Petrov', teamName: 'Bakery', avoids: [CODE_CLOSE], useTeamPreference: false },
-  { name: 'Mateo Silva', teamName: 'Bakery' },
+  { name: 'Mateo Silva', teamName: 'Bakery', tagNames: ['Spanish'] },
   { name: 'Farida Aziz', teamName: 'Bakery' },
 
   // The floater: no team, no preferences, works wherever the gap is.
@@ -172,6 +256,14 @@ function band(min: number, max: number): CoverageBand {
  * rest. Five bakers x up to 5 nights = 25 baker-nights against 7 needed; even
  * in Alice's blocked week the remaining four hold 20, thirteen spare nights —
  * far past the two-night floor.
+ *
+ * Tags change who works, not how much: the weekday mid shift already had to be
+ * staffed, and the Spanish tag only insists that one of its four holders is the
+ * person on it — four holders against ten weekday mids in the fortnight, each
+ * capped at five shifts a week. The students' Monday-mid avoid takes two people
+ * out of a Monday shift that asks for one. The one date the mid shift is shut
+ * down entirely is mirrored into the tag table, so tag coverage never demands a
+ * body the main table has already sent home.
  */
 function buildCoverage(today: ISODate): CoverageTable {
   const weekday: CoverageRow = {
@@ -201,12 +293,19 @@ function buildCoverage(today: ISODate): CoverageTable {
 }
 
 /**
- * Every soft goal, ranked: preferences first, then nights and weekends, then
- * stability and smooth transitions.
+ * Every soft goal, ranked: preferences first (team and personal, then the
+ * tag-level group preferences), then nights and weekends, then stability and
+ * smooth transitions.
  */
-const SAMPLE_SOFT_GOAL_ORDER: SoftGoalId[] = ['S2', 'S1', 'S4', 'S5', 'S3']
+const SAMPLE_SOFT_GOAL_ORDER: SoftGoalId[] = ['S2', 'S6', 'S1', 'S4', 'S5', 'S3']
 
-function buildPerson(spec: SamplePersonSpec, today: ISODate, teams: readonly Team[]): Person {
+function buildPerson(
+  spec: SamplePersonSpec,
+  today: ISODate,
+  teams: readonly Team[],
+  tags: readonly Tag[],
+  tagGroups: readonly TagGroup[],
+): Person {
   // Matched by name, the same way `applyCsvImport` resolves a row's team.
   const teamName = spec.teamName
   const team = teamName === null ? undefined : teams.find((candidate) => candidate.name === teamName)
@@ -221,7 +320,50 @@ function buildPerson(spec: SamplePersonSpec, today: ISODate, teams: readonly Tea
   if (spec.wants) init.wants = [...spec.wants]
   if (spec.avoids) init.avoids = [...spec.avoids]
   if (spec.removed) init.removed = true
+  if (spec.tagNames) {
+    const held = spec.tagNames.flatMap((name) => {
+      const id = tags.find((tag) => tag.name === name)?.id
+      return id === undefined ? [] : [id]
+    })
+    init.tagIds = normalizeTagIds(held, tags, tagGroups)
+  }
   return makePerson(init)
+}
+
+/** The sample's tags, with their rule lines; ids are minted per call. */
+function buildTags(groups: readonly TagGroup[]): Tag[] {
+  return SAMPLE_TAGS.map((spec) => {
+    const group = spec.groupName === null ? undefined : groups.find((candidate) => candidate.name === spec.groupName)
+    const tag = makeTag(spec.name, group?.id)
+    tag.rules = spec.rules.map((rule) => makeTagRule(rule.kind, rule.shift, rule.when, rule.strict))
+    return tag
+  })
+}
+
+/** Per-tag coverage tables (H7), keyed by the ids `buildTags` just minted. */
+function buildTagCoverage(tags: readonly Tag[], coverage: CoverageTable): Record<string, CoverageTable> {
+  // The short day shuts MID down entirely (0/0). A tag band demanding someone
+  // on MID that day would contradict the main table, so every shift the main
+  // table zeroes on a date is zeroed for tags on that date too.
+  const closures: Record<ISODate, CoverageRow> = {}
+  for (const [iso, row] of Object.entries(coverage.dateOverrides)) {
+    const closed: CoverageRow = {}
+    for (const [code, shiftBand] of Object.entries(row)) {
+      if (shiftBand.max === 0) closed[code] = { min: 0, max: 0 }
+    }
+    if (Object.keys(closed).length > 0) closures[iso] = closed
+  }
+
+  const result: Record<string, CoverageTable> = {}
+  for (const spec of SAMPLE_TAGS) {
+    if (spec.coverage === undefined) continue
+    const tag = tags.find((candidate) => candidate.name === spec.name)
+    if (tag === undefined) continue
+    const byDow: Record<number, CoverageRow> = {}
+    for (const [dow, row] of Object.entries(spec.coverage)) byDow[Number(dow)] = { ...row }
+    result[tag.id] = { byDow, dateOverrides: closures }
+  }
+  return result
 }
 
 /**
@@ -233,14 +375,20 @@ export function buildSampleWorkspace(today: ISODate): SampleSeed {
   const teams: Team[] = SAMPLE_TEAMS.map((spec) =>
     makeTeam({ name: spec.name, wants: [...spec.wants], avoids: [...spec.avoids] }),
   )
-  const people = SAMPLE_PEOPLE.map((spec) => buildPerson(spec, today, teams))
+  const tagGroups = SAMPLE_TAG_GROUPS.map((spec) => makeTagGroup(spec.name, spec.exclusive))
+  const tags = buildTags(tagGroups)
+  const people = SAMPLE_PEOPLE.map((spec) => buildPerson(spec, today, teams, tags, tagGroups))
   const period = createPeriod('Sample fortnight', today, 'biweek', 'ready')
+  const coverage = buildCoverage(today)
 
   const workspace: Workspace = {
     people,
     teams,
+    tagGroups,
+    tags,
     shifts: SAMPLE_SHIFTS.map((shift) => ({ ...shift })),
-    coverage: buildCoverage(today),
+    coverage,
+    tagCoverage: buildTagCoverage(tags, coverage),
     settings: { ...DEFAULT_SOLVE_SETTINGS, softGoalOrder: [...SAMPLE_SOFT_GOAL_ORDER] },
     periods: [period],
     schedules: new Map(),

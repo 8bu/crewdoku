@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Assignment, Schedule, Workspace } from '@crewdoku/domain'
+import type { Assignment, CoverageTable, Schedule, Tag, TagGroup, Workspace } from '@crewdoku/domain'
 import {
   assignmentKey,
   DEFAULT_SHIFTS,
@@ -24,6 +24,7 @@ function makeRichFixture(): Workspace {
     avoids: ['LATE'],
     useTeamPreference: false,
     removed: false,
+    tagIds: ['tag-spanish'],
   })
 
   const bob = makePerson({
@@ -33,6 +34,7 @@ function makeRichFixture(): Workspace {
     ineligible: ['EARLY', 'MID'],
     timeOff: ['2026-09-02'],
     removed: true,
+    tagIds: ['tag-student'],
   })
 
   const team = makeTeam({
@@ -97,11 +99,45 @@ function makeRichFixture(): Workspace {
     LATE: { min: 2, max: 5 },
   }
 
+  const tagGroups: TagGroup[] = [{ id: 'taggroup-lang', name: 'Languages', exclusive: true }]
+  const tags: Tag[] = [
+    {
+      id: 'tag-spanish',
+      name: 'Spanish',
+      groupId: 'taggroup-lang',
+      rules: [
+        { id: 'rule-always', kind: 'want', shift: 'EARLY', when: { type: 'always' } },
+        { id: 'rule-date', kind: 'avoid', shift: null, when: { type: 'date', iso: '2026-09-03' } },
+        { id: 'rule-weekly', kind: 'avoid', shift: 'NIGHT', when: { type: 'weekly', weekdays: [0, 6] } },
+        { id: 'rule-monthly-day', kind: 'want', shift: 'MID', when: { type: 'monthlyDay', day: 15 } },
+        {
+          id: 'rule-monthly-nth',
+          kind: 'avoid',
+          shift: 'LATE',
+          when: { type: 'monthlyNth', nth: -1, weekday: 5 },
+          strict: true,
+        },
+        { id: 'rule-yearly', kind: 'avoid', shift: 'EARLY', when: { type: 'yearly', month: 12, day: 25 } },
+      ],
+    },
+    { id: 'tag-student', name: 'Student', rules: [] },
+  ]
+
+  const tagCoverage: Record<string, CoverageTable> = {
+    'tag-spanish': {
+      byDow: { 1: { MID: { min: 1, max: Infinity } } },
+      dateOverrides: { '2026-09-02': { EARLY: { min: 2, max: 3 } } },
+    },
+  }
+
   return {
     people: [alice, bob],
     teams: [team],
+    tagGroups,
+    tags,
     shifts: [...DEFAULT_SHIFTS],
     coverage,
+    tagCoverage,
     settings: {
       ...DEFAULT_SOLVE_SETTINGS,
       hardRules: {
@@ -126,10 +162,14 @@ describe('workspaceFile', () => {
         expect(result.workspace).toEqual(fixture)
         expect(result.workspace.people).toEqual(fixture.people)
         expect(result.workspace.teams).toEqual(fixture.teams)
+        expect(result.workspace.tagGroups).toEqual(fixture.tagGroups)
+        expect(result.workspace.tags).toEqual(fixture.tags)
         expect(result.workspace.shifts).toEqual(fixture.shifts)
         expect(result.workspace.settings).toEqual(fixture.settings)
         expect(result.workspace.periods).toEqual(fixture.periods)
         expect(result.workspace.coverage).toEqual(fixture.coverage)
+        expect(result.workspace.tagCoverage).toEqual(fixture.tagCoverage)
+        expect(result.workspace.tagCoverage['tag-spanish']?.byDow[1]?.['MID']?.max).toBe(Infinity)
 
         expect([...result.workspace.schedules.keys()].sort()).toEqual(
           [...fixture.schedules.keys()].sort(),
@@ -148,6 +188,34 @@ describe('workspaceFile', () => {
           }
         }
       }
+    })
+
+    it('imports a file written before tags, with empty tags and migrated settings', () => {
+      const fixture = makeRichFixture()
+      const legacy = JSON.parse(exportWorkspaceFile(fixture)) as Record<string, unknown>
+      delete legacy['tagGroups']
+      delete legacy['tags']
+      delete legacy['tagCoverage']
+      legacy['settings'] = {
+        hardRules: {
+          enabled: { H1: true, H2: true, H3: true, H5: true },
+          maxHoursPerWeek: 40,
+          minRestHours: 11,
+        },
+        softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5'],
+      }
+
+      const result = importWorkspaceFile(JSON.stringify(legacy))
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.workspace.tagGroups).toEqual([])
+      expect(result.workspace.tags).toEqual([])
+      expect(result.workspace.tagCoverage).toEqual({})
+      expect(result.workspace.people).toEqual(fixture.people)
+      expect(result.workspace.settings.hardRules.enabled.H6).toBe(true)
+      expect(result.workspace.settings.hardRules.enabled.H7).toBe(true)
+      expect(result.workspace.settings.softGoalOrder).toEqual(['S1', 'S6', 'S2', 'S3', 'S4', 'S5'])
+      expect(result.workspace.settings.softGoalEnabled.S6).toBe(true)
     })
 
     it('returns not-json for corrupted text', () => {

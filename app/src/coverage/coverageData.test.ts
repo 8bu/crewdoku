@@ -6,8 +6,8 @@ import { emptyBoardData } from '../board/mockBoard'
 /**
  * The pivot behind `/coverage` (ticket 21): counts come from the injected
  * `getAssignment` (overrides-over-schedule at the call site), statuses from
- * the authored band, and a team lens suppresses status entirely — the
- * requirement table is org-wide, so a per-team "short" would be a lie.
+ * the authored band, and a lens without a requirement table (a team, or a tag
+ * the planner has not given coverage) suppresses status entirely.
  */
 
 const SHIFTS: ShiftDef[] = [
@@ -15,8 +15,8 @@ const SHIFTS: ShiftDef[] = [
   { code: 'LATE', label: 'Late', start: '1400', end: '2200', color: 'orange' },
 ]
 
-function person(id: string, teamId: string): Person {
-  return { id, name: id, teamId, ineligible: [] }
+function person(id: string, teamId: string, tagIds?: string[], removed?: boolean): Person {
+  return { id, name: id, teamId, ineligible: [], tagIds, removed }
 }
 
 const PEOPLE = [person('a', 't1'), person('b', 't1'), person('c', 't2')]
@@ -46,7 +46,7 @@ function table(): CoverageTable {
 
 describe('buildCoverageView', () => {
   it('counts, statuses, margins, and day totals from the live view of assignments', () => {
-    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, 'all')
+    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, { kind: 'all' })
 
     const early = view.rows[0]!
     expect(early.cells.map((c) => c.count)).toEqual([2, 0])
@@ -66,19 +66,19 @@ describe('buildCoverageView', () => {
   it('a date override beats the weekday default', () => {
     const t = table()
     t.dateOverrides['2026-08-17'] = { EARLY: { min: 2, max: 3 } }
-    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, t, getAssignment, 'all')
+    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, t, getAssignment, { kind: 'all' })
     expect(view.rows[0]!.cells[0]!.status).toBe('ok')
   })
 
   it('an unlisted shift reads as no requirement and can never be short or over', () => {
     const t: CoverageTable = { byDow: {}, dateOverrides: {} }
-    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, t, getAssignment, 'all')
+    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, t, getAssignment, { kind: 'all' })
     expect(view.rows.flatMap((r) => r.cells.map((c) => c.status))).toEqual(['ok', 'ok', 'ok', 'ok'])
     expect(view.rows[0]!.cells[0]!.max).toBe(Infinity)
   })
 
   it('a team lens filters counts but suppresses every status', () => {
-    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, 't1')
+    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, { kind: 'team', id: 't1' })
     expect(view.scoped).toBe(true)
     expect(view.rows[0]!.cells[0]!.count).toBe(2)
     expect(view.rows[1]!.cells[0]!.count).toBe(0) // c is t2, out of scope
@@ -87,8 +87,30 @@ describe('buildCoverageView', () => {
     expect(view.dayTotals.map((d) => d.status)).toEqual([null, null])
   })
 
+  it('a tag lens counts active holders only — removed and untagged people drop out', () => {
+    // `a` and `b` hold the tag, but `b` was removed; `c` is active but untagged.
+    const tagged = [person('a', 't1', ['night']), person('b', 't1', ['night'], true), person('c', 't2', [])]
+    const tagTable: CoverageTable = { byDow: {}, dateOverrides: {} }
+    for (let dow = 0; dow < 7; dow++) tagTable.byDow[dow] = { EARLY: { min: 1, max: 1 } }
+    const view = buildCoverageView(tagged, DATES, SHIFTS, tagTable, getAssignment, { kind: 'tag', id: 'night' })
+    expect(view.scoped).toBe(false)
+    expect(view.rows[0]!.cells[0]!.count).toBe(1) // a alone; b removed, c untagged and on LATE
+    expect(view.rows[0]!.cells[0]!.status).toBe('ok')
+    expect(view.rows[1]!.cells[0]!.count).toBe(0)
+    expect(view.dayTotals.map((d) => d.assigned)).toEqual([1, 0])
+  })
+
+  it('a tag with no coverage table shows counts with a neutral status', () => {
+    const tagged = [person('a', 't1', ['night']), person('b', 't1', [])]
+    const view = buildCoverageView(tagged, DATES, SHIFTS, null, getAssignment, { kind: 'tag', id: 'night' })
+    expect(view.scoped).toBe(true)
+    expect(view.rows[0]!.cells[0]!.count).toBe(1) // b does not hold the tag
+    expect(view.rows.flatMap((r) => r.cells.map((c) => c.status))).toEqual([null, null, null, null])
+    expect(view.dayTotals.map((d) => d.minTotal)).toEqual([0, 0])
+  })
+
   it('names in a cell are the in-scope people on that shift', () => {
-    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, 'all')
+    const view = buildCoverageView(PEOPLE, DATES, SHIFTS, table(), getAssignment, { kind: 'all' })
     expect(view.rows[0]!.cells[0]!.people.map((p) => p.id)).toEqual(['a', 'b'])
   })
 })

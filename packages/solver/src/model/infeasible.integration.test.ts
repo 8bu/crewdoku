@@ -6,12 +6,14 @@ import type {
   Person,
   ShiftDef,
   SolveSettings,
+  Tag,
 } from '@crewdoku/domain'
 import {
   checkSchedule,
   DEFAULT_SOLVE_SETTINGS,
   emptySchedule,
   makePerson,
+  makeTag,
 } from '@crewdoku/domain'
 import { toHighsSolve } from '../highs/worker'
 import type { HighsSolve } from '../highs/worker'
@@ -38,6 +40,8 @@ function makeModelInput(params: {
   coverage: CoverageTable
   period: { start: ISODate; end: ISODate }
   settings?: SolveSettings
+  tags?: Tag[]
+  tagCoverage?: Record<string, CoverageTable>
 }): ModelInput {
   const settings = params.settings ?? DEFAULT_SOLVE_SETTINGS
   const current = emptySchedule(params.people, params.period.start, params.period.end)
@@ -48,6 +52,8 @@ function makeModelInput(params: {
     settings,
     period: params.period,
     current,
+    tags: params.tags,
+    tagCoverage: params.tagCoverage,
   }
 }
 
@@ -256,6 +262,62 @@ describe('HiGHS Infeasible diagnostics and relaxation integration tests (real WA
     })
     const hardViolations = violations.filter((v) =>
       ['H1', 'H2', 'H3', 'H5'].includes(v.ruleId),
+    )
+    expect(hardViolations).toHaveLength(0)
+  })
+
+  it('Fixture 4: tag coverage the tagged pool cannot staff (H7) -> Infeasible -> H7 core -> relax the tag band -> Feasible', () => {
+    const tag = makeTag('Students')
+    const people = [
+      // The only tag holder cannot work NIGHT, so the tag band is unreachable.
+      makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id], ineligible: ['NIGHT'] }),
+      makePerson({ id: 'p2', name: 'Bob' }),
+    ]
+    const period = { start: '2026-08-17', end: '2026-08-17' } // Monday
+    // The main table asks for nothing; only the tag band does.
+    const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+    const tagCoverage: Record<string, CoverageTable> = {
+      [tag.id]: { byDow: { 1: { NIGHT: { min: 1, max: 1 } } }, dateOverrides: {} },
+    }
+
+    const input = makeModelInput({ people, coverage, period, tags: [tag], tagCoverage })
+
+    // 1. Model is genuinely infeasible in HiGHS
+    const { lp } = buildModel(input)
+    expect(highs.solve(lp).Status).toBe('Infeasible')
+
+    // 2. deriveConflictCore blames the tag band
+    const { conflictCore, relaxations } = deriveConflictCore(input)
+    const core = conflictCore.find((c) => c.kind === 'tagCoverage.starvation')
+    expect(core).toBeDefined()
+    expect(core?.ruleIds).toEqual(['H7'])
+    expect(core?.params.tag).toBe('Students')
+
+    // 3. Apply the tag-band relaxation
+    const relax = relaxations.find((r) => r.kind === 'relaxTagCoverage')
+    expect(relax).toBeDefined()
+    if (relax === undefined) return
+    const relaxedInput = relax.apply(input)
+
+    // 4. Rebuild & re-solve -> Optimal
+    const { lp: relaxedLp, meta: relaxedMeta } = buildModel(relaxedInput)
+    const relaxedResult = highs.solve(relaxedLp)
+    expect(relaxedResult.Status).toBe('Optimal')
+
+    // 5. buildProposal + domain checkSchedule -> no tag coverage violation left
+    const proposal = buildProposal(relaxedInput, relaxedResult.Columns ?? {}, relaxedMeta)
+    const violations = checkSchedule({
+      people: relaxedInput.people,
+      shifts: relaxedInput.shifts,
+      coverage: relaxedInput.coverage,
+      settings: relaxedInput.settings,
+      period: relaxedInput.period,
+      schedule: proposal.schedule,
+      tags: relaxedInput.tags,
+      tagCoverage: relaxedInput.tagCoverage,
+    })
+    const hardViolations = violations.filter((v) =>
+      ['H1', 'H2', 'H3', 'H5', 'H6', 'H7'].includes(v.ruleId),
     )
     expect(hardViolations).toHaveLength(0)
   })

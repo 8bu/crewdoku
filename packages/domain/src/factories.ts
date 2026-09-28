@@ -13,10 +13,12 @@ import type {
   CoverageTable,
   Period,
   Person,
+  ShiftCode,
   ShiftDef,
   Team,
 } from './entities'
 import { UNASSIGNED_TEAM_ID } from './entities'
+import type { Tag, TagGroup, TagRule, TagWhen } from './tags'
 
 function makeId(kind: string): string {
   return `${kind}-${crypto.randomUUID()}`
@@ -42,6 +44,41 @@ export function makeTeam(init: Partial<Team> & { name: string }): Team {
 
 export function makePeriod(init: { label: string; start: ISODate; end: ISODate; id?: string }): Period {
   return { id: init.id ?? makeId('period'), label: init.label, start: init.start, end: init.end }
+}
+
+/** A folder of tags. `exclusive`: a person holds at most one tag of this group. */
+export function makeTagGroup(name: string, exclusive = false): TagGroup {
+  return { id: makeId('taggroup'), name, exclusive }
+}
+
+/** A tag with no rules yet. A loose tag (no group) is a first-class tag. */
+export function makeTag(name: string, groupId?: string): Tag {
+  return {
+    id: makeId('tag'),
+    name,
+    ...(groupId === undefined ? {} : { groupId }),
+    rules: [],
+  }
+}
+
+/**
+ * One rule line of a tag. `shift === null` means every shift. `strict` is
+ * meaningful for avoids only (a strict want is nothing special); it is
+ * carried through as given so the UI round-trips the planner's own switch.
+ */
+export function makeTagRule(
+  kind: TagRule['kind'],
+  shift: ShiftCode | null,
+  when: TagWhen,
+  strict?: boolean,
+): TagRule {
+  return {
+    id: makeId('tagrule'),
+    kind,
+    shift,
+    when,
+    ...(strict === undefined ? {} : { strict }),
+  }
 }
 
 /** The default catalog a new workspace seeds from — the prototype's four codes. */

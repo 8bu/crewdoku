@@ -3,9 +3,13 @@ import { detectViolations, partitionViolationsForBoard, type Violation } from '.
 import {
   DEFAULT_SHIFTS,
   DEFAULT_SOLVE_SETTINGS,
+  makeTag,
+  makeTagRule,
   type Assignment,
+  type CoverageTable,
   type Person,
   type ScheduleBoundary,
+  type TagWhen,
 } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 
@@ -294,5 +298,213 @@ describe('partitionViolationsForBoard', () => {
     )
     expect(cellMessages.size).toBe(0)
     expect(otherByPerson.get('p1')).toEqual([unplaced])
+  })
+
+  it('routes a workspace-level tag-coverage break to the null lane, never to a cell', () => {
+    const unplaced: Violation = {
+      id: 'tagCoverage|tag1|EARLY|2026-01-05|min',
+      kind: 'tagCoverage',
+      personId: null,
+      dateIso: '2026-01-05',
+      message: 'Spanish: Early on Mon Jan 5 has 1 person holding this tag, but it needs at least 2',
+      params: { tag: 'Spanish', shift: 'Early', date: 'Mon Jan 5', band: 'min', limit: 2, count: 1 },
+    }
+    const { cellMessages, otherByPerson } = partitionViolationsForBoard(
+      [unplaced],
+      new Set(['p1']),
+      new Set(dates.map((d) => d.iso)),
+    )
+    expect(cellMessages.size).toBe(0)
+    expect(otherByPerson.get(null)).toEqual([unplaced])
+  })
+})
+
+// H6: a strict tag avoid forbids a cell outright, so a hand-edit that lands
+// there is flagged (never blocked). A non-strict avoid stays a soft preference
+// (S6) and is not a break; while H6 is off the strict rule folds into that same
+// soft preference. Removed people drop out, as in the domain's `checkTagRules`.
+describe('detectViolations H6 strict tag avoids', () => {
+  const dates = [date('2026-01-05', 1, 5), date('2026-01-06', 2, 6)]
+
+  /** Monday nights are forbidden by the tag; only `get` varies per test. */
+  function detectWithTag(
+    get: (personId: string, dateIso: string) => Assignment,
+    {
+      strict = true,
+      enabled = ENABLED,
+      removed = false,
+      shift = 'NIGHT' as string | null,
+      when = { type: 'weekly', weekdays: [1] } as TagWhen,
+    } = {},
+  ) {
+    const tag = { ...makeTag('Muslim'), rules: [makeTagRule('avoid', shift, when, strict)] }
+    const people: Person[] = [{ ...person('p1', 'Anna'), tagIds: [tag.id], removed }]
+    return detectViolations(people, dates, get, DEFAULT_SHIFTS, enabled, NO_HOURS_CAP, MIN_REST_HOURS, undefined, {
+      tags: [tag],
+    })
+  }
+
+  it('flags a hand-edit onto a cell a strict avoid forbids', () => {
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('NIGHT', { pinned: true }), 'p1|2026-01-06': assignment('OFF') }),
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toMatchObject({ kind: 'tagAvoid', personId: 'p1', dateIso: '2026-01-05' })
+    expect(violations[0]!.params).toMatchObject({ person: 'Anna', tag: 'Muslim', shift: 'Night' })
+  })
+
+  it('leaves a cell alone on a day the rule does not cover', () => {
+    // The rule is Monday-only: the Tuesday NIGHT is fine.
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('OFF'), 'p1|2026-01-06': assignment('NIGHT') }),
+    )
+    expect(violations).toEqual([])
+  })
+
+  it('does not flag a whole-day avoid on a day the person is off', () => {
+    // The avoid covers every shift, every day: the OFF Monday is exactly what
+    // it wants, the Tuesday EARLY is not.
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('OFF'), 'p1|2026-01-06': assignment('EARLY') }),
+      { shift: null, when: { type: 'always' } },
+    )
+    expect(violations.map((v) => v.dateIso)).toEqual(['2026-01-06'])
+  })
+
+  it('treats a non-strict avoid as a soft preference, not a break', () => {
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('NIGHT'), 'p1|2026-01-06': assignment('OFF') }),
+      { strict: false },
+    )
+    expect(violations).toEqual([])
+  })
+
+  it('ignores strict avoids while H6 is off', () => {
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('NIGHT'), 'p1|2026-01-06': assignment('OFF') }),
+      { enabled: { ...ENABLED, H6: false } },
+    )
+    expect(violations).toEqual([])
+  })
+
+  it('skips removed people, like the domain checker', () => {
+    const violations = detectWithTag(
+      board({ 'p1|2026-01-05': assignment('NIGHT'), 'p1|2026-01-06': assignment('OFF') }),
+      { removed: true },
+    )
+    expect(violations).toEqual([])
+  })
+
+  it('reports nothing without a tag catalog', () => {
+    const tag = makeTag('Muslim')
+    const people: Person[] = [{ ...person('p1', 'Anna'), tagIds: [tag.id] }]
+    expect(
+      detectViolations(
+        people,
+        dates,
+        board({ 'p1|2026-01-05': assignment('NIGHT'), 'p1|2026-01-06': assignment('OFF') }),
+        DEFAULT_SHIFTS,
+        ENABLED,
+        NO_HOURS_CAP,
+        MIN_REST_HOURS,
+      ),
+    ).toEqual([])
+  })
+})
+
+// H7: a tag's own coverage band, counted over active people holding the tag —
+// one workspace-level break per tag/date/shift, anchored to the date column.
+describe('detectViolations H7 tag coverage', () => {
+  const dates = [date('2026-01-05', 1, 5), date('2026-01-06', 2, 6)]
+  const tag = makeTag('Spanish')
+  const other = makeTag('Portuguese')
+
+  /** Monday Early wants 2-3 of the tag; every other cell is unconstrained. */
+  function table(min: number, max: number): CoverageTable {
+    return { byDow: { 1: { EARLY: { min, max } } }, dateOverrides: {} }
+  }
+
+  function holders(): Person[] {
+    return [
+      { ...person('p1', 'Ana'), tagIds: [tag.id] },
+      { ...person('p2', 'Beto'), tagIds: [tag.id] },
+      { ...person('p3', 'Cara'), tagIds: [tag.id] },
+    ]
+  }
+
+  function detectCoverage(
+    people: Person[],
+    get: (personId: string, dateIso: string) => Assignment,
+    coverage: CoverageTable,
+    { enabled = ENABLED, tags = [tag] } = {},
+  ) {
+    return detectViolations(people, dates, get, DEFAULT_SHIFTS, enabled, NO_HOURS_CAP, MIN_REST_HOURS, undefined, {
+      tags,
+      tagCoverage: { [tag.id]: coverage },
+    })
+  }
+
+  /** Every person × date cell is OFF unless the map names a worked code. */
+  function worked(codes: Record<string, Assignment['code']>) {
+    const map: Record<string, Assignment> = {}
+    for (const id of ['p1', 'p2', 'p3', 'p4']) {
+      for (const dt of dates) {
+        const key = `${id}|${dt.iso}`
+        map[key] = assignment(codes[key] ?? 'OFF')
+      }
+    }
+    return board(map)
+  }
+
+  it('flags a shift short of the tag band, anchored to the date', () => {
+    const violations = detectCoverage(holders(), worked({ 'p1|2026-01-05': 'EARLY' }), table(2, 3))
+    expect(violations).toHaveLength(1)
+    expect(violations[0]).toMatchObject({ kind: 'tagCoverage', personId: null, dateIso: '2026-01-05' })
+    expect(violations[0]!.params).toMatchObject({ tag: 'Spanish', shift: 'Early', band: 'min', limit: 2, count: 1 })
+  })
+
+  it('flags a shift over the tag band', () => {
+    const violations = detectCoverage(
+      holders(),
+      worked({ 'p1|2026-01-05': 'EARLY', 'p2|2026-01-05': 'EARLY', 'p3|2026-01-05': 'EARLY' }),
+      table(1, 2),
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]!.params).toMatchObject({ tag: 'Spanish', shift: 'Early', band: 'max', limit: 2, count: 3 })
+  })
+
+  it('satisfies the band exactly at its edges', () => {
+    expect(detectCoverage(holders(), worked({ 'p1|2026-01-05': 'EARLY', 'p2|2026-01-05': 'EARLY' }), table(2, 2))).toEqual(
+      [],
+    )
+  })
+
+  it('counts only people holding the tag', () => {
+    const people = [...holders(), { ...person('p4', 'Dan'), tagIds: [other.id] }]
+    const violations = detectCoverage(people, worked({ 'p1|2026-01-05': 'EARLY', 'p4|2026-01-05': 'EARLY' }), table(2, 3))
+    expect(violations).toHaveLength(1)
+    expect(violations[0]!.params).toMatchObject({ count: 1 })
+  })
+
+  it('excludes removed people from the tag count', () => {
+    const people = holders()
+    people[2] = { ...people[2]!, removed: true }
+    const violations = detectCoverage(
+      people,
+      worked({ 'p1|2026-01-05': 'EARLY', 'p3|2026-01-05': 'EARLY' }),
+      table(2, 3),
+    )
+    expect(violations).toHaveLength(1)
+    expect(violations[0]!.params).toMatchObject({ count: 1 })
+  })
+
+  it('ignores tag coverage while H7 is off', () => {
+    expect(
+      detectCoverage(holders(), worked({}), table(2, 3), { enabled: { ...ENABLED, H7: false } }),
+    ).toEqual([])
+  })
+
+  it('ignores a tag with no coverage table', () => {
+    expect(detectCoverage(holders(), worked({}), table(2, 3), { tags: [other] })).toEqual([])
   })
 })

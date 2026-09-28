@@ -6,6 +6,7 @@ import { selectedPeriodAtom, type Period } from '../state/shell'
 import { useRosterPeople } from '../state/roster'
 import { useRosterTeams } from '../state/teams'
 import { useRosterShifts } from '../state/shifts'
+import { useTagGroups, useTags } from '../state/tags'
 import { DEFAULT_SHIFTS, UNASSIGNED_TEAM_ID } from '@crewdoku/domain'
 import { UNASSIGNED_TEAM } from '../board/mockBoard'
 import { seedBoardData } from '../board/periodSeed'
@@ -53,6 +54,8 @@ function RosterTable({ period }: { period: Period }) {
   const [people, setPeople] = useRosterPeople(initial.people)
   const [teams, setTeams] = useRosterTeams(initial.teams)
   const [shifts] = useRosterShifts(DEFAULT_SHIFTS)
+  const [tagGroups, setTagGroups] = useTagGroups()
+  const [tags, setTags] = useTags()
   const active = useMemo(() => activeRoster(people), [people])
   const [query, setQuery] = useState('')
   const [teamFilterId, setTeamFilterId] = useState<string>('all')
@@ -272,9 +275,13 @@ function RosterTable({ period }: { period: Period }) {
           people={people}
           teams={teams}
           shifts={shifts}
+          tagGroups={tagGroups}
+          tags={tags}
           onApply={(r, m) => {
             setPeople(() => r.people)
             setTeams(() => r.teams)
+            setTagGroups(() => r.tagGroups)
+            setTags(() => r.tags)
             track('roster_imported', { source: m.source, rows: m.peopleAdded })
           }}
           onCancel={() => setImportOpen(false)}

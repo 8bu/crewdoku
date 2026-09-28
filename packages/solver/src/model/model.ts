@@ -1,4 +1,5 @@
 import type {
+  CellPreference,
   CoverageTable,
   ISODate,
   Person,
@@ -7,10 +8,12 @@ import type {
   ShiftCode,
   ShiftDef,
   SolveSettings,
+  Tag,
   Team,
 } from '@crewdoku/domain'
 import {
   assignmentKey,
+  cellPreference,
   coverageBandFor,
   eachDate,
   getAssignment,
@@ -18,6 +21,7 @@ import {
   OFF_CODE,
   restHoursBetween,
   paidHours,
+  personTags,
   weekdayOf,
   weekIndexOf,
 } from '@crewdoku/domain'
@@ -32,6 +36,17 @@ export interface ModelInput {
   current: Schedule
   baseline?: Schedule
   teams?: readonly Team[]
+  /**
+   * The tag catalog: preferences shared across teams (religion, language…).
+   * Absent means no tagging, and every rule below behaves exactly as it did
+   * before tags existed.
+   */
+  tags?: readonly Tag[]
+  /**
+   * Per-tag coverage bands, keyed by `Tag.id` (H7). A tag with no entry has no
+   * requirement — the same "unlisted shift = unconstrained" rule as H1.
+   */
+  tagCoverage?: Readonly<Record<string, CoverageTable>>
   /**
    * The shifts people work on the days just outside the period, taken from the
    * neighbouring periods' schedules (`period.start - 1` and `period.end + 1`).
@@ -86,17 +101,22 @@ function lpSafe(code: string): string {
  * Builds the HiGHS CPLEX LP string and accompanying metadata from ModelInput.
  *
  * Implements the 6 binding orchestrator decisions:
- * 1. Eligibility: no H6 rows; variables omitted for (person, shift) if shift in person.ineligible.
+ * 1. Eligibility: no row; variables omitted for (person, shift) if shift in person.ineligible.
+ *    H6 (strict tag avoids) omits them the same way, and H7 lays a per-tag
+ *    coverage band beside H1's.
  * 2. Pins sacred BY CONSTRUCTION (constants, not variables):
  *    - Pinned cell emits NO variables for that (person, date).
  *    - H1: Pinned assignments subtract from min and max RHS; clamped at 0 if pins exceed.
  *    - H2: Pinned hours subtract from week cap; clamped at 0.
  *    - H3: Both pinned -> drop row; One pinned + one free -> if incompatible, force free var = 0.
  *    - H5: Pin on timeOff/recurringOff wins -> drop H5 row for that cell.
+ *    - H7: Same pinned subtraction as H1, over the tag's holders.
  *    - Pinned OFF cells: force person's vars = 0 (omitted).
  * 3. Rank->weights: 10^(n-1-rank) over enabled soft goals.
  * 4. Sign convention: minimize penalties everywhere.
  * 5. Determinism: iterate in input order; LP byte-identical for identical input.
+ * 6. Preferences: one `cellPreference` per cell feeds S2 (base) and S6 (tags),
+ *    with "any avoid beats any want" resolved by the domain helper, never here.
  */
 export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
   const { people, shifts, coverage, settings, period, current, boundary } = input
@@ -127,6 +147,8 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
 
   // 2. Shift tokens
   const shiftCodes = shifts.map((s) => s.code)
+  const shiftIndex = new Map<ShiftCode, number>()
+  shifts.forEach((s, i) => shiftIndex.set(s.code, i))
   const codeToShiftToken = new Map<ShiftCode, string>()
   const shiftTokenToCode = new Map<string, ShiftCode>()
   for (const code of shiftCodes) {
@@ -158,10 +180,56 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
     }
   }
 
+  // Tags are optional: with none, everything below resolves exactly as it did
+  // before tagging existed.
+  const tags = input.tags ?? []
+  const tagCoverage = input.tagCoverage ?? {}
+  const h6 = settings.hardRules.enabled.H6
+
+  const teamMap = new Map<string, Team>()
+  for (const team of input.teams ?? []) {
+    teamMap.set(team.id, team)
+  }
+
+  const heldTagsByPerson = new Map<string, readonly Tag[]>()
+  if (tags.length > 0) {
+    for (const p of people) {
+      heldTagsByPerson.set(p.id, personTags(p, tags))
+    }
+  }
+
+  // Cell preferences (team, personal and tag) drive H6 (variable omission) and
+  // S2/S6 (pricing), so resolve each (person, date, shift) once — `cellPreference`
+  // owns the "any avoid beats any want" precedence, never this file.
+  const prefCache = new Map<number, CellPreference>()
+  const prefAt = (
+    person: Person,
+    empI: number,
+    dateI: number,
+    code: ShiftCode,
+    iso: ISODate,
+  ): CellPreference => {
+    const key =
+      (empI * dates.length + dateI) * shifts.length + (shiftIndex.get(code) ?? 0)
+    const cached = prefCache.get(key)
+    if (cached !== undefined) return cached
+    const pref = cellPreference(
+      person,
+      teamMap.get(person.teamId),
+      heldTagsByPerson.get(person.id) ?? [],
+      code,
+      iso,
+      h6,
+    )
+    prefCache.set(key, pref)
+    return pref
+  }
+
   // 4. Variables: x_{empI}_{dateI}_{shiftToken}
   // Decision 1 & 2:
   // - OMIT vars if cell is pinned (constant, not variable).
   // - OMIT vars if shift in person.ineligible.
+  // - OMIT vars if H6 is on and a strict tag avoid forbids the cell.
   const varNames: string[] = []
   const hasVar = new Set<string>()
 
@@ -184,6 +252,12 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
       for (const shift of shifts) {
         if (p.ineligible.includes(shift.code)) {
           // Ineligible: no variable emitted
+          continue
+        }
+        if (h6 && prefAt(p, empI, dateI, shift.code, d).strictAvoid) {
+          // H6: a strict tag avoid forbids the cell outright, exactly like an
+          // ineligible pair. Pinned cells were skipped above and stand as the
+          // planner left them; the checker flags those.
           continue
         }
         const v = varOf(empI, dateI, shift.code)
@@ -485,14 +559,90 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
     }
   }
 
-  // ===== Objective (Minimize penalties) =====
-  const weights = rankWeights(settings)
-  const teamMap = new Map<string, Team>()
-  if (input.teams) {
-    for (const t of input.teams) {
-      teamMap.set(t.id, t)
+  // ===== H7: per-tag coverage band =====
+  // The H1 shape, counted over only the people who hold the tag: a tag behaves
+  // as a headcount table of its own. A tag with no table has no requirement.
+  if (settings.hardRules.enabled.H7 && tags.length > 0) {
+    // Sanitized, deduplicated tag tokens for row names (same scheme as shifts).
+    const tagTokenById = new Map<string, string>()
+    const usedTagTokens = new Set<string>()
+    for (const tag of tags) {
+      if (tagCoverage[tag.id] === undefined) continue
+      const base = lpSafe(tag.id)
+      let token = base
+      let n = 1
+      while (usedTagTokens.has(token)) {
+        token = `${base}d${n}`
+        n++
+      }
+      usedTagTokens.add(token)
+      tagTokenById.set(tag.id, token)
+    }
+
+    for (const tag of tags) {
+      const table = tagCoverage[tag.id]
+      const tagToken = tagTokenById.get(tag.id)
+      if (table === undefined || tagToken === undefined) continue
+
+      const holderEmpI: number[] = []
+      for (let empI = 0; empI < people.length; empI++) {
+        const p = people[empI]
+        if (!p) continue
+        const held = heldTagsByPerson.get(p.id) ?? []
+        if (held.some((t) => t.id === tag.id)) holderEmpI.push(empI)
+      }
+
+      for (const shift of shifts) {
+        const sTok = tok(shift.code)
+        for (let dateI = 0; dateI < dates.length; dateI++) {
+          const d = dates[dateI]
+          if (!d) continue
+          const dow = weekdayOf(d)
+          const band = coverageBandFor(table, shift.code, d, dow)
+
+          // Pins are constants, subtracted exactly like H1's.
+          let pinnedCount = 0
+          for (const empI of holderEmpI) {
+            const p = people[empI]
+            if (!p) continue
+            if (pinnedCells.get(assignmentKey(p.id, d)) === shift.code) {
+              pinnedCount++
+            }
+          }
+
+          const freeTerms: string[] = []
+          for (const empI of holderEmpI) {
+            if (has(empI, dateI, shift.code)) {
+              freeTerms.push(`+ ${varOf(empI, dateI, shift.code)}`)
+            }
+          }
+
+          const body = freeTerms.length > 0 ? freeTerms.join(' ') : '0'
+
+          if (band.min > 0 || freeTerms.length > 0) {
+            rows.push({
+              name: `h7_${tagToken}_${sTok}_${dateI}`,
+              body,
+              op: '>=',
+              rhs: Math.max(0, band.min - pinnedCount),
+            })
+          }
+
+          if (band.max < Infinity) {
+            rows.push({
+              name: `h7cap_${tagToken}_${sTok}_${dateI}`,
+              body,
+              op: '<=',
+              rhs: Math.max(0, band.max - pinnedCount),
+            })
+          }
+        }
+      }
     }
   }
+
+  // ===== Objective (Minimize penalties) =====
+  const weights = rankWeights(settings)
 
   // S3: Stability (penalize changes from baseline/current)
   const w3 = weights.S3
@@ -526,26 +676,17 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
     }
   }
 
-  // S2: Preference match (penalize violations of wants/avoids)
+  // S2: Preference match (team/personal) and S6: Group preferences (tags).
+  // Both read the same resolved cell preference, so an avoid from any source
+  // (team, personal, tag) cancels every want for that cell — the precedence
+  // lives in `cellPreference`, and tagging stacks on top of S2 rather than
+  // replacing it. With no tags, S2 prices exactly what it priced before.
   const w2 = weights.S2
-  if (w2 > 0) {
+  const w6 = weights.S6
+  if (w2 > 0 || w6 > 0) {
     for (let empI = 0; empI < people.length; empI++) {
       const p = people[empI]
       if (!p) continue
-
-      // Resolve effective wants and avoids
-      let effectiveWants: readonly ShiftCode[] = []
-      let effectiveAvoids: readonly ShiftCode[] = []
-
-      const team = teamMap.get(p.teamId)
-      const inherit = p.useTeamPreference ?? (team !== undefined)
-      if (inherit && team) {
-        effectiveWants = team.wants
-        effectiveAvoids = team.avoids
-      } else {
-        effectiveWants = p.wants ?? []
-        effectiveAvoids = p.avoids ?? []
-      }
 
       for (let dateI = 0; dateI < dates.length; dateI++) {
         const d = dates[dateI]
@@ -556,21 +697,25 @@ export function buildModel(input: ModelInput): { lp: string; meta: ModelMeta } {
 
         for (const shift of shifts) {
           if (!has(empI, dateI, shift.code)) continue
+          const pref = prefAt(p, empI, dateI, shift.code, d)
+          const v = varOf(empI, dateI, shift.code)
 
-          // If avoids includes shift.code: penalize assigning it (+w2)
-          if (effectiveAvoids.includes(shift.code)) {
-            objTerms.push(`+ ${w2} ${varOf(empI, dateI, shift.code)}`)
+          if (w2 > 0) {
+            // Avoid: penalize assigning the shift (+w2).
+            if (pref.baseAvoid) objTerms.push(`+ ${w2} ${v}`)
+            // Want: reward it (-w2, with the constant booked like S3's).
+            if (pref.baseWant) {
+              objConst += w2
+              objTerms.push(`- ${w2} ${v}`)
+            }
           }
 
-          // If wants is non-empty and does NOT include shift.code:
-          // assigning an unwanted shift incurs penalty (+w2)
-          // or rewarding wanted shifts (-w2).
-          // With penalty convention: working shift not in wants when wants is specified
-          // or reward: -w2 for shift in wants
-          if (effectiveWants.length > 0 && effectiveWants.includes(shift.code)) {
-            // Reward wanted shift
-            objConst += w2
-            objTerms.push(`- ${w2} ${varOf(empI, dateI, shift.code)}`)
+          if (w6 > 0) {
+            if (pref.tagAvoid) objTerms.push(`+ ${w6} ${v}`)
+            if (pref.tagWant) {
+              objConst += w6
+              objTerms.push(`- ${w6} ${v}`)
+            }
           }
         }
       }

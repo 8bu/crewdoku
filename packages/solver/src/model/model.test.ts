@@ -7,12 +7,15 @@ import type {
   ScheduleBoundary,
   ShiftDef,
   SolveSettings,
+  Tag,
 } from '@crewdoku/domain'
 import {
   assignmentKey,
   DEFAULT_SOLVE_SETTINGS,
   emptySchedule,
   makePerson,
+  makeTag,
+  makeTagRule,
   OFF_ASSIGNMENT,
 } from '@crewdoku/domain'
 import { buildModel } from './model'
@@ -52,6 +55,8 @@ function basicInput(overrides?: {
   start?: ISODate
   end?: ISODate
   boundary?: ScheduleBoundary
+  tags?: Tag[]
+  tagCoverage?: Record<string, CoverageTable>
 }) {
   const people = overrides?.people ?? [
     makePerson({ id: 'p1', name: 'Alice' }),
@@ -72,6 +77,8 @@ function basicInput(overrides?: {
     period: { start, end },
     current,
     boundary: overrides?.boundary,
+    tags: overrides?.tags,
+    tagCoverage: overrides?.tagCoverage,
   }
 }
 
@@ -93,17 +100,18 @@ describe('buildModel unit tests', () => {
   it('emits zero matching rows when rules are disabled', () => {
     const settings: SolveSettings = {
       hardRules: {
-        enabled: { H1: false, H2: false, H3: false, H5: false },
+        enabled: { H1: false, H2: false, H3: false, H5: false, H6: false, H7: false },
         maxHoursPerWeek: 40,
         minRestHours: 11,
       },
-      softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5'],
+      softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'],
       softGoalEnabled: {
         S1: false,
         S2: false,
         S3: false,
         S4: false,
         S5: false,
+        S6: false,
       },
     }
 
@@ -490,5 +498,150 @@ describe('buildModel unit tests', () => {
       }),
     )
     expect(disabled.lp).not.toMatch(/\bh3_/)
+  })
+
+  it('omits variables for a cell a strict tag avoid forbids, and adds no forcing row (H6)', () => {
+    const tag = makeTag('Night owls')
+    tag.rules.push(makeTagRule('avoid', 'NIGHT', { type: 'always' }, true))
+    const p1 = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const p2 = makePerson({ id: 'p2', name: 'Bob' })
+
+    const { lp, meta } = buildModel(basicInput({ people: [p1, p2], tags: [tag] }))
+
+    // Alice's NIGHT cells are not variables at all — like an ineligible pair.
+    expect(meta.varNames.filter((v) => v.startsWith('x_0_') && v.endsWith('_NIGHT'))).toHaveLength(0)
+    expect(lp).not.toContain('x_0_0_NIGHT')
+    // Her other shifts and Bob's NIGHT cells are untouched.
+    expect(meta.varNames).toContain('x_0_0_EARLY')
+    expect(meta.varNames).toContain('x_1_0_NIGHT')
+    // Nothing forces the forbidden cell off: it simply has no variable.
+    expect(lp).not.toMatch(/\bh6_/)
+  })
+
+  it('treats a strict day-off tag rule (shift null) as forbidding every shift that day', () => {
+    const tag = makeTag('Sabbath')
+    tag.rules.push(makeTagRule('avoid', null, { type: 'date', iso: '2026-08-18' }, true))
+    const p1 = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const p2 = makePerson({ id: 'p2', name: 'Bob' })
+
+    const { meta } = buildModel(basicInput({ people: [p1, p2], tags: [tag] }))
+
+    // Date index 1 is 2026-08-18: Alice has no variable there at all.
+    expect(meta.varNames.filter((v) => v.startsWith('x_0_1_'))).toHaveLength(0)
+    expect(meta.varNames.filter((v) => v.startsWith('x_0_0_')).length).toBeGreaterThan(0)
+    expect(meta.varNames.filter((v) => v.startsWith('x_0_2_')).length).toBeGreaterThan(0)
+    expect(meta.varNames.filter((v) => v.startsWith('x_1_1_')).length).toBeGreaterThan(0)
+  })
+
+  it('falls back to a soft S6 avoid when H6 is off: variables stay, priced at w6', () => {
+    const tag = makeTag('Night owls')
+    tag.rules.push(makeTagRule('avoid', 'NIGHT', { type: 'always' }, true))
+    const p1 = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const p2 = makePerson({ id: 'p2', name: 'Bob' })
+    const settings: SolveSettings = {
+      ...DEFAULT_SOLVE_SETTINGS,
+      hardRules: {
+        ...DEFAULT_SOLVE_SETTINGS.hardRules,
+        enabled: { ...DEFAULT_SOLVE_SETTINGS.hardRules.enabled, H6: false },
+      },
+    }
+
+    const { lp, meta } = buildModel(
+      basicInput({ people: [p1, p2], tags: [tag], settings }),
+    )
+
+    expect(meta.varNames).toContain('x_0_0_NIGHT')
+    // Default order ranks S6 at 10000: the strict avoid is just a soft avoid now.
+    expect(lp).toContain('+ 10000 x_0_0_NIGHT')
+  })
+
+  it('prices tag wants and avoids at w6 (S6) and lets any avoid cancel a want', () => {
+    const wanted = makeTag('Early birds')
+    wanted.rules.push(makeTagRule('want', 'EARLY', { type: 'always' }))
+    const avoided = makeTag('Night owls')
+    avoided.rules.push(makeTagRule('avoid', 'NIGHT', { type: 'always' }))
+    const p1 = makePerson({
+      id: 'p1',
+      name: 'Alice',
+      tagIds: [wanted.id, avoided.id],
+      avoids: ['EARLY'],
+      useTeamPreference: false,
+    })
+
+    const { lp } = buildModel(basicInput({ people: [p1], tags: [wanted, avoided] }))
+
+    // Tag avoid: penalized at the S6 weight.
+    expect(lp).toContain('+ 10000 x_0_0_NIGHT')
+    // The personal avoid for EARLY beats the tag want for EARLY: the S2 penalty
+    // stands and the S6 reward is gone.
+    expect(lp).toContain('+ 1000 x_0_0_EARLY')
+    expect(lp).not.toContain('- 10000 x_0_0_EARLY')
+  })
+
+  it('lays a per-tag coverage band beside H1, subtracting pinned tag holders (H7)', () => {
+    const tag = makeTag('Students')
+    const p1 = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const p2 = makePerson({ id: 'p2', name: 'Bob', tagIds: [tag.id] })
+    const p3 = makePerson({ id: 'p3', name: 'Cara' })
+    const start = '2026-08-17'
+    const end = '2026-08-17'
+    const current = emptySchedule([p1, p2, p3], start, end)
+    current.set(assignmentKey(p1.id, start), {
+      code: 'EARLY',
+      start: '0600',
+      end: '1400',
+      pinned: true,
+      ineligible: false,
+    })
+
+    const { lp } = buildModel(
+      basicInput({
+        people: [p1, p2, p3],
+        start,
+        end,
+        current,
+        tags: [tag],
+        tagCoverage: { [tag.id]: makeCoverage(2, 3) },
+      }),
+    )
+
+    const lines = lp.split('\n')
+    const minRow = lines.find((l) => / h7_\S+_EARLY_0:/.test(l))
+    const capRow = lines.find((l) => / h7cap_\S+_EARLY_0:/.test(l))
+
+    // The band is the tag's own (EARLY min 2 / max 3) minus Alice's pinned 1.
+    expect(minRow).toBeDefined()
+    expect(minRow).toMatch(/>= 1$/)
+    expect(capRow).toBeDefined()
+    expect(capRow).toMatch(/<= 2$/)
+    // Only the tag's holders are counted: Bob is free, Alice pinned (no
+    // variable), and Cara holds no tag at all.
+    expect(minRow).toContain('x_1_0_EARLY')
+    expect(minRow).not.toContain('x_0_0_EARLY')
+    expect(minRow).not.toContain('x_2_0_EARLY')
+  })
+
+  it('emits no tag coverage rows while H7 is off', () => {
+    const tag = makeTag('Students')
+    const p1 = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const settings: SolveSettings = {
+      ...DEFAULT_SOLVE_SETTINGS,
+      hardRules: {
+        ...DEFAULT_SOLVE_SETTINGS.hardRules,
+        enabled: { ...DEFAULT_SOLVE_SETTINGS.hardRules.enabled, H7: false },
+      },
+    }
+
+    const { lp } = buildModel(
+      basicInput({
+        people: [p1],
+        tags: [tag],
+        tagCoverage: { [tag.id]: makeCoverage(2, 3) },
+        settings,
+      }),
+    )
+
+    expect(lp).not.toMatch(/\bh7_/)
+    expect(lp).not.toMatch(/\bh7cap_/)
   })
 })

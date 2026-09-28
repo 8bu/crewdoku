@@ -1,6 +1,7 @@
 import { WarningTriangleIcon, X } from '../ui/icons'
 import { useT } from '../i18n/useT'
 import { useMemo, useState } from 'react'
+import { togglePersonTag } from '@crewdoku/domain'
 import type { Person, ShiftCode, ShiftDef, Team } from '@crewdoku/domain'
 import type { BoardDate } from './mockBoard'
 import type { FairnessRow } from './fairness'
@@ -8,6 +9,7 @@ import type { Violation } from './violations'
 import { Input } from '../ui/Input'
 import { BottomSheet } from '../ui/BottomSheet'
 import { useIsNarrow } from '../ui/useIsNarrow'
+import { useTagGroups, useTags } from '../state/tags'
 
 const WEEKDAY_KEYS = [
   'board.person.weekday.sun',
@@ -110,6 +112,23 @@ export function PersonPanel({
   const ownAvoids = person.avoids ?? []
   const wants = useTeamPreference ? team.wants : ownWants
   const avoids = useTeamPreference ? team.avoids : ownAvoids
+  const [tags] = useTags()
+  const [tagGroups] = useTagGroups()
+  const heldTagIds = person.tagIds ?? []
+  // Grouped the way the Tags view draws them — catalog order, loose tags last,
+  // and a tag whose group is gone reads as loose so a stale id never hides it.
+  const tagSections = [
+    ...tagGroups.map((group) => ({
+      key: group.id,
+      label: group.name || t('rtc.common.unnamed'),
+      tags: tags.filter((tag) => tag.groupId === group.id),
+    })),
+    {
+      key: '',
+      label: t('tags.person.ungrouped'),
+      tags: tags.filter((tag) => !tag.groupId || !tagGroups.some((group) => group.id === tag.groupId)),
+    },
+  ].filter((section) => section.tags.length > 0)
 
   function toggleEligible(code: Exclude<ShiftCode, 'OFF'>) {
     onUpdate({ ineligible: toggle(ineligible, code) })
@@ -290,6 +309,42 @@ export function PersonPanel({
           </div>
         </div>
       </section>
+
+      {/* Tags are the cross-team half of a person's preferences: chips, not
+          wants/avoids — a tag carries its own rule lines in the Tags view.
+          An exclusive group behaves as a single pick here because
+          `togglePersonTag` replaces its sibling rather than stacking. Hidden
+          entirely when the workspace has no tags: an empty section on every
+          person would be noise, not a hint. */}
+      {tags.length > 0 && (
+        <section>
+          <h3 className={heading}>{t('tags.person.section')}</h3>
+          <div className="flex flex-col gap-2.5">
+            {tagSections.map((section) => (
+              <div key={section.key} className="flex items-center gap-2.5">
+                <span className="w-[52px] flex-none text-2xs text-base-content/50">{section.label}</span>
+                <div className={chipsRow}>
+                  {section.tags.map((tag) => {
+                    const active = heldTagIds.includes(tag.id)
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        className={`${chipBase} ${active ? 'border-primary bg-primary text-primary-content' : ''}`}
+                        data-active={active || undefined}
+                        onClick={() => onUpdate({ tagIds: togglePersonTag(heldTagIds, tag.id, tags, tagGroups) })}
+                      >
+                        {tag.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className={hint}>{t('tags.person.hint')}</p>
+        </section>
+      )}
 
       <section>
         <h3 className={heading}>{t('board.person.sectionRecurring')}</h3>

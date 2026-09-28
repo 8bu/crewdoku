@@ -19,6 +19,7 @@ import { peopleAtom } from './roster'
 import { teamsAtom } from './teams'
 import { shiftsAtom } from './shifts'
 import { coverageAtom } from './coverageRules'
+import { tagCoverageAtom, tagGroupsAtom, tagsAtom } from './tags'
 import { solveSettingsAtom } from './solveSettings'
 import { createPeriod, periodsAtom, selectedPeriodIdAtom, type Period } from './shell'
 import { scheduleByPeriodAtom, type ScheduleState } from './schedule'
@@ -70,8 +71,11 @@ export function collectWorkspace(store: Store): Workspace {
   return {
     people: store.get(peopleAtom) ?? [],
     teams: store.get(teamsAtom) ?? [],
+    tagGroups: store.get(tagGroupsAtom) ?? [],
+    tags: store.get(tagsAtom) ?? [],
     shifts: store.get(shiftsAtom) ?? DEFAULT_SHIFTS,
     coverage: store.get(coverageAtom) ?? defaultCoverageTable(DEFAULT_SHIFTS, 1),
+    tagCoverage: store.get(tagCoverageAtom) ?? {},
     settings: store.get(solveSettingsAtom) ?? DEFAULT_SOLVE_SETTINGS,
     periods: store.get(periodsAtom),
     schedules,
@@ -82,8 +86,11 @@ export function collectWorkspace(store: Store): Workspace {
 export function hydrate(store: Store, workspace: Workspace): void {
   store.set(peopleAtom, workspace.people)
   store.set(teamsAtom, workspace.teams)
+  store.set(tagGroupsAtom, workspace.tagGroups)
+  store.set(tagsAtom, workspace.tags)
   store.set(shiftsAtom, workspace.shifts)
   store.set(coverageAtom, workspace.coverage)
+  store.set(tagCoverageAtom, workspace.tagCoverage)
   store.set(solveSettingsAtom, workspace.settings)
 
   // The domain `Period` has no `setup`; a loaded period is ready to render.
@@ -110,8 +117,11 @@ export function createStarterWorkspace(): Workspace {
   return {
     people: [],
     teams: [],
+    tagGroups: [],
+    tags: [],
     shifts: DEFAULT_SHIFTS,
     coverage: defaultCoverageTable(DEFAULT_SHIFTS, 1),
+    tagCoverage: {},
     settings: DEFAULT_SOLVE_SETTINGS,
     periods: [createPeriod('Period 1', today, 'month', 'ready')],
     schedules: new Map(),
@@ -184,8 +194,11 @@ export function startAutosave(store: Store, debounceMs = 400): () => void {
   const watched = [
     peopleAtom,
     teamsAtom,
+    tagGroupsAtom,
+    tagsAtom,
     shiftsAtom,
     coverageAtom,
+    tagCoverageAtom,
     solveSettingsAtom,
     periodsAtom,
     scheduleByPeriodAtom,

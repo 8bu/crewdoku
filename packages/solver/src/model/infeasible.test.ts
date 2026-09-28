@@ -6,12 +6,14 @@ import type {
   ScheduleBoundary,
   ShiftDef,
   SolveSettings,
+  Tag,
 } from '@crewdoku/domain'
 import {
   assignmentKey,
   DEFAULT_SOLVE_SETTINGS,
   emptySchedule,
   makePerson,
+  makeTagRule,
 } from '@crewdoku/domain'
 import type { ModelInput } from './model'
 import { deriveConflictCore } from './infeasible'
@@ -29,6 +31,8 @@ function makeModelInput(params: {
   settings?: SolveSettings
   shifts?: ShiftDef[]
   boundary?: ScheduleBoundary
+  tags?: Tag[]
+  tagCoverage?: Record<string, CoverageTable>
 }): ModelInput {
   const settings = params.settings ?? DEFAULT_SOLVE_SETTINGS
   const current = emptySchedule(params.people, params.period.start, params.period.end)
@@ -40,6 +44,8 @@ function makeModelInput(params: {
     period: params.period,
     current,
     boundary: params.boundary,
+    tags: params.tags,
+    tagCoverage: params.tagCoverage,
   }
 }
 
@@ -340,6 +346,183 @@ describe('deriveConflictCore static screening', () => {
     })
   })
 
+  describe('Cause f: Strict tag-avoid starvation (H6)', () => {
+    it('names the tag whose strict avoid starves a shift, and softening that tag frees the cell', () => {
+      const tag: Tag = {
+        id: 't1',
+        name: 'Night owls',
+        rules: [makeTagRule('avoid', 'EARLY', { type: 'always' }, true)],
+      }
+      const people = [
+        makePerson({ id: 'p1', name: 'Alice', tagIds: ['t1'] }),
+        makePerson({ id: 'p2', name: 'Bob' }),
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      // EARLY needs 2 on Monday. Both can work it, but H6 removes Alice, so the
+      // strict avoid is exactly what breaks the minimum.
+      const coverage: CoverageTable = {
+        byDow: { 1: { EARLY: { min: 2, max: 2 } } },
+        dateOverrides: {},
+      }
+
+      const input = makeModelInput({ people, coverage, period, tags: [tag] })
+      const { conflictCore, relaxations } = deriveConflictCore(input)
+
+      const item = conflictCore.find((c) => c.kind === 'tagAvoid.starvation')
+      expect(item).toBeDefined()
+      if (item !== undefined) {
+        expect(item.ruleIds).toEqual(['H1', 'H6'])
+        expect(item.params).toEqual({
+          shift: 'EARLY',
+          date: '2026-08-17',
+          min: 2,
+          available: 1,
+          tag: 'Night owls',
+        })
+        expect(item.message).toBe(
+          'EARLY on 2026-08-17 needs at least 2 people, but only 1 person can work it: the tag "Night owls" strictly avoids it.',
+        )
+      }
+
+      const relax = relaxations.find((r) => r.kind === 'softenTagAvoid')
+      expect(relax).toBeDefined()
+      if (relax !== undefined) {
+        expect(relax.params).toEqual({ tag: 'Night owls' })
+        const relaxed = relax.apply(input)
+        expect(relaxed.tags?.[0]?.rules[0]?.strict).toBe(false)
+        // Purity: the original tag keeps its strict switch.
+        expect(input.tags?.[0]?.rules[0]?.strict).toBe(true)
+      }
+    })
+
+    it('stays silent while H6 is off, because the avoid is then only a soft S6 preference', () => {
+      const tag: Tag = {
+        id: 't1',
+        name: 'Night owls',
+        rules: [makeTagRule('avoid', 'EARLY', { type: 'always' }, true)],
+      }
+      const people = [
+        makePerson({ id: 'p1', name: 'Alice', tagIds: ['t1'] }),
+        makePerson({ id: 'p2', name: 'Bob' }),
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const coverage: CoverageTable = {
+        byDow: { 1: { EARLY: { min: 2, max: 2 } } },
+        dateOverrides: {},
+      }
+      const settings: SolveSettings = {
+        ...DEFAULT_SOLVE_SETTINGS,
+        hardRules: {
+          ...DEFAULT_SOLVE_SETTINGS.hardRules,
+          enabled: { ...DEFAULT_SOLVE_SETTINGS.hardRules.enabled, H6: false },
+        },
+      }
+
+      const input = makeModelInput({ people, coverage, period, tags: [tag], settings })
+      const { conflictCore } = deriveConflictCore(input)
+
+      // Nobody is removed, so there is no starvation at all.
+      expect(conflictCore.find((c) => c.kind === 'tagAvoid.starvation')).toBeUndefined()
+      expect(conflictCore.find((c) => c.id.startsWith('starvation-EARLY'))).toBeUndefined()
+    })
+  })
+
+  describe('Cause g: Tag coverage starvation (H7)', () => {
+    it('names the tag band the tagged pool cannot staff, and lowering that band frees it', () => {
+      const tag: Tag = { id: 't1', name: 'Students', rules: [] }
+      const people = [
+        // The only tag holder cannot work NIGHT at all.
+        makePerson({ id: 'p1', name: 'Alice', tagIds: ['t1'], ineligible: ['NIGHT'] }),
+        makePerson({ id: 'p2', name: 'Bob' }),
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+      const tagCoverage: Record<string, CoverageTable> = {
+        t1: { byDow: { 1: { NIGHT: { min: 1, max: 1 } } }, dateOverrides: {} },
+      }
+
+      const input = makeModelInput({ people, coverage, period, tags: [tag], tagCoverage })
+      const { conflictCore, relaxations } = deriveConflictCore(input)
+
+      const item = conflictCore.find((c) => c.kind === 'tagCoverage.starvation')
+      expect(item).toBeDefined()
+      if (item !== undefined) {
+        expect(item.ruleIds).toEqual(['H7'])
+        expect(item.params).toEqual({
+          tag: 'Students',
+          shift: 'NIGHT',
+          date: '2026-08-17',
+          min: 1,
+          available: 0,
+        })
+      }
+
+      const relax = relaxations.find((r) => r.kind === 'relaxTagCoverage')
+      expect(relax).toBeDefined()
+      if (relax !== undefined) {
+        expect(relax.params).toEqual({
+          tag: 'Students',
+          shift: 'NIGHT',
+          date: '2026-08-17',
+          min: 0,
+        })
+        const relaxed = relax.apply(input)
+        expect(relaxed.tagCoverage?.['t1']?.dateOverrides['2026-08-17']?.['NIGHT']?.min).toBe(0)
+        // Purity: the original table grows no override.
+        expect(input.tagCoverage?.['t1']?.dateOverrides['2026-08-17']).toBeUndefined()
+      }
+    })
+
+    it('joins H6 to the tag band when strict avoids empty the tagged pool', () => {
+      const tag: Tag = {
+        id: 't1',
+        name: 'Students',
+        rules: [makeTagRule('avoid', 'NIGHT', { type: 'always' }, true)],
+      }
+      const people = [
+        makePerson({ id: 'p1', name: 'Alice', tagIds: ['t1'] }),
+        makePerson({ id: 'p2', name: 'Bob' }),
+      ]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+      const tagCoverage: Record<string, CoverageTable> = {
+        t1: { byDow: { 1: { NIGHT: { min: 1, max: 1 } } }, dateOverrides: {} },
+      }
+
+      const input = makeModelInput({ people, coverage, period, tags: [tag], tagCoverage })
+      const { conflictCore } = deriveConflictCore(input)
+
+      const item = conflictCore.find((c) => c.kind === 'tagCoverage.starvation')
+      expect(item).toBeDefined()
+      if (item !== undefined) {
+        expect(item.ruleIds).toEqual(['H7', 'H6'])
+        expect(item.params.available).toBe(0)
+      }
+    })
+
+    it('ignores tag bands entirely while H7 is off', () => {
+      const tag: Tag = { id: 't1', name: 'Students', rules: [] }
+      const people = [makePerson({ id: 'p1', name: 'Alice', tagIds: ['t1'] })]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+      const tagCoverage: Record<string, CoverageTable> = {
+        t1: { byDow: { 1: { NIGHT: { min: 3, max: 3 } } }, dateOverrides: {} },
+      }
+      const settings: SolveSettings = {
+        ...DEFAULT_SOLVE_SETTINGS,
+        hardRules: {
+          ...DEFAULT_SOLVE_SETTINGS.hardRules,
+          enabled: { ...DEFAULT_SOLVE_SETTINGS.hardRules.enabled, H7: false },
+        },
+      }
+
+      const input = makeModelInput({ people, coverage, period, tags: [tag], tagCoverage, settings })
+      const { conflictCore } = deriveConflictCore(input)
+
+      expect(conflictCore.find((c) => c.kind === 'tagCoverage.starvation')).toBeUndefined()
+    })
+  })
+
   describe('Fallback', () => {
     it('returns honest fallback when static screening finds no provable cause', () => {
       const people = [makePerson({ id: 'p1', name: 'Alice' })]
@@ -361,6 +544,37 @@ describe('deriveConflictCore static screening', () => {
         )
       }
       expect(relaxations.length).toBeGreaterThan(0)
+    })
+
+    it('offers fallbackH6 and fallbackH7 that switch those rules off', () => {
+      const people = [makePerson({ id: 'p1', name: 'Alice' })]
+      const period = { start: '2026-08-17', end: '2026-08-17' }
+      const coverage: CoverageTable = {
+        byDow: {},
+        dateOverrides: {},
+      }
+
+      const input = makeModelInput({ people, coverage, period })
+      const { conflictCore, relaxations } = deriveConflictCore(input)
+
+      expect(conflictCore[0]?.ruleIds).toEqual(['H1', 'H2', 'H3', 'H5', 'H6', 'H7'])
+
+      const h6 = relaxations.find((r) => r.kind === 'fallbackH6')
+      const h7 = relaxations.find((r) => r.kind === 'fallbackH7')
+      expect(h6).toBeDefined()
+      expect(h7).toBeDefined()
+
+      if (h6 !== undefined) {
+        const relaxed = h6.apply(input)
+        expect(relaxed.settings.hardRules.enabled.H6).toBe(false)
+        // Purity: the original settings keep their switch.
+        expect(input.settings.hardRules.enabled.H6).toBe(true)
+      }
+      if (h7 !== undefined) {
+        const relaxed = h7.apply(input)
+        expect(relaxed.settings.hardRules.enabled.H7).toBe(false)
+        expect(input.settings.hardRules.enabled.H7).toBe(true)
+      }
     })
   })
 })

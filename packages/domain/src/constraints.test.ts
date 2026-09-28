@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type {
   Assignment,
+  CoverageTable,
+  Person,
   Schedule,
   ScheduleBoundary,
   ShiftCode,
   ShiftDef,
   SolveSettings,
+  Tag,
   Violation,
 } from './index'
 import {
@@ -15,10 +18,15 @@ import {
   checkH3Rest,
   checkH5TimeOff,
   checkSchedule,
+  checkTagCoverage,
+  checkTagRules,
   DEFAULT_SHIFTS,
   DEFAULT_SOLVE_SETTINGS,
   defaultCoverageTable,
   makePerson,
+  makeTag,
+  makeTagGroup,
+  makeTagRule,
   paidHours,
   restHoursBetween,
   shiftDurationHours,
@@ -874,5 +882,283 @@ describe('violationCellKey and violationsByCell', () => {
     const byCell = violationsByCell([v1, v2])
     expect(byCell.size).toBe(1)
     expect(byCell.get('p1|2026-01-06')).toEqual([v1])
+  })
+})
+
+describe('checkTagRules (H6 strict tag avoids)', () => {
+  const period = { start: '2026-01-05', end: '2026-01-06' } // Mon, Tue
+  const shifts = DEFAULT_SHIFTS
+  const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+
+  /** A tag whose strict avoid covers every NIGHT, built through the factories. */
+  function nightOffTag(name: string): Tag {
+    const rule = makeTagRule('avoid', 'NIGHT', { type: 'always' }, true)
+    return { ...makeTag(name, makeTagGroup('Faith').id), rules: [rule] }
+  }
+
+  it('flags an active holder scheduled on a strictly avoided shift', () => {
+    const tag = nightOffTag('Night off')
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const schedule = makeTestSchedule({
+      'p1|2026-01-05': { code: 'EARLY' }, // not avoided
+      'p1|2026-01-06': { code: 'NIGHT' },
+    })
+
+    const violations = checkTagRules({
+      people: [p1],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule,
+      tags: [tag],
+    })
+
+    expect(violations).toHaveLength(1)
+    const violation = violations[0]
+    expect(violation).toBeDefined()
+    if (violation) {
+      expect(violation.ruleId).toBe('H6')
+      expect(violation.id).toBe('H6|p1|2026-01-06')
+      expect(violation.personId).toBe('p1')
+      expect(violation.iso).toBe('2026-01-06')
+      expect(violation.shiftCode).toBe('NIGHT')
+      expect(violation.message).toBe(
+        'Ana is scheduled for NIGHT on Tue 2026-01-06, but the tag Night off strictly avoids that shift.',
+      )
+    }
+  })
+
+  it('names the first tag in workspace order when several strictly avoid the cell', () => {
+    const first = nightOffTag('First tag')
+    const second = nightOffTag('Second tag')
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [first.id, second.id] })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkTagRules({
+      people: [p1],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule,
+      tags: [first, second],
+    })
+
+    expect(violations).toHaveLength(1)
+    expect(violations[0]?.message).toContain('First tag')
+  })
+
+  it('does not flag a soft tag avoid or a tag want', () => {
+    const softRule = makeTagRule('avoid', 'NIGHT', { type: 'always' })
+    const wantRule = makeTagRule('want', 'NIGHT', { type: 'always' })
+    const soft: Tag = { ...makeTag('Soft night off'), rules: [softRule] }
+    const want: Tag = { ...makeTag('Night lover'), rules: [wantRule] }
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [soft.id, want.id] })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkTagRules({
+      people: [p1],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule,
+      tags: [soft, want],
+    })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('reports nothing while H6 is disabled', () => {
+    const tag = nightOffTag('Night off')
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkTagRules({
+      people: [p1],
+      shifts,
+      coverage,
+      settings: settingsWith({ H6: false }),
+      period,
+      schedule,
+      tags: [tag],
+    })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('excludes soft-removed people', () => {
+    const tag = nightOffTag('Night off')
+    const removed = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id], removed: true })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkTagRules({
+      people: [removed],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule,
+      tags: [tag],
+    })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('reads tags from the slice only: a person with no tag catalog gets no H6', () => {
+    const tag = nightOffTag('Night off')
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkTagRules({ people: [p1], shifts, coverage, settings: settingsWith({}), period, schedule })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('is reported by checkSchedule', () => {
+    const tag = nightOffTag('Night off')
+    const p1 = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const schedule = makeTestSchedule({ 'p1|2026-01-06': { code: 'NIGHT' } })
+
+    const violations = checkSchedule({
+      people: [p1],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule,
+      tags: [tag],
+    })
+
+    expect(violations.filter((v) => v.ruleId === 'H6')).toHaveLength(1)
+  })
+})
+
+describe('checkTagCoverage (H7 tag coverage bands)', () => {
+  const period = { start: '2026-01-05', end: '2026-01-05' } // Monday
+  const shifts = DEFAULT_SHIFTS
+  const coverage: CoverageTable = { byDow: {}, dateOverrides: {} }
+  // Monday: EARLY needs 2..3 holders of the tag; NIGHT has no band at all.
+  const tagTable: CoverageTable = { byDow: { 1: { EARLY: { min: 2, max: 3 } } }, dateOverrides: {} }
+
+  const tag: Tag = makeTag('Nurses')
+
+  function sliceWith(people: Person[], entries: Record<string, Partial<Assignment>>) {
+    return {
+      people,
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule: makeTestSchedule(entries),
+      tags: [tag],
+      tagCoverage: { [tag.id]: tagTable },
+    }
+  }
+
+  it('flags a shift short of the tag minimum', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const other = makePerson({ id: 'p2', name: 'Bo' })
+    const violations = checkTagCoverage(
+      sliceWith([holder, other], { 'p1|2026-01-05': { code: 'EARLY' }, 'p2|2026-01-05': { code: 'EARLY' } }),
+    )
+
+    expect(violations).toHaveLength(1)
+    const violation = violations[0]
+    expect(violation).toBeDefined()
+    if (violation) {
+      expect(violation.ruleId).toBe('H7')
+      expect(violation.id).toBe(`H7|${tag.id}|2026-01-05|EARLY|short`)
+      expect(violation.personId).toBeNull()
+      expect(violation.count).toBe(1)
+      expect(violation.min).toBe(2)
+      expect(violation.shiftCode).toBe('EARLY')
+      expect(violation.message).toBe(
+        'Nurses: EARLY on Mon 2026-01-05 has 1 person holding this tag; it needs at least 2.',
+      )
+    }
+  })
+
+  it('flags a shift over the tag ceiling', () => {
+    const holders = ['p1', 'p2', 'p3', 'p4'].map((id) => makePerson({ id, name: id, tagIds: [tag.id] }))
+    const entries: Record<string, Partial<Assignment>> = {}
+    for (const person of holders) entries[`${person.id}|2026-01-05`] = { code: 'EARLY' }
+
+    const violations = checkTagCoverage(sliceWith(holders, entries))
+
+    expect(violations).toHaveLength(1)
+    const violation = violations[0]
+    expect(violation).toBeDefined()
+    if (violation) {
+      expect(violation.id).toBe(`H7|${tag.id}|2026-01-05|EARLY|over`)
+      expect(violation.count).toBe(4)
+      expect(violation.max).toBe(3)
+      expect(violation.personId).toBeNull()
+    }
+  })
+
+  it('reads a shift with no band in the tag table as no requirement', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const violations = checkTagCoverage(sliceWith([holder], { 'p1|2026-01-05': { code: 'NIGHT' } }))
+
+    // Only EARLY carries a band on Mondays; NIGHT is unconstrained even at zero holders.
+    expect(violations.filter((v) => v.shiftCode === 'NIGHT')).toHaveLength(0)
+    expect(violations.filter((v) => v.shiftCode === 'EARLY')).toHaveLength(1)
+  })
+
+  it('counts zero when the only holder is off that day', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const violations = checkTagCoverage(sliceWith([holder], { 'p1|2026-01-05': { code: 'OFF' } }))
+
+    expect(violations).toHaveLength(1)
+    expect(violations[0]?.id).toBe(`H7|${tag.id}|2026-01-05|EARLY|short`)
+    expect(violations[0]?.count).toBe(0)
+  })
+
+  it('excludes soft-removed holders from the count', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const removed = makePerson({ id: 'p2', name: 'Bo', tagIds: [tag.id], removed: true })
+    const violations = checkTagCoverage(
+      sliceWith([holder, removed], { 'p1|2026-01-05': { code: 'EARLY' }, 'p2|2026-01-05': { code: 'EARLY' } }),
+    )
+
+    expect(violations).toHaveLength(1)
+    expect(violations[0]?.count).toBe(1)
+  })
+
+  it('ignores a tag with no coverage table', () => {
+    const untabled: Tag = makeTag('Drivers')
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [untabled.id] })
+    const violations = checkTagCoverage({
+      people: [holder],
+      shifts,
+      coverage,
+      settings: settingsWith({}),
+      period,
+      schedule: makeTestSchedule({ 'p1|2026-01-05': { code: 'EARLY' } }),
+      tags: [untabled],
+      tagCoverage: { [tag.id]: tagTable },
+    })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('reports nothing while H7 is disabled', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const violations = checkTagCoverage({
+      ...sliceWith([holder], { 'p1|2026-01-05': { code: 'EARLY' } }),
+      settings: settingsWith({ H7: false }),
+    })
+
+    expect(violations).toHaveLength(0)
+  })
+
+  it('is reported by checkSchedule', () => {
+    const holder = makePerson({ id: 'p1', name: 'Ana', tagIds: [tag.id] })
+    const violations = checkSchedule(
+      sliceWith([holder], { 'p1|2026-01-05': { code: 'EARLY' } }),
+    )
+    expect(violations.filter((v) => v.ruleId === 'H7')).toHaveLength(1)
   })
 })

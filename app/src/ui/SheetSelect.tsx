@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { BottomSheet } from './BottomSheet'
 import { Check, ChevronDown } from './icons'
+import { useT } from '../i18n/useT'
 
 export type SheetSelectOption = { value: string; label: string; icon?: ReactNode }
 
@@ -18,6 +19,10 @@ export type SheetSelectOption = { value: string; label: string; icon?: ReactNode
  * - `display`: the same compact, borderless trigger `Select` draws for that
  *   prop, grown to a 44px target — so a control that is an icon on desktop
  *   stays an icon on a phone instead of turning into a different widget.
+ *
+ * A `value` no option matches reads as `placeholder` (the same default
+ * `Select` falls back to), so an empty picker — a team not chosen yet — says
+ * what it is instead of showing a blank trigger next to its button.
  */
 export function SheetSelect({
   value,
@@ -27,6 +32,7 @@ export function SheetSelect({
   ariaLabel,
   className = '',
   display,
+  placeholder,
 }: {
   value: string
   onChange: (value: string) => void
@@ -36,7 +42,11 @@ export function SheetSelect({
   className?: string
   /** Compact trigger content (e.g. an icon alone); the label moves into the accessible name. */
   display?: ReactNode
+  /** Shown when no option carries `value`; `Select`'s own default. */
+  placeholder?: string
 }) {
+  const t = useT()
+  const effectivePlaceholder = placeholder ?? t('chrome.select.placeholder')
   const [open, setOpen] = useState(false)
   const selected = options.find((o) => o.value === value)
 
@@ -57,7 +67,7 @@ export function SheetSelect({
         {display ?? (
           <>
             {selected?.icon}
-            <span className="min-w-0 truncate">{selected?.label}</span>
+            <span className="min-w-0 truncate">{selected?.label ?? effectivePlaceholder}</span>
             <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
           </>
         )}

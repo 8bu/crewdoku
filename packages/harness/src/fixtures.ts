@@ -9,6 +9,8 @@ import type {
   Person,
   Schedule,
   ShiftDef,
+  Tag,
+  TagGroup,
   Team,
   Workspace,
 } from '@crewdoku/domain'
@@ -30,6 +32,61 @@ export interface FixtureOptions {
   start?: ISODate
 }
 
+/** Fixed ids so a fixture run is byte-reproducible, tags included. */
+const TAG_GROUP_LANGUAGE_ID = 'taggroup-language'
+const TAG_SPANISH_ID = 'tag-spanish'
+const TAG_STUDENT_ID = 'tag-student'
+
+/** One non-exclusive language group, a covered Spanish tag and a loose Student tag. */
+const FIXTURE_TAG_GROUPS: TagGroup[] = [
+  { id: TAG_GROUP_LANGUAGE_ID, name: 'Languages', exclusive: false },
+]
+
+const FIXTURE_TAGS: Tag[] = [
+  {
+    id: TAG_SPANISH_ID,
+    name: 'Spanish',
+    groupId: TAG_GROUP_LANGUAGE_ID,
+    rules: [{ id: 'tagrule-spanish-early', kind: 'want', shift: 'EARLY', when: { type: 'always' } }],
+  },
+  {
+    id: TAG_STUDENT_ID,
+    name: 'Student',
+    rules: [
+      {
+        id: 'tagrule-student-nights',
+        kind: 'avoid',
+        shift: 'NIGHT',
+        when: { type: 'weekly', weekdays: [1, 2, 3, 4, 5] },
+      },
+    ],
+  },
+]
+
+/** The Spanish tag has to be on the Tuesday early shift at least once. */
+const FIXTURE_TAG_COVERAGE: Record<string, CoverageTable> = {
+  [TAG_SPANISH_ID]: { byDow: { 2: { EARLY: { min: 1, max: Infinity } } }, dateOverrides: {} },
+}
+
+/** Fresh copies, so editing the returned workspace never touches the module's catalog. */
+function copyFixtureTags(): {
+  tagGroups: TagGroup[]
+  tags: Tag[]
+  tagCoverage: Record<string, CoverageTable>
+} {
+  const tagCoverage: Record<string, CoverageTable> = {}
+  for (const [tagId, table] of Object.entries(FIXTURE_TAG_COVERAGE)) {
+    const byDow: Record<number, CoverageRow> = {}
+    for (const [dow, row] of Object.entries(table.byDow)) byDow[Number(dow)] = { ...row }
+    tagCoverage[tagId] = { byDow, dateOverrides: {} }
+  }
+  return {
+    tagGroups: FIXTURE_TAG_GROUPS.map((group) => ({ ...group })),
+    tags: FIXTURE_TAGS.map((tag) => ({ ...tag, rules: tag.rules.map((rule) => ({ ...rule })) })),
+    tagCoverage,
+  }
+}
+
 /**
  * Builds a deterministic workspace fixture without any Math.random.
  *
@@ -45,6 +102,10 @@ export interface FixtureOptions {
  * - Time off: every 7th person (i % 7 === 0) has timeOff on day 3 (day index 2).
  * - Recurring off: every 11th person (i % 11 === 0) has recurringOff: [0] (Sunday).
  * - Ineligible: every 5th person (i % 5 === 0) has ineligible: ['NIGHT'].
+ * - Tags: one non-exclusive "Languages" group. The "Spanish" tag rides on
+ *   every 4th person (i % 4 === 0) and must cover the Tuesday early shift; the
+ *   loose "Student" tag rides on every 5th person offset by two (i % 5 === 2)
+ *   and avoids the night shift on weekdays.
  * - One pinned cell: person 0 has a pinned EARLY shift on day 1.
  * - One removed person: last person (index N - 1) has removed: true.
  */
@@ -83,6 +144,10 @@ export function buildFixtureWorkspace(opts: FixtureOptions): Workspace {
       ineligible.push('NIGHT')
     }
 
+    const tagIds: string[] = []
+    if (i % 4 === 0) tagIds.push(TAG_SPANISH_ID)
+    if (i % 5 === 2) tagIds.push(TAG_STUDENT_ID)
+
     const person = makePerson({
       id: `person-${i.toString().padStart(3, '0')}`,
       name: `Person ${i.toString().padStart(3, '0')}`,
@@ -90,6 +155,7 @@ export function buildFixtureWorkspace(opts: FixtureOptions): Workspace {
       ineligible,
       timeOff: timeOff.length > 0 ? timeOff : undefined,
       recurringOff: recurringOff.length > 0 ? recurringOff : undefined,
+      tagIds: tagIds.length > 0 ? tagIds : undefined,
       removed: isLast ? true : false,
       useTeamPreference: true,
     })
@@ -150,6 +216,7 @@ export function buildFixtureWorkspace(opts: FixtureOptions): Workspace {
     teams,
     shifts,
     coverage,
+    ...copyFixtureTags(),
     settings: { ...DEFAULT_SOLVE_SETTINGS },
     periods: [period],
     schedules,

@@ -14,11 +14,14 @@ import {
   DEFAULT_SOLVE_SETTINGS,
   emptySchedule,
   makePerson,
+  makeTag,
+  makeTagRule,
 } from '@crewdoku/domain'
 import { toHighsSolve } from '../highs/worker'
 import type { HighsSolve } from '../highs/worker'
 import { buildModel } from './model'
 import { mapSolution } from './mapSolution'
+import { runSolve } from '../port'
 
 let highs: HighsSolve
 
@@ -39,6 +42,15 @@ function makeCoverage(minEarly = 1, maxEarly = 1, minLate = 1, maxLate = 1): Cov
     LATE: { min: minLate, max: maxLate },
     NIGHT: { min: 0, max: 1 },
   }
+  return {
+    byDow: { 0: row, 1: row, 2: row, 3: row, 4: row, 5: row, 6: row },
+    dateOverrides: {},
+  }
+}
+
+/** Coverage asking for NIGHT headcount every day and nothing else. */
+function nightCoverage(min = 1, max = 1): CoverageTable {
+  const row = { NIGHT: { min, max } }
   return {
     byDow: { 0: row, 1: row, 2: row, 3: row, 4: row, 5: row, 6: row },
     dateOverrides: {},
@@ -227,7 +239,7 @@ describe('HiGHS MILP model integration tests (real WASM)', () => {
     // Solve 1: S1 ranked higher than S2 -> prioritize spreading nights evenly
     const settingsS1First: SolveSettings = {
       ...DEFAULT_SOLVE_SETTINGS,
-      softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5'],
+      softGoalOrder: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'],
     }
 
     const modelS1 = buildModel({
@@ -257,7 +269,7 @@ describe('HiGHS MILP model integration tests (real WASM)', () => {
     // Solve 2: S2 ranked higher than S1 -> prioritize Alice's preference (wants NIGHT)
     const settingsS2First: SolveSettings = {
       ...DEFAULT_SOLVE_SETTINGS,
-      softGoalOrder: ['S2', 'S1', 'S3', 'S4', 'S5'],
+      softGoalOrder: ['S2', 'S1', 'S3', 'S4', 'S5', 'S6'],
     }
 
     const modelS2 = buildModel({
@@ -283,5 +295,162 @@ describe('HiGHS MILP model integration tests (real WASM)', () => {
 
     expect(aliceNightsS2).toBe(2)
     expect(bobNightsS2).toBe(0)
+  })
+
+  it('4. S6 steers the solver: a tag want pulls its holder onto the wanted shift', () => {
+    const tag = makeTag('Late risers')
+    tag.rules.push(makeTagRule('want', 'LATE', { type: 'always' }))
+    const alice = makePerson({
+      id: 'p1',
+      name: 'Alice',
+      wants: [],
+      avoids: [],
+      useTeamPreference: false,
+      tagIds: [tag.id],
+    })
+    const bob = makePerson({ id: 'p2', name: 'Bob', useTeamPreference: false })
+    const people = [alice, bob]
+    const period = { start: '2026-08-17', end: '2026-08-18' }
+    const current = emptySchedule(people, period.start, period.end)
+
+    // EARLY and LATE each need exactly 1 per day, so every day is a tie
+    // (EARLY, LATE) or (LATE, EARLY) until S6 prices the tag want.
+    const model = buildModel({
+      people,
+      shifts: SHIFTS,
+      coverage: makeCoverage(1, 1, 1, 1),
+      settings: DEFAULT_SOLVE_SETTINGS,
+      period,
+      current,
+      tags: [tag],
+    })
+    const result = highs.solve(model.lp)
+    expect(result.Status).toBe('Optimal')
+    const decoded = mapSolution(result.Columns ?? {}, model.meta)
+
+    for (const d of ['2026-08-17', '2026-08-18']) {
+      expect(decoded.get(assignmentKey('p1', d))?.code).toBe('LATE')
+      expect(decoded.get(assignmentKey('p2', d))?.code).toBe('EARLY')
+    }
+  })
+
+  it('5. A tag avoid cancels its holder\'s own want, even with S2 ranked first (avoid wins)', () => {
+    const bare = makeTag('Night owls')
+    const avoided = makeTag('Night owls')
+    avoided.rules.push(makeTagRule('avoid', 'NIGHT', { type: 'always' }))
+    const period = { start: '2026-08-17', end: '2026-08-18' }
+
+    const run = (tagId: string): Schedule => {
+      const alice = makePerson({
+        id: 'p1',
+        name: 'Alice',
+        wants: ['NIGHT'],
+        avoids: [],
+        useTeamPreference: false,
+        tagIds: [tagId],
+      })
+      const bob = makePerson({ id: 'p2', name: 'Bob', useTeamPreference: false })
+      const people = [alice, bob]
+      const model = buildModel({
+        people,
+        shifts: SHIFTS,
+        coverage: nightCoverage(),
+        // S2 first: the personal want is worth 100000 a night if it applies.
+        settings: { ...DEFAULT_SOLVE_SETTINGS, softGoalOrder: ['S2', 'S6', 'S1', 'S3', 'S4', 'S5'] },
+        period,
+        current: emptySchedule(people, period.start, period.end),
+        tags: tagId === bare.id ? [bare] : [avoided],
+      })
+      const result = highs.solve(model.lp)
+      expect(result.Status).toBe('Optimal')
+      return mapSolution(result.Columns ?? {}, model.meta)
+    }
+
+    // Control: with a ruled-out tag the want stands and she takes both nights.
+    const control = run(bare.id)
+    expect(control.get(assignmentKey('p1', '2026-08-17'))?.code).toBe('NIGHT')
+    expect(control.get(assignmentKey('p1', '2026-08-18'))?.code).toBe('NIGHT')
+
+    // The tag avoid cancels that want and prices the cell, so Bob takes them.
+    const avoidedRun = run(avoided.id)
+    expect(avoidedRun.get(assignmentKey('p1', '2026-08-17'))?.code).not.toBe('NIGHT')
+    expect(avoidedRun.get(assignmentKey('p1', '2026-08-18'))?.code).not.toBe('NIGHT')
+    expect(avoidedRun.get(assignmentKey('p2', '2026-08-17'))?.code).toBe('NIGHT')
+    expect(avoidedRun.get(assignmentKey('p2', '2026-08-18'))?.code).toBe('NIGHT')
+  })
+
+  it('6. Any avoid beats any want: a personal avoid cancels the tag want for the same shift', () => {
+    const tag = makeTag('Night lovers')
+    tag.rules.push(makeTagRule('want', 'NIGHT', { type: 'always' }))
+    const alice = makePerson({
+      id: 'p1',
+      name: 'Alice',
+      wants: [],
+      avoids: ['NIGHT'],
+      useTeamPreference: false,
+      tagIds: [tag.id],
+    })
+    const bob = makePerson({ id: 'p2', name: 'Bob', useTeamPreference: false })
+    const people = [alice, bob]
+    const period = { start: '2026-08-17', end: '2026-08-18' }
+    const current = emptySchedule(people, period.start, period.end)
+
+    // S6 is ranked first: had the tag want stood, Alice would be the cheapest
+    // pick by a wide margin. It must not: the avoid cancels it.
+    const model = buildModel({
+      people,
+      shifts: SHIFTS,
+      coverage: nightCoverage(),
+      settings: { ...DEFAULT_SOLVE_SETTINGS, softGoalOrder: ['S6', 'S2', 'S1', 'S3', 'S4', 'S5'] },
+      period,
+      current,
+      tags: [tag],
+    })
+    const result = highs.solve(model.lp)
+    expect(result.Status).toBe('Optimal')
+    const decoded = mapSolution(result.Columns ?? {}, model.meta)
+
+    expect(decoded.get(assignmentKey('p1', '2026-08-17'))?.code).not.toBe('NIGHT')
+    expect(decoded.get(assignmentKey('p1', '2026-08-18'))?.code).not.toBe('NIGHT')
+    expect(decoded.get(assignmentKey('p2', '2026-08-17'))?.code).toBe('NIGHT')
+    expect(decoded.get(assignmentKey('p2', '2026-08-18'))?.code).toBe('NIGHT')
+  })
+
+  it('7. H6 forbids a strictly avoided cell, and the softenTagAvoid relaxation recovers a schedule', async () => {
+    const tag = makeTag('Night owls')
+    tag.rules.push(makeTagRule('avoid', 'NIGHT', { type: 'always' }, true))
+    // Alice holds the tag; Bob cannot work NIGHT at all. With H6 on, nobody can.
+    const alice = makePerson({ id: 'p1', name: 'Alice', tagIds: [tag.id] })
+    const bob = makePerson({ id: 'p2', name: 'Bob', ineligible: ['NIGHT'] })
+    const people = [alice, bob]
+    const period = { start: '2026-08-17', end: '2026-08-18' }
+    const current = emptySchedule(people, period.start, period.end)
+    const input = {
+      people,
+      shifts: SHIFTS,
+      coverage: nightCoverage(),
+      settings: DEFAULT_SOLVE_SETTINGS,
+      period,
+      current,
+      tags: [tag],
+    }
+
+    const outcome = await runSolve(input, (lp) => highs.solve(lp))
+    expect(outcome.status).toBe('infeasible')
+    if (outcome.status !== 'infeasible') return
+
+    const item = outcome.conflictCore.find((c) => c.kind === 'tagAvoid.starvation')
+    expect(item).toBeDefined()
+    expect(item?.params.tag).toBe('Night owls')
+
+    const relax = outcome.relaxations.find((r) => r.kind === 'softenTagAvoid')
+    expect(relax).toBeDefined()
+    if (relax === undefined) return
+
+    const relaxed = await runSolve(relax.apply(input), (lp) => highs.solve(lp))
+    expect(relaxed.status).toBe('solved')
+    if (relaxed.status !== 'solved') return
+    expect(relaxed.schedule.get(assignmentKey('p1', '2026-08-17'))?.code).toBe('NIGHT')
+    expect(relaxed.schedule.get(assignmentKey('p1', '2026-08-18'))?.code).toBe('NIGHT')
   })
 })

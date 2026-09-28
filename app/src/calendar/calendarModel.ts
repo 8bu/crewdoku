@@ -112,6 +112,9 @@ function flagsByCell(source: CalendarSource, isos: readonly string[]): Map<strin
     )
     for (const violation of violations) {
       if (!wanted.has(violation.dateIso)) continue
+      // A chip always hangs on one person's cell; workspace-level breaks (H7
+      // tag coverage) are the problem list's, not the calendar's.
+      if (violation.personId === null) continue
       const key = assignmentKey(violation.personId, violation.dateIso)
       const flag: ChipFlag = { kind: violation.kind, message: violation.message }
       const flags = byCell.get(key)

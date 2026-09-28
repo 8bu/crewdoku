@@ -7,13 +7,17 @@ import type {
   Person,
   ShiftCode,
   ShiftDef,
+  Tag,
+  Team,
 } from '@crewdoku/domain'
 import {
   activePeople,
   addDays,
+  cellPreference,
   coverageBandFor,
   eachDate,
   getAssignment,
+  personTags,
   restHoursBetween,
   paidHours,
   weekdayOf,
@@ -201,6 +205,42 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
   const shifts = input.shifts
   const hardRules = input.settings.hardRules
 
+  // Tag catalog and per-person tags. H6/H7 read the same resolved cell
+  // preference the model reads, so the explanation and the LP agree about who
+  // a strict avoid removes.
+  const tags = input.tags ?? []
+  const tagCoverage = input.tagCoverage ?? {}
+  const h6Enabled = hardRules.enabled.H6
+
+  const teamById = new Map<string, Team>()
+  for (const team of input.teams ?? []) {
+    teamById.set(team.id, team)
+  }
+
+  const heldTagsByPerson = new Map<string, readonly Tag[]>()
+  for (const person of active) {
+    heldTagsByPerson.set(person.id, personTags(person, tags))
+  }
+
+  /**
+   * The first tag (input order) whose strict avoid forbids this cell while H6
+   * is on. `cellPreference` alone decides whether a tag blocks the cell; asking
+   * per tag attributes the block back to the tag to blame.
+   */
+  const strictAvoidTag = (
+    person: Person,
+    code: ShiftCode,
+    iso: ISODate,
+  ): Tag | undefined => {
+    if (!h6Enabled || tags.length === 0) return undefined
+    const held = heldTagsByPerson.get(person.id) ?? []
+    if (held.length === 0) return undefined
+    const team = teamById.get(person.teamId)
+    return held.find(
+      (tag) => cellPreference(person, team, [tag], code, iso, true).strictAvoid,
+    )
+  }
+
   // Map dates by dow
   const datesByDow = new Map<number, ISODate[]>()
   for (const d of dates) {
@@ -225,10 +265,20 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
         let availableCount = 0
         let h5BlockCount = 0
         let dateSpecificBlockCount = 0
+        let tagBlockCount = 0
 
         for (const person of active) {
           const evalResult = evaluatePersonForShift(person, shift.code, d, dow, input)
           if (evalResult.canWork) {
+            // A pin covers the cell whatever a tag says: the pin stands and
+            // the checker flags it. Only free cells can be tag-blocked.
+            const isPinnedHere = getAssignment(input.current, person.id, d).pinned
+            // H6 removes these people from the cell; the tag section below
+            // names the rule when that removal is what starves the coverage.
+            if (!isPinnedHere && strictAvoidTag(person, shift.code, d) !== undefined) {
+              tagBlockCount++
+              continue
+            }
             availableCount++
           } else {
             if (evalResult.blockedByH5) {
@@ -241,8 +291,15 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
         }
 
         if (availableCount < band.min) {
-          const h5Contributed = h5BlockCount > 0
-          const ruleIds: HardRuleId[] = h5Contributed ? ['H1', 'H5'] : ['H1']
+          // When the strict tag avoids alone tipped the cell below its minimum,
+          // the tag-avoid section reports it with the tag to blame.
+          if (tagBlockCount > 0 && availableCount + tagBlockCount >= band.min) {
+            continue
+          }
+
+          const ruleIds: HardRuleId[] = ['H1']
+          if (h5BlockCount > 0) ruleIds.push('H5')
+          if (tagBlockCount > 0) ruleIds.push('H6')
 
           const hasExplicitDateOverride = input.coverage.dateOverrides[d]?.[shift.code] !== undefined
           const isDateSpecific = hasExplicitDateOverride || dateSpecificBlockCount > 0
@@ -301,6 +358,206 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
               return {
                 ...oldInput,
                 coverage: updatedCoverage,
+              }
+            },
+          })
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // a2. STRICT TAG-AVOID STARVATION (H6)
+  // =========================================================================
+  // H6 removes candidates from a cell. When the people it removes are exactly
+  // what makes the H1 minimum unreachable, the tag rule is the cause to name —
+  // and softening that one tag's strict avoids is the fix.
+  if (hardRules.enabled.H1 && h6Enabled && tags.length > 0) {
+    const offeredTagIds = new Set<string>()
+
+    for (const d of dates) {
+      const dow = weekdayOf(d)
+      for (const shift of shifts) {
+        const band = coverageBandFor(input.coverage, shift.code, d, dow)
+        if (band.min <= 0) continue
+
+        let canWorkCount = 0
+        const blockedByTagId = new Map<string, number>()
+
+        for (const person of active) {
+          const evalResult = evaluatePersonForShift(person, shift.code, d, dow, input)
+          if (!evalResult.canWork) continue
+          // A pinned cell is covered whatever a tag says.
+          if (getAssignment(input.current, person.id, d).pinned) {
+            canWorkCount++
+            continue
+          }
+          const blocker = strictAvoidTag(person, shift.code, d)
+          if (blocker === undefined) {
+            canWorkCount++
+            continue
+          }
+          blockedByTagId.set(blocker.id, (blockedByTagId.get(blocker.id) ?? 0) + 1)
+        }
+
+        let blockedTotal = 0
+        for (const count of blockedByTagId.values()) {
+          blockedTotal += count
+        }
+        if (blockedTotal === 0) continue
+        if (canWorkCount >= band.min) continue
+        if (canWorkCount + blockedTotal < band.min) continue
+
+        // Deterministic blame: the first tag in catalog order that blocks.
+        const tag = tags.find((candidate) => blockedByTagId.has(candidate.id))
+        if (tag === undefined) continue
+
+        const minNoun = band.min === 1 ? '1 person' : `${band.min} people`
+        const availNoun = canWorkCount === 1 ? '1 person' : `${canWorkCount} people`
+        const shortfall =
+          canWorkCount === 0 ? 'nobody can work it' : `only ${availNoun} can work it`
+        const message = `${shift.code} on ${d} needs at least ${minNoun}, but ${shortfall}: the tag "${tag.name}" strictly avoids it.`
+        const label = `Soften the "${tag.name}" tag rule`
+        const description = `Let "${tag.name}"'s strict avoids become soft preferences so its members can cover ${shift.code} on ${d}.`
+
+        conflictCore.push({
+          id: `tag-avoid-starvation-${tag.id}-${shift.code}-${d}`,
+          ruleIds: ['H1', 'H6'],
+          message,
+          kind: 'tagAvoid.starvation',
+          params: {
+            shift: shift.code,
+            date: d,
+            min: band.min,
+            available: canWorkCount,
+            tag: tag.name,
+          },
+        })
+
+        if (!offeredTagIds.has(tag.id)) {
+          offeredTagIds.add(tag.id)
+          const tagId = tag.id
+          relaxations.push({
+            id: `relax-soften-tag-avoid-${tagId}`,
+            label,
+            description,
+            kind: 'softenTagAvoid',
+            params: { tag: tag.name },
+            apply(oldInput: ModelInput): ModelInput {
+              const source = oldInput.tags
+              if (source === undefined) return oldInput
+              return {
+                ...oldInput,
+                tags: source.map((candidate) =>
+                  candidate.id === tagId
+                    ? {
+                        ...candidate,
+                        rules: candidate.rules.map((rule) =>
+                          rule.strict === true ? { ...rule, strict: false } : rule,
+                        ),
+                      }
+                    : candidate,
+                ),
+              }
+            },
+          })
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // a3. TAG COVERAGE STARVATION (H7)
+  // =========================================================================
+  // A tag band is only reachable through the people holding that tag, so H7
+  // starves long before H1 does. The fix is a date override on that tag's own
+  // table, leaving the main coverage untouched.
+  if (hardRules.enabled.H7) {
+    for (const tag of tags) {
+      const table = tagCoverage[tag.id]
+      if (table === undefined) continue
+
+      const holders = active.filter((person) =>
+        (heldTagsByPerson.get(person.id) ?? []).some((held) => held.id === tag.id),
+      )
+
+      for (const d of dates) {
+        const dow = weekdayOf(d)
+        for (const shift of shifts) {
+          const band = coverageBandFor(table, shift.code, d, dow)
+          if (band.min <= 0) continue
+
+          let availableCount = 0
+          let tagBlockCount = 0
+          let h5BlockCount = 0
+
+          for (const person of holders) {
+            const evalResult = evaluatePersonForShift(person, shift.code, d, dow, input)
+            if (!evalResult.canWork) {
+              if (evalResult.blockedByH5) h5BlockCount++
+              continue
+            }
+            // A pinned cell is the planner's decision and covers the band the
+            // same way it covers H1; otherwise H6 may remove the person.
+            if (getAssignment(input.current, person.id, d).pinned) {
+              availableCount++
+              continue
+            }
+            if (strictAvoidTag(person, shift.code, d) !== undefined) {
+              tagBlockCount++
+              continue
+            }
+            availableCount++
+          }
+
+          if (availableCount >= band.min) continue
+
+          const ruleIds: HardRuleId[] = ['H7']
+          if (tagBlockCount > 0) ruleIds.push('H6')
+          if (h5BlockCount > 0) ruleIds.push('H5')
+
+          const minNoun = band.min === 1 ? '1 person' : `${band.min} people`
+          const availNoun = availableCount === 1 ? '1 person' : `${availableCount} people`
+          const shortfall =
+            availableCount === 0
+              ? 'nobody holding the tag can work it'
+              : `only ${availNoun} holding the tag can work it`
+          const message = `"${tag.name}" coverage on ${d} needs at least ${minNoun} for ${shift.code}, but ${shortfall}.`
+          const label = `Lower "${tag.name}" ${shift.code} minimum on ${d} to ${availableCount}`
+          const description = `Lower the "${tag.name}" ${shift.code} minimum required headcount on ${d} from ${band.min} to ${availableCount}.`
+
+          conflictCore.push({
+            id: `tag-coverage-starvation-${tag.id}-${shift.code}-${d}`,
+            ruleIds,
+            message,
+            kind: 'tagCoverage.starvation',
+            params: {
+              tag: tag.name,
+              shift: shift.code,
+              date: d,
+              min: band.min,
+              available: availableCount,
+            },
+          })
+
+          const tagId = tag.id
+          const newMin = availableCount
+          relaxations.push({
+            id: `relax-tag-coverage-${tagId}-${shift.code}-${d}`,
+            label,
+            description,
+            kind: 'relaxTagCoverage',
+            params: { tag: tag.name, shift: shift.code, date: d, min: newMin },
+            apply(oldInput: ModelInput): ModelInput {
+              const tables = oldInput.tagCoverage
+              const source = tables?.[tagId]
+              if (tables === undefined || source === undefined) return oldInput
+              return {
+                ...oldInput,
+                tagCoverage: {
+                  ...tables,
+                  [tagId]: adjustCoverageBand(source, shift.code, d, dow, true, newMin),
+                },
               }
             },
           })
@@ -687,6 +944,8 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
     if (hardRules.enabled.H2) enabledRuleIds.push('H2')
     if (hardRules.enabled.H3) enabledRuleIds.push('H3')
     if (hardRules.enabled.H5) enabledRuleIds.push('H5')
+    if (hardRules.enabled.H6) enabledRuleIds.push('H6')
+    if (hardRules.enabled.H7) enabledRuleIds.push('H7')
 
     conflictCore.push({
       id: 'fallback',
@@ -768,6 +1027,56 @@ export function deriveConflictCore(input: ModelInput): ConflictResult {
               hardRules: {
                 ...oldInput.settings.hardRules,
                 minRestHours: newRest,
+              },
+            },
+          }
+        },
+      })
+    }
+
+    if (hardRules.enabled.H6) {
+      relaxations.push({
+        id: 'fallback-relax-h6',
+        label: 'Allow strict tag avoids to be broken',
+        description: "Treat every tag's strict avoids as soft preferences.",
+        kind: 'fallbackH6',
+        params: {},
+        apply(oldInput: ModelInput): ModelInput {
+          return {
+            ...oldInput,
+            settings: {
+              ...oldInput.settings,
+              hardRules: {
+                ...oldInput.settings.hardRules,
+                enabled: {
+                  ...oldInput.settings.hardRules.enabled,
+                  H6: false,
+                },
+              },
+            },
+          }
+        },
+      })
+    }
+
+    if (hardRules.enabled.H7) {
+      relaxations.push({
+        id: 'fallback-relax-h7',
+        label: 'Stop checking tag coverage',
+        description: 'Ignore every tag coverage band and schedule by the main coverage table alone.',
+        kind: 'fallbackH7',
+        params: {},
+        apply(oldInput: ModelInput): ModelInput {
+          return {
+            ...oldInput,
+            settings: {
+              ...oldInput.settings,
+              hardRules: {
+                ...oldInput.settings.hardRules,
+                enabled: {
+                  ...oldInput.settings.hardRules.enabled,
+                  H7: false,
+                },
               },
             },
           }

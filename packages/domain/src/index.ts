@@ -20,6 +20,8 @@ export {
   checkH3Rest,
   checkH5TimeOff,
   checkSchedule,
+  checkTagCoverage,
+  checkTagRules,
   formatHours,
   formatIsoDate,
   H4_STRUCTURAL_NOTE,
@@ -33,6 +35,7 @@ export {
   SOFT_GOAL_S3,
   SOFT_GOAL_S4,
   SOFT_GOAL_S5,
+  SOFT_GOAL_S6,
   violationCellKey,
   violationsByCell,
 } from './constraints'
@@ -75,7 +78,27 @@ export {
 
 export type { ScheduleChange } from './diff'
 export { diffSchedules } from './diff'
-export { DEFAULT_SHIFTS, defaultCoverageTable, makePeriod, makePerson, makeTeam } from './factories'
+export {
+  DEFAULT_SHIFTS,
+  defaultCoverageTable,
+  makePeriod,
+  makePerson,
+  makeTag,
+  makeTagGroup,
+  makeTagRule,
+  makeTeam,
+} from './factories'
+
+export type { CellPreference, Tag, TagGroup, TagRule, TagWhen } from './tags'
+export {
+  basePreference,
+  cellPreference,
+  normalizeTagIds,
+  personTags,
+  tagRuleApplies,
+  tagWhenMatches,
+  togglePersonTag,
+} from './tags'
 
 export type { Workspace } from './workspace'
 export { emptyWorkspace } from './workspace'

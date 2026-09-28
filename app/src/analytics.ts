@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import type { PostHog } from 'posthog-js'
+import type { TagWhen } from '@crewdoku/domain'
 
 /**
  * Product analytics — PostHog.
@@ -110,6 +111,14 @@ export type AnalyticsEventMap = {
   theme_changed: { theme: string }
   /** The visitor turned analytics on from Settings. */
   analytics_preference: { enabled: boolean }
+  /** A tag group was created on the Teams page's Tags view. */
+  tag_group_created: { exclusive: boolean }
+  /** A tag was created; `grouped` says whether it landed in a group. */
+  tag_created: { grouped: boolean }
+  /** A rule line was added to a tag: its direction, whether it is strict, and how it repeats. */
+  tag_rule_added: { kind: 'avoid' | 'want'; strict: boolean; repeat: TagWhen['type'] }
+  /** The "add everyone in team X" bulk action ran; `people` is how many were newly tagged. */
+  tag_team_applied: { people: number }
 }
 
 export type AnalyticsEventName = keyof AnalyticsEventMap
