@@ -1,5 +1,5 @@
-# Single-dev private repo: Actions minutes are billed, and the whole pipeline
-# is ~6s after install — so this file optimizes for *not running* and for
+# Public repo: standard runners are free here, and the whole pipeline is ~6s
+# after install — so this file still optimizes for *not running* and for
 # failing fast, in that order.
 #
 # - push only: `pull_request` would double-run the same SHA (no forks here).
@@ -7,8 +7,9 @@
 #   the build. NOTE: if branch protection with a required CI check is ever
 #   enabled, remove paths-ignore (a skipped run posts no status and would
 #   leave the required check pending forever).
-# - one job: setup+install (~40s) dominates and is paid per job; splitting
-#   lint/test/build would 3x the fixed cost to parallelize ~6s of work.
+# - one job: setup+install (~40s) dominates and would be paid once per job;
+#   splitting lint/test/build would 3x that fixed cost to parallelize ~6s of
+#   work.
 # - no turbo/actions cache beyond the pnpm store: a cache round-trip costs
 #   more than the tasks it would save at this scale.
 # - pnpm version comes from package.json `packageManager` — the single pin.

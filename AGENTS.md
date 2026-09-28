@@ -74,6 +74,62 @@ pnpm build   # vite build (app + proto); engine packages are source-only, no bui
 
 ---
 
+## Releases & changelog
+
+One product version for the whole repo lives in the root `package.json`.
+`release-please` (manifest mode, config at `release-please-config.json`, run by
+`.github/workflows/release.yml`) turns the conventional commits on `main` into a
+Release PR that bumps that version, prepends root `CHANGELOG.md`, and tags
+`v<version>` on merge. Workspace packages stay unversioned (`0.0.0`).
+
+Bump policy: `feat` → minor, `fix`/`perf` → patch, and
+`refactor`/`test`/`chore`/`docs`/`style`/`ci`/`build` release nothing and stay
+out of the changelog. Pick the commit type by the effect you want on the
+version.
+
+Two rules for anything that releases:
+
+- Add the version's user-facing highlights **before** the Release PR merges:
+  `app/src/whatsNew/releases/<version>/{en,vi,es,fr,ja,de,pt}.md`, one file per
+  locale, 1–5 markdown bullets each and no version heading (the dialog renders
+  `v<version>`). The app's "What's new" panel shows them.
+  `node app/scripts/check-whats-new.ts` is the check, and the `whats-new` status
+  on the Release PR mirrors it — red until every locale file exists on `main`.
+- `CHANGELOG.md` and the version fields belong to release-please — never
+  hand-edit either; the next Release PR overwrites them.
+
+### Release → deploy → previews
+
+Merging the Release PR also deploys. `release.yml` hands the new tag to
+`deploy.yml`, which checks the tag out, re-runs lint/test/build there, and ends
+in `wrangler deploy --tag <tag>`. Production is https://crewdoku.8bu.dev, so it
+only moves forward through tagged, tested commits. Rollback is the same workflow
+dispatched by hand with an older tag (`gh workflow run deploy.yml -f
+tag=v0.1.0`); `wrangler rollback --message ...` from a terminal is the emergency
+brake.
+
+`preview.yml` gives every branch except `main` its own isolated Preview at
+`<slug>-crewdoku.<subdomain>.workers.dev`, and deletes it when the branch is
+deleted. `.github/scripts/preview-name.sh` is the one definition of `<slug>` —
+both jobs call it, so never derive a Preview name anywhere else. Previews build
+without PostHog: analytics are production-only.
+
+One-time setup the maintainer does by hand (dashboard, nothing in-repo):
+
+- Repo secrets: `CLOUDFLARE_API_TOKEN` — Account → Workers Scripts: `Edit`, plus
+  Zone `8bu.dev` → Workers Routes: `Edit` (the custom domain; the older token UI
+  spells both permissions "Write") — and `CLOUDFLARE_ACCOUNT_ID`.
+- GitHub Environment `production`: secret `VITE_POSTHOG_PROJECT_TOKEN` and
+  variable `VITE_POSTHOG_HOST`. The environment is what keeps analytics out of
+  CI and previews, so these two values stay there, never at repo level.
+- Previews behind Access: Zero Trust enabled on the account, then Workers &
+  Pages → `crewdoku` → **Access** → "Protect this Worker behind Access" →
+  **Previews only** → choose a policy (for example an email domain) → **Apply
+  Access**. Do this before sharing a preview URL. It attaches to the Worker, so
+  it already covers Previews that do not exist yet; production stays public.
+
+---
+
 ## Design system (settled during the prototype phase)
 
 - **No emoji.** UI icons come from `lucide-react`, imported through the curated

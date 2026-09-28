@@ -21,5 +21,18 @@
     // reaching src/worker.ts. Non-HTML assets are returned untouched.
     "run_worker_first": true
   },
-  "routes": [{ "pattern": "crewdoku.8bu.dev", "custom_domain": true }]
+  "routes": [{ "pattern": "crewdoku.8bu.dev", "custom_domain": true }],
+  // Preview URLs (Workers Previews, open beta): each branch's `wrangler preview`
+  // gets <preview-name>-crewdoku.<subdomain>.workers.dev. Explicit because this
+  // Worker has a route, which makes wrangler default `workers_dev` off, and
+  // Version URLs otherwise inherit that default — leaving `preview_urls` unset
+  // would leave them disabled. Setting it turns on Preview URLs only:
+  // production stays on the custom domain above and is never served on
+  // workers.dev, while Preview URLs carry an automatic X-Robots-Tag: noindex.
+  "preview_urls": true,
+  // Previews do not inherit top-level settings, and `wrangler preview` requires
+  // this block to exist. It is empty because the app has no vars, secrets, or
+  // bindings to re-scope: assets stay top-level and are uploaded from the
+  // branch being previewed.
+  "previews": {}
 }

@@ -1,0 +1,119 @@
+# Versioned releases. release-please (manifest mode) keeps one open Release PR
+# on main; merging it tags v<version>, writes the GitHub Release, and bumps the
+# version in the root package.json + CHANGELOG.md. The repo has one product
+# version — workspace packages stay 0.0.0. Conventional commit types drive the
+# bump: feat → minor, fix/perf → patch, hidden types → no release at all.
+#
+# - `release`: the action runs on every push to main and either opens/updates
+#   the Release PR or, when that PR was just merged, creates the release.
+#   `always-update: true` in release-please-config.json rebuilds the Release PR
+#   branch on top of the latest main on every run, so the branch the check
+#   below reads is never stale — without it release-please leaves the PR alone
+#   when the release notes are unchanged, and a check posted against the old
+#   head would never turn green.
+# - `whats-new-check`: the Release PR is pushed with GITHUB_TOKEN, so it never
+#   triggers ci.yml and would otherwise show no checks at all. The app ships a
+#   "What's new" panel, so the version being released needs curated highlight
+#   lines for all 7 locales under app/src/whatsNew/releases/<version>/ before
+#   the Release PR is merged. The job runs the app's checker (no pnpm
+#   install — Node 24 runs the TypeScript directly) and posts the outcome as
+#   its own commit status, context `whats-new`, on the Release PR head: a
+#   status both reflects failure and is what the PR surfaces as a check.
+# - `deploy`: the tag is not shipped until it is deployed, so the release jobs
+#   hand it straight to deploy.yml — the same workflow a maintainer dispatches
+#   by hand to roll back. It is gated on release_created, so an open (or
+#   still-failing) Release PR deploys nothing.
+#
+# One-time repo setup: Settings → Actions → General → "Allow GitHub Actions to
+# create and approve pull requests" — the Release PR is opened with the
+# workflow token, and no token is allowed to open PRs until that is enabled.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      pr: ${{ steps.release.outputs.pr }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  whats-new-check:
+    needs: release
+    if: ${{ needs.release.outputs.prs_created == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJSON(needs.release.outputs.pr).headBranchName }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      # The PR branch carries the release-please bump, so package.json here is
+      # already the version under release. Checker: exits 0 when that version
+      # has highlight lines for every locale, exits 1 otherwise.
+      - id: check
+        continue-on-error: true
+        run: node app/scripts/check-whats-new.ts
+      # Posts even when the check failed — a status that only ever says
+      # "success" would leave the Release PR looking green.
+      - name: Post whats-new status
+        if: ${{ always() && steps.check.outcome != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          sha=$(git rev-parse HEAD)
+          if [ "${{ steps.check.outcome }}" = success ]; then
+            state=success
+            description="v${version} highlights present for all 7 locales"
+          else
+            state=failure
+            description="v${version} has no highlights in app/src/whatsNew/releases/${version}/"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${sha}" \
+            -f state="$state" \
+            -f context=whats-new \
+            -f description="$description" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+      - if: ${{ steps.check.outcome == 'failure' }}
+        run: exit 1
+
+  deploy:
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    # contents: read is all the called workflow needs, and it is the ceiling
+    # here too — a caller's permissions cap the called workflow's.
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ needs.release.outputs.tag_name }}
+    secrets: inherit

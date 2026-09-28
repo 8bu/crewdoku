@@ -1,0 +1,153 @@
+# Every branch gets its own Preview (Cloudflare Workers Previews, open beta):
+# an isolated copy of the Worker at <branch>-crewdoku.<subdomain>.workers.dev,
+# meant to sit behind Cloudflare Access. `wrangler preview` builds and publishes
+# it, one script names it for both jobs below, and the job posts the URL as a
+# `preview` commit status so a PR points at the running app.
+#
+# - push only, minus main: main is production, which deploy.yml owns.
+#   Tag pushes are out too — a push filter that names branches never matches a
+#   tag, so a release does not fan out a Preview for the tag.
+# - delete: a deleted branch should not leave a Preview behind. Only branch
+#   deletes qualify; a deleted tag has no ref name to derive a Preview from.
+# - no PostHog env here, by design: an unconfigured build never fetches the
+#   analytics SDK. The token exists only in the `production` environment, so
+#   nothing a preview builds can bake analytics in.
+# - `preview_urls: true` in app/wrangler.jsonc is what gives each Preview its
+#   workers.dev hostname; the generated URL is read back from wrangler's JSON
+#   output file rather than scraped from its human-readable log.
+# - concurrency cancels in progress: only the newest push to a branch is worth
+#   a Preview, and a superseded deploy should not win the race.
+name: Preview
+
+on:
+  push:
+    branches-ignore: [main]
+  delete:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: preview-${{ github.ref }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Name this Preview
+        id: name
+        run: |
+          slug=$(sh .github/scripts/preview-name.sh)
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # Assets are uploaded from this build; Previews serve app/dist as-is.
+      - run: pnpm -w build
+      - name: Publish Preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SLUG: ${{ steps.name.outputs.slug }}
+          # wrangler writes its machine-readable result (JSON Lines) here and
+          # nowhere else — `--json` only quiets the banner — so this is the
+          # only reliable source for the Preview URL.
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-preview.json
+        run: |
+          pnpm --filter @crewdoku/app exec wrangler preview \
+            --name "$SLUG" \
+            --tag "${GITHUB_SHA:0:7}" \
+            --json
+      - name: Read the Preview URL
+        id: url
+        env:
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-preview.json
+        run: |
+          url=$(node -e '
+            const fs = require("fs");
+            const file = process.env.WRANGLER_OUTPUT_FILE_PATH;
+            const entries = fs.readFileSync(file, "utf8")
+              .split("\n")
+              .filter(Boolean)
+              .map((line) => { try { return JSON.parse(line); } catch { return null; } })
+              .filter((entry) => entry && entry.type === "preview");
+            const last = entries.at(-1);
+            if (!last) {
+              console.error("no preview entry in wrangler output: " + file);
+              process.exit(1);
+            }
+            const url = (last.preview_urls || [])[0] || (last.deployment_urls || [])[0];
+            if (!url) {
+              console.error("preview entry carried no URL: " + JSON.stringify(last));
+              process.exit(1);
+            }
+            process.stdout.write(url);
+          ')
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      - name: Publish the Preview URL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: ${{ steps.url.outputs.url }}
+          SLUG: ${{ steps.name.outputs.slug }}
+        run: |
+          {
+            echo "### Preview \`${SLUG}\`"
+            echo
+            echo "[${URL}](${URL})"
+          } >> "$GITHUB_STEP_SUMMARY"
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context=preview \
+            -f description="Preview: ${SLUG}" \
+            -f target_url="$URL"
+
+  cleanup:
+    if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # The deleted branch is gone from the repo, so its name comes from the
+      # event — the script is what both jobs share to reach the same name.
+      - name: Name the preview to delete
+        id: name
+        env:
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          slug=$(sh .github/scripts/preview-name.sh "$BRANCH")
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Delete the Preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SLUG: ${{ steps.name.outputs.slug }}
+        run: |
+          set +e
+          output=$(pnpm --filter @crewdoku/app exec wrangler preview delete \
+            --name "$SLUG" --skip-confirmation 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          # A branch that never got far enough to publish a Preview is the
+          # expected miss here, not a failure worth a red run.
+          if printf '%s' "$output" | grep -Eqi 'not.?found|10025'; then
+            echo "No Preview named '$SLUG' — nothing to delete."
+            exit 0
+          fi
+          exit "$status"

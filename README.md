@@ -76,7 +76,12 @@ pnpm build        # → app/dist/
 ```
 
 The included [`app/wrangler.jsonc`](app/wrangler.jsonc) deploys it as Cloudflare
-Workers static assets: `cd app && npx wrangler deploy`.
+Workers static assets. `wrangler` is a dev dependency of the app, so this runs
+the pinned version:
+
+```bash
+pnpm --filter @crewdoku/app exec wrangler deploy
+```
 
 A self-host sends nothing anywhere unless you build it with a PostHog project
 token. The token and host are baked in at build time and are never committed
@@ -128,6 +133,57 @@ pnpm dev:proto    # run the prototype instead of the app
 ```
 
 Product direction and non-goals: [`VISION.md`](VISION.md).
+
+## Releases
+
+One version for the whole repo, stored in the root `package.json` and driven by
+[release-please](https://github.com/googleapis/release-please) from the commit
+messages on `main`. Workspace packages stay at `0.0.0` — they ship as source,
+inside the app.
+
+Conventional commit types decide both the bump and the changelog:
+
+| type | effect |
+| --- | --- |
+| `feat` | minor — `0.1.0` → `0.2.0` |
+| `fix`, `perf` | patch |
+| `refactor`, `test`, `chore`, `docs`, `style`, `ci`, `build` | no release; hidden from the changelog |
+
+release-please keeps a Release PR open with the pending version, its
+`CHANGELOG.md` entry, and the bumped `package.json`. Before merging it, add that
+version's user-facing highlights (1–5 markdown bullets per locale, no version
+heading) as one file per locale in
+[`app/src/whatsNew/releases/`](app/src/whatsNew/releases) —
+`app/src/whatsNew/releases/<version>/<locale>.md` for each of
+`en vi es fr ja de pt` — and commit them to `main`, e.g.
+`docs: add 0.2.0 highlights`. The `whats-new` status on the Release PR turns
+green once they are there. Merging the PR tags `v<version>`, publishes the
+GitHub Release, and the app's "What's new" panel lists the entry.
+
+Never hand-edit `CHANGELOG.md` or a version field; the next Release PR
+overwrites both. One-time repo setup: Settings → Actions → General → "Allow
+GitHub Actions to create and approve pull requests" (the Release PR is opened
+with the workflow token).
+
+## Deploy
+
+Production is <https://crewdoku.8bu.dev> — the `crewdoku` Worker described by
+[`app/wrangler.jsonc`](app/wrangler.jsonc). It deploys from a version tag, never
+from a branch:
+
+- Merging the Release PR runs the `Deploy` workflow against the tag it just cut.
+  That workflow checks the tag out, re-runs lint, test, and build, and ends in
+  `wrangler deploy --tag <tag>`, so production only ever runs a tested commit.
+- To roll back, dispatch **Deploy** from the Actions tab with an older tag. In
+  an emergency, `pnpm --filter @crewdoku/app exec wrangler rollback --message ...`
+  rolls back to the previous version from a terminal.
+- Every other branch gets its own preview at
+  `https://<branch>-crewdoku.<subdomain>.workers.dev` (the branch name is
+  slugified, and the URL is posted on the commit as the `preview` status).
+  Previews sit behind Cloudflare Access, so only signed-in people can open one.
+- Analytics are production-only: the PostHog token and host are a secret and a
+  variable of the `production` GitHub Environment, so only that workflow bakes
+  them into a build.
 
 ## Contributing
 

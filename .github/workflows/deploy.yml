@@ -1,0 +1,87 @@
+# Production deploy. It lives in its own workflow file because two things reach
+# it: release.yml calls it (workflow_call) with the tag release-please just cut,
+# and a maintainer dispatches it by hand with an older tag — that is the
+# rollback path.
+#
+# - checks out the tag and re-runs lint/test/build there, so a release is
+#   deployed from the exact tree that was tagged, never from a moving branch.
+# - the job sits in the `production` GitHub Environment, which is what scopes
+#   the two PostHog values to this workflow alone: `VITE_POSTHOG_PROJECT_TOKEN`
+#   (environment secret) and `VITE_POSTHOG_HOST` (environment variable) are
+#   invisible to every other workflow, so previews and CI build without
+#   analytics. The environment is also where a required reviewer or a
+#   deployment-branch rule would go.
+# - `deploy-production` is its own concurrency group and never cancels: one
+#   deploy runs at a time, in order, and an in-flight deploy is never killed.
+# - `--tag`/`--message` label the Worker Version, so the dashboard's version
+#   list and `wrangler rollback` name the release each version came from.
+#
+# Repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# Environment `production`: secret VITE_POSTHOG_PROJECT_TOKEN, variable
+# VITE_POSTHOG_HOST. The token needs Workers Scripts: Edit on the account and
+# Workers Routes: Edit on the 8bu.dev zone (the custom domain); nothing else.
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to deploy, for example v0.2.0
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy — an older tag rolls production back
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://crewdoku.8bu.dev
+    steps:
+      # Before checkout: a bad tag is the one failure worth naming, and the
+      # version tag is what the deploy message is built from.
+      - name: Validate tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::tag must look like v1.2.3 — got '$TAG'"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # Same order as ci.yml: cheapest, highest-signal first.
+      - run: pnpm -w lint
+      - run: pnpm -w test
+      - name: Build
+        run: pnpm -w build
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ secrets.VITE_POSTHOG_PROJECT_TOKEN }}
+          VITE_POSTHOG_HOST: ${{ vars.VITE_POSTHOG_HOST }}
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          pnpm --filter @crewdoku/app exec wrangler deploy \
+            --tag "$TAG" \
+            --message "$TAG (${GITHUB_SHA:0:7})"
