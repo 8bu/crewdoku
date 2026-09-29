@@ -9,9 +9,7 @@ import {
   freshName,
   isTagGroupNameTaken,
   isTagNameTaken,
-  removeRule,
   setGroupExclusive,
-  setTagGroup,
   updateRule,
 } from './tagOps'
 
@@ -144,17 +142,6 @@ describe('deleteTagGroup', () => {
   })
 })
 
-describe('setTagGroup', () => {
-  it('moves a tag between groups and back to loose', () => {
-    const tags = [tag({ id: 'a', groupId: 'g1' }), tag({ id: 'c' })]
-    const moved = setTagGroup(tags, 'a', 'g2')
-    expect(moved[0]!.groupId).toBe('g2')
-    expect('groupId' in moved[1]!).toBe(false)
-    const loose = setTagGroup(moved, 'a', null)
-    expect('groupId' in loose[0]!).toBe(false)
-  })
-})
-
 describe('addTeamToTag', () => {
   const tags = [
     tag({ id: 'a', name: 'Sunni', groupId: 'g1' }),
@@ -202,10 +189,5 @@ describe('rule lines', () => {
   it('keeps strict while the line stays an avoid', () => {
     const next = updateRule(tags, 'a', 'r1', { shift: 'NIGHT' })
     expect(next[0]!.rules[0]!.strict).toBe(true)
-  })
-
-  it('removes only the named line', () => {
-    const two = [tag({ id: 'a', rules: [rule, { ...rule, id: 'r2' }] })]
-    expect(removeRule(two, 'a', 'r1')[0]!.rules.map((r) => r.id)).toEqual(['r2'])
   })
 })

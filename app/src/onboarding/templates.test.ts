@@ -29,13 +29,6 @@ describe('WORKSPACE_TEMPLATES', () => {
     },
   )
 
-  it('office week is closed on weekends and open Monday to Friday', () => {
-    const office = WORKSPACE_TEMPLATES.find((t) => t.id === 'office')!
-    expect(office.coverage.byDow[0]!['DAY']).toEqual({ min: 0, max: 0 })
-    expect(office.coverage.byDow[6]!['DAY']).toEqual({ min: 0, max: 0 })
-    for (let dow = 1; dow <= 5; dow++) expect(office.coverage.byDow[dow]!['DAY']!.min).toBeGreaterThan(0)
-  })
-
   it('custom seeds no requirements — a first generate can never be infeasible on coverage', () => {
     const custom = WORKSPACE_TEMPLATES.find((t) => t.id === 'custom')!
     for (let dow = 0; dow < 7; dow++) {

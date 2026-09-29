@@ -37,5 +37,10 @@ packages/*/dist/
 app/dist/
 app/src/locales/*/messages.mjs
 
+# Playwright E2E output (app/e2e)
+app/dist-e2e/
+app/test-results/
+app/playwright-report/
+
 # wayfinder maps + tickets (local planning notes, not source)
 .scratch/

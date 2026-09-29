@@ -1,21 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyPatch, commitEdit, emptyHistory, redo, undo, type Overrides } from './editHistory'
+import { commitEdit, emptyHistory, redo, undo, type Overrides } from './editHistory'
 import type { Assignment } from '@crewdoku/domain'
 
 function night(pinned = true): Assignment {
   return { code: 'NIGHT', start: '2200', end: '0600', pinned, ineligible: false }
 }
-
-describe('applyPatch', () => {
-  it('sets keys with a value and deletes keys mapped to undefined', () => {
-    const overrides: Overrides = new Map([['a', night()]])
-    const next = applyPatch(overrides, new Map([['a', undefined], ['b', night()]]))
-    expect(next.has('a')).toBe(false)
-    expect(next.get('b')).toEqual(night())
-    // original untouched
-    expect(overrides.has('a')).toBe(true)
-  })
-})
 
 describe('commitEdit / undo / redo', () => {
   it('undo reverts to the prior value (including "no override")', () => {

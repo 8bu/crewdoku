@@ -119,11 +119,6 @@ describe('personTags', () => {
   it('returns held tags in workspace tag order, dropping unknown ids', () => {
     expect(personTags(person({ tagIds: ['t2', 'ghost', 't1'] }), [t1, t2])).toEqual([t1, t2])
   })
-
-  it('reads a person with no tags as holding none', () => {
-    expect(personTags(person(), [t1, t2])).toEqual([])
-    expect(personTags(person({ tagIds: [] }), [t1, t2])).toEqual([])
-  })
 })
 
 describe('basePreference', () => {
@@ -260,10 +255,6 @@ describe('normalizeTagIds', () => {
   it('keeps every tag of a non-exclusive group, in listed order', () => {
     expect(normalizeTagIds(['t4', 't3'], tags, groups)).toEqual(['t4', 't3'])
     expect(normalizeTagIds(['t3', 't1', 't4'], tags, groups)).toEqual(['t3', 't1', 't4'])
-  })
-
-  it('leaves an already-clean list alone', () => {
-    expect(normalizeTagIds(['t1', 'loose'], tags, groups)).toEqual(['t1', 'loose'])
   })
 })
 

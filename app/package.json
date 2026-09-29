@@ -8,8 +8,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "lint": "tsc --noEmit && tsc --noEmit -p e2e",
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@crewdoku/domain": "workspace:*",
@@ -36,7 +37,9 @@
     "write-excel-file": "^4.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.5",

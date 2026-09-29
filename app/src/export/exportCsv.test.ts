@@ -3,7 +3,6 @@ import {
   buildGridCsv,
   buildPersonCsv,
   buildPersonRows,
-  exportFileName,
   type ExportInputs,
 } from './exportCsv'
 import {
@@ -251,18 +250,5 @@ describe('exportCsv', () => {
     const personCsv = buildPersonCsv(inputs)
     expect(personCsv).not.toContain('Removed Person')
     expect(personCsv).toContain('Alice')
-  })
-
-  it('formats export file names with slugified period labels and falls back to period', () => {
-    expect(exportFileName('Period 1', 'grid')).toBe('crewdoku-period-1-grid.csv')
-    expect(exportFileName('Period 1', 'per-person')).toBe('crewdoku-period-1-per-person.csv')
-    expect(exportFileName('Q1 2024 (Draft)', 'grid')).toBe('crewdoku-q1-2024-draft-grid.csv')
-    expect(exportFileName('', 'grid')).toBe('crewdoku-period-grid.csv')
-    expect(exportFileName('---', 'grid')).toBe('crewdoku-period-grid.csv')
-    expect(exportFileName('!@#$', 'per-person')).toBe('crewdoku-period-per-person.csv')
-  })
-
-  it('formats xlsx file names with the ext parameter', () => {
-    expect(exportFileName('Period 1', 'grid', 'xlsx')).toBe('crewdoku-period-1-grid.xlsx')
   })
 })

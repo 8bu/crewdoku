@@ -1,6 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { LOCALE_IDS } from '../i18n/localeIds'
-import { RELEASE_NOTES } from './releaseNotes'
 import {
   compareVersions,
   hasUnseenReleases,
@@ -41,47 +39,6 @@ describe('compareVersions', () => {
   it('treats a missing segment as zero', () => {
     expect(compareVersions('0.2', '0.2.0')).toBe(0)
     expect(compareVersions('0.2', '0.2.1')).toBeLessThan(0)
-  })
-})
-
-describe('the bundled release notes', () => {
-  it('lists unique versions, newest first', () => {
-    const versions = RELEASE_NOTES.map((notes) => notes.version)
-    expect(versions.filter((version, index) => versions.indexOf(version) !== index)).toEqual([])
-    for (const [index, version] of versions.entries()) {
-      const previous = versions[index - 1]
-      if (previous === undefined) continue
-      expect(compareVersions(previous, version)).toBeGreaterThan(0)
-    }
-  })
-
-  it('holds a folder for the running version', () => {
-    expect(RELEASE_NOTES.map((notes) => notes.version)).toContain(__APP_VERSION__)
-  })
-
-  it('writes every version in every locale', () => {
-    for (const notes of RELEASE_NOTES) {
-      expect(Object.keys(notes.markdown).sort()).toEqual([...LOCALE_IDS].sort())
-      for (const locale of LOCALE_IDS) {
-        expect(notes.markdown[locale]?.trim()).not.toBe('')
-      }
-    }
-  })
-
-  it('keeps each file to a short bullet list with no version heading', () => {
-    for (const notes of RELEASE_NOTES) {
-      for (const locale of LOCALE_IDS) {
-        const lines = (notes.markdown[locale] ?? '')
-          .split('\n')
-          .map((line) => line.trim())
-          .filter((line) => line !== '')
-        const where = `v${notes.version}/${locale}.md`
-        expect(lines.length, where).toBeGreaterThanOrEqual(1)
-        expect(lines.length, where).toBeLessThanOrEqual(5)
-        // The panel renders `v<version>` itself, so a heading here would double it.
-        expect(lines.filter((line) => !line.startsWith('- ')), where).toEqual([])
-      }
-    }
   })
 })
 

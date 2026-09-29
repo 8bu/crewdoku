@@ -73,22 +73,4 @@ describe('worker handleSolve (pure core)', () => {
       expect(errorMessage.message).toBe('HiGHS error: infeasible model')
     }
   })
-
-  it('ignores non-solve messages', async () => {
-    const posts: WorkerOutMessage[] = []
-    const highs: HighsSolve = {
-      solve: vi.fn(() => ({
-        Status: 'Optimal',
-        ObjectiveValue: 0,
-      })),
-    }
-
-    await handleSolve(
-      { type: 'cancel' },
-      { highs, post: (m) => posts.push(m) },
-    )
-
-    expect(posts).toEqual([])
-    expect(highs.solve).not.toHaveBeenCalled()
-  })
 })

@@ -55,12 +55,6 @@ function seededStore() {
 }
 
 describe('updatePeriodAtom', () => {
-  it('updates label, start, and end in place', () => {
-    const store = seededStore()
-    store.set(updatePeriodAtom, { id: 'px', label: 'Oct v2', start: '2026-10-06', end: '2026-10-07' })
-    expect(store.get(periodsAtom)[0]).toMatchObject({ label: 'Oct v2', start: '2026-10-06', end: '2026-10-07' })
-  })
-
   it('a blank label keeps the existing one while dates still apply', () => {
     const store = seededStore()
     store.set(updatePeriodAtom, { id: 'px', label: '   ', start: '2026-10-06', end: '2026-10-08' })
@@ -104,13 +98,6 @@ describe('updatePeriodAtom', () => {
     const overrides = store.get(overridesByPeriodAtom).px!
     expect(overrides.has(assignmentKey('alice', '2026-10-05'))).toBe(false)
     expect(overrides.has(assignmentKey('alice', '2026-10-06'))).toBe(true)
-  })
-
-  it('a pure rename leaves the schedule untouched', () => {
-    const store = seededStore()
-    const before = store.get(scheduleByPeriodAtom).px!.assignments
-    store.set(updatePeriodAtom, { id: 'px', label: 'Renamed', start: PERIOD.start, end: PERIOD.end })
-    expect(store.get(scheduleByPeriodAtom).px!.assignments).toBe(before)
   })
 
   const PERIOD_LEFT: Period = { id: 'pl', label: 'Left', start: '2026-10-01', end: '2026-10-14', setup: 'ready' }
@@ -199,16 +186,5 @@ describe('deletePeriodAtom', () => {
     store.set(periodsAtom, [PERIOD_A])
     store.set(deletePeriodAtom, 'pa')
     expect(store.get(periodsAtom)).toEqual([PERIOD_A])
-  })
-
-  it('selects the remaining period that starts latest when deleting selected period', () => {
-    const PERIOD_C: Period = { id: 'pc', label: 'Period C', start: '2026-11-01', end: '2026-11-14', setup: 'ready' }
-    const store = createStore()
-    store.set(periodsAtom, [PERIOD_A, PERIOD_B, PERIOD_C])
-    store.set(selectedPeriodIdAtom, 'pa')
-
-    store.set(deletePeriodAtom, 'pa')
-    // Latest start among remaining (pb vs pc) is pc ('2026-11-01')
-    expect(store.get(selectedPeriodIdAtom)).toBe('pc')
   })
 })

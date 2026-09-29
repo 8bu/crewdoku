@@ -137,10 +137,10 @@ export function useWizardCoach(step: WizardStep): void {
       }
       // The anchor is not in the DOM yet; poll instead of giving up, and leave
       // the seen flag alone so a late first screen still gets its coach.
-      if (++tries < MAX_TRIES) timer = setTimeout(attempt, POLL_MS)
+      if (++tries < MAX_TRIES) timer = window.setTimeout(attempt, POLL_MS)
     }
 
-    timer = setTimeout(attempt, PRIME_MS)
+    timer = window.setTimeout(attempt, PRIME_MS)
 
     return () => {
       disposed = true

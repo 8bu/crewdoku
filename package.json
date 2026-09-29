@@ -11,6 +11,7 @@
     "preview": "pnpm --filter @crewdoku/proto preview",
     "test": "turbo run test",
     "test:watch": "vitest",
+    "e2e": "pnpm --filter @crewdoku/app e2e",
     "lint": "turbo run lint",
     "typecheck": "turbo run lint",
     "clean": "rm -rf .turbo proto/dist proto/node_modules/.vite node_modules/.cache"

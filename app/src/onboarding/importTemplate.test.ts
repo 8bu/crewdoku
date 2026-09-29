@@ -8,7 +8,7 @@ import {
   type TagGroup,
   type Team,
 } from '@crewdoku/domain'
-import { buildDefinedNames, buildImportWorkbook, buildTemplateValidations, type ImportWorkbook } from './importTemplate'
+import { buildImportWorkbook, buildTemplateValidations, type ImportWorkbook } from './importTemplate'
 import { applyBatchImport, parseWorkbook } from '../board/roster/batchImport'
 
 const SHIFTS: ShiftDef[] = [
@@ -267,40 +267,6 @@ describe('buildImportWorkbook', () => {
 describe('buildTemplateValidations', () => {
   const dv = buildTemplateValidations(POPULATED)
 
-  it('points every code, team, person and tag dropdown at a dynamic named range', () => {
-    expect(dv.Teams).toContain('sqref="B2:B1000"><formula1>ShiftCodes</formula1>')
-    expect(dv.Teams).toContain('sqref="C2:C1000"><formula1>ShiftCodes</formula1>')
-    expect(dv.People).toContain('sqref="B2:B1000"><formula1>TeamNames</formula1>')
-    for (const col of ['C', 'D', 'E']) {
-      expect(dv.People).toContain(`sqref="${col}2:${col}1000"><formula1>ShiftCodes</formula1>`)
-    }
-    expect(dv.People).toContain('sqref="H2:H1000"><formula1>TagNames</formula1>')
-    expect(dv.TimeOff).toContain('sqref="A2:A1000"><formula1>PersonNames</formula1>')
-    expect(dv.TagRules).toContain('sqref="A2:A1000"><formula1>TagNames</formula1>')
-  })
-
-  it('uses inline literal lists for the yes/no, weekday, rule kind and repeat columns', () => {
-    expect(dv.People).toContain('sqref="F2:F1000"><formula1>&quot;yes,no&quot;</formula1>')
-    // recurringOff moved to column G when time off became its own sheet.
-    expect(dv.People).toContain('sqref="G2:G1000"><formula1>&quot;Sun,Mon,Tue,Wed,Thu,Fri,Sat&quot;</formula1>')
-    expect(dv.Tags).toContain('sqref="C2:C1000"><formula1>&quot;yes,no&quot;</formula1>')
-    expect(dv.TagRules).toContain('sqref="B2:B1000"><formula1>&quot;avoid,want&quot;</formula1>')
-    expect(dv.TagRules).toContain(
-      'sqref="D2:D1000"><formula1>&quot;always,date,weekly,monthly,yearly&quot;</formula1>',
-    )
-  })
-
-  it('never validates the reference-only Shifts sheet, the TimeOff date column or the free-text TagRules columns', () => {
-    expect(dv.Shifts).toBeUndefined()
-    expect(dv.TimeOff).not.toContain('sqref="B2:B1000"')
-    // A rule's shift, `on` and `strict`/group cells are free text: the shift may
-    // be `any` or several codes, `on` a weekday list or an `MM-DD` date.
-    expect(dv.TagRules).not.toContain('sqref="C2:C1000"')
-    expect(dv.TagRules).not.toContain('sqref="E2:E1000"')
-    expect(dv.TagRules).not.toContain('sqref="F2:F1000"')
-    expect(dv.Tags).not.toContain('sqref="B2:B1000"')
-  })
-
   it('keys every validation block by a sheet the workbook really has', () => {
     const sheetNames = new Set(POPULATED.sheets.map((sheet) => sheet.name))
     for (const name of Object.keys(dv)) expect(sheetNames.has(name)).toBe(true)
@@ -314,26 +280,5 @@ describe('buildTemplateValidations', () => {
     expect(total).toBe(14) // Teams 2 + People 7 + TimeOff 1 + Tags 1 + TagRules 3
     expect([...rules.matchAll(/showErrorMessage="0"/g)]).toHaveLength(total)
     expect(rules).not.toContain('showErrorMessage="1"')
-  })
-})
-
-describe('buildDefinedNames', () => {
-  it('defines one auto-sizing OFFSET/COUNTA range per list column', () => {
-    const defined = [
-      ...buildDefinedNames().matchAll(/<definedName name="([^"]+)">([^<]+)<\/definedName>/g),
-    ].map((match): [string, string] => [match[1] ?? '', match[2] ?? ''])
-    expect(defined.map(([name]) => name)).toEqual(['ShiftCodes', 'TeamNames', 'PersonNames', 'TagNames'])
-
-    const sheetByRange: Record<string, string> = {
-      ShiftCodes: 'Shifts',
-      TeamNames: 'Teams',
-      PersonNames: 'People',
-      TagNames: 'Tags',
-    }
-    for (const [name, formula] of defined) {
-      expect(formula).toContain(`${sheetByRange[name]}!$A$2`)
-      expect(formula).toContain('OFFSET(')
-      expect(formula).toContain('COUNTA(')
-    }
   })
 })

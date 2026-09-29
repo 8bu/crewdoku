@@ -53,8 +53,3 @@ export function rangeCells(range: SelectionRange): Coord[] {
   }
   return cells
 }
-
-export function rangeSize(range: SelectionRange): number {
-  const { min, max } = normalizeRange(range)
-  return (max.row - min.row + 1) * (max.col - min.col + 1)
-}

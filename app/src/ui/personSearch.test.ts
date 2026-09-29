@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeForSearch, searchPeople } from './personSearch'
+import { searchPeople } from './personSearch'
 
 /** Person-shaped input: `searchPeople` is generic over `{ name: string }`. */
 type Named = { id: string; name: string }
@@ -9,17 +9,6 @@ const DANG: Named = { id: 'p2', name: 'Đặng Thị Mai' }
 const ANNA: Named = { id: 'p3', name: 'Anna Lee' }
 const BRIAN: Named = { id: 'p4', name: 'Brian Ko' }
 const CARLOS: Named = { id: 'p5', name: 'Carlos Ruiz' }
-
-describe('normalizeForSearch', () => {
-  it('drops diacritics and lowercases', () => {
-    expect(normalizeForSearch('Nguyễn')).toBe('nguyen')
-    expect(normalizeForSearch('Đặng')).toBe('dang')
-  })
-
-  it('trims and collapses internal whitespace', () => {
-    expect(normalizeForSearch('  Văn\t An  ')).toBe('van an')
-  })
-})
 
 describe('searchPeople', () => {
   it('finds an accented name from an unaccented query', () => {

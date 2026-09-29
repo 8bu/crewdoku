@@ -60,7 +60,9 @@ Engine packages ship **TS source** (`main: ./src/index.ts`) — no dist step; th
 dependency direction is one-way (packages never import UI or each other upward).
 
 **Language:** TypeScript everywhere, strict. `pnpm lint` is `tsc --noEmit`.
-Tests are Vitest — jsdom in `proto/`, plain node in `packages/`.
+Tests are Vitest — jsdom in `proto/` and `app/`, plain node in `packages/`.
+Browser E2E is Playwright in `app/e2e/` (`*.e2e.ts`): real user flows against a
+production build of the app, one fresh browser context per test.
 
 ### How to run
 
@@ -70,6 +72,7 @@ pnpm dev     # app at http://localhost:5173 (or next free port); `pnpm --filter 
 pnpm test    # vitest, every package
 pnpm lint    # tsc --noEmit, every package
 pnpm build   # vite build (app + proto); engine packages are source-only, no build step
+pnpm e2e     # Playwright E2E for the app (first time: `pnpm --filter @crewdoku/app exec playwright install chromium`)
 ```
 
 ---
@@ -101,7 +104,7 @@ Two rules for anything that releases:
 ### Release → deploy → previews
 
 Merging the Release PR also deploys. `release.yml` hands the new tag to
-`deploy.yml`, which checks the tag out, re-runs lint/test/build there, and ends
+`deploy.yml`, which checks the tag out, re-runs lint/test/build/e2e there, and ends
 in `wrangler deploy --tag <tag>`. Production is https://crewdoku.8bu.dev, so it
 only moves forward through tagged, tested commits. Rollback is the same workflow
 dispatched by hand with an older tag (`gh workflow run deploy.yml -f

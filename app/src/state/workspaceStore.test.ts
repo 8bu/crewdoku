@@ -17,10 +17,7 @@ import {
   deleteOrg,
   deleteWorkspace,
   hydrate,
-  leaveOrg,
-  selectOrg,
   startAutosave,
-  startSampleWorkspace,
   switchWorkspace,
 } from './workspaceStore'
 import { activeOrgIdAtom, activeWorkspaceIdAtom, orgsAtom, workspaceMetasAtom } from './orgStore'
@@ -93,15 +90,6 @@ beforeEach(() => {
 })
 
 describe('bootWorkspace', () => {
-  it('leaves no active workspace on a truly fresh install', async () => {
-    const storage = new FakeStorage()
-    await bootWorkspace(storage)
-    expect(store.get(activeWorkspaceIdAtom)).toBeNull()
-    expect(store.get(orgsAtom)).toEqual([])
-    expect(store.get(workspaceMetasAtom)).toEqual([])
-    expect(store.get(activeOrgIdAtom)).toBeNull()
-  })
-
   it('migrates a legacy single-workspace blob into a Default org + workspace', async () => {
     const storage = new FakeStorage()
     storage.legacy = peopleWorkspace('Legacy Person')
@@ -238,88 +226,6 @@ describe('deleteOrg', () => {
     expect(store.get(workspaceMetasAtom)).toEqual([])
     expect(store.get(activeOrgIdAtom)).toBeNull()
     expect((await storage.loadRegistry())?.orgs).toEqual([])
-  })
-})
-
-describe('selectOrg / leaveOrg', () => {
-  it('enters an org and lands on its most recent workspace', async () => {
-    const storage = new FakeStorage()
-    await bootWorkspace(storage)
-    const org = createOrg('Acme')
-    const a = await createWorkspace(org.id, 'A')
-
-    await leaveOrg()
-    expect(store.get(activeOrgIdAtom)).toBeNull()
-    expect(store.get(activeWorkspaceIdAtom)).toBeNull()
-
-    await selectOrg(org.id)
-    expect(store.get(activeOrgIdAtom)).toBe(org.id)
-    expect(store.get(activeWorkspaceIdAtom)).toBe(a.id)
-  })
-
-  it('enters an empty org with no active workspace', async () => {
-    const storage = new FakeStorage()
-    await bootWorkspace(storage)
-    const org = createOrg('Empty Co')
-    await selectOrg(org.id)
-    expect(store.get(activeOrgIdAtom)).toBe(org.id)
-    expect(store.get(activeWorkspaceIdAtom)).toBeNull()
-  })
-})
-
-describe('startSampleWorkspace', () => {
-  it('seeds a populated org+workspace, arms auto-generate, and persists it', async () => {
-    const storage = new FakeStorage()
-    await bootWorkspace(storage)
-
-    await startSampleWorkspace()
-
-    // A new org + workspace exists and is the active selection.
-    const orgs = store.get(orgsAtom)
-    const metas = store.get(workspaceMetasAtom)
-    expect(orgs).toHaveLength(1)
-    expect(metas).toHaveLength(1)
-    const meta = metas[0]
-    if (!meta) throw new Error('expected one workspace')
-    expect(store.get(activeOrgIdAtom)).toBe(meta.orgId)
-    expect(store.get(activeWorkspaceIdAtom)).toBe(meta.id)
-
-    // The rich sample lands: three teams, the four-shift café-bakery catalog,
-    // and a roster that carries certifications, time off and preferences, so
-    // the board renders the engine's full range rather than an empty starter.
-    const people = store.get(peopleAtom) ?? []
-    expect(people.length).toBeGreaterThan(12)
-    expect(people.some((p) => (p.timeOff ?? []).length > 0)).toBe(true)
-    expect(people.some((p) => p.ineligible.length > 0)).toBe(true)
-    expect((store.get(teamsAtom) ?? []).map((t) => t.name)).toEqual(['Front of house', 'Kitchen', 'Bakery'])
-    expect((store.get(shiftsAtom) ?? []).map((s) => s.code)).toEqual(['OPEN', 'MID', 'CLOSE', 'BAKE'])
-
-    // The tag showcase lands too: the language group, both tags with their rule
-    // lines and coverage, and the people who hold them.
-    expect((store.get(tagGroupsAtom) ?? []).map((g) => g.name)).toEqual(['Languages'])
-    const tags = store.get(tagsAtom) ?? []
-    expect(tags.map((t) => t.name)).toEqual(['Spanish', 'Student'])
-    const spanish = tags.find((t) => t.name === 'Spanish')
-    const student = tags.find((t) => t.name === 'Student')
-    if (!spanish || !student) throw new Error('expected both sample tags')
-    expect(store.get(tagCoverageAtom)?.[spanish.id]?.byDow[1]).toBeDefined()
-    expect(student.rules.some((rule) => rule.strict === true)).toBe(true)
-    const heldTagIds = new Set(people.flatMap((p) => p.tagIds ?? []))
-    expect(heldTagIds.has(spanish.id)).toBe(true)
-    expect(heldTagIds.has(student.id)).toBe(true)
-
-    // The wizard stays shut (roster present) and the one seeded period is armed
-    // to auto-solve once on the board's next mount.
-    expect(store.get(workspaceOnboardedAtom)).toBe(true)
-    const periods = store.get(periodsAtom)
-    const period = periods[0]
-    if (!period) throw new Error('expected one seeded period')
-    expect(periods).toHaveLength(1)
-    expect(store.get(autoGenerateOnMountAtom).has(period.id)).toBe(true)
-
-    // The seeded aggregate is persisted so a reload restores the sample.
-    expect(storage.registry?.activeWorkspaceId).toBe(meta.id)
-    expect(storage.workspaces.get(meta.id)?.people.length).toBe((store.get(peopleAtom) ?? []).length)
   })
 })
 

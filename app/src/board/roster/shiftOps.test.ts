@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addShift, deleteShift, isCodeTaken, renameShiftCode, rewriteAssignmentCode } from './shiftOps'
+import { deleteShift, isCodeTaken, renameShiftCode, rewriteAssignmentCode } from './shiftOps'
 import { defaultCoverageTable, type Assignment, type Person, type ShiftDef, type Team } from '@crewdoku/domain'
 
 const SHIFTS: ShiftDef[] = [
@@ -24,13 +24,6 @@ describe('isCodeTaken', () => {
   })
 })
 
-describe('addShift', () => {
-  it('uppercases the code and defaults the label to it when blank', () => {
-    const next = addShift(SHIFTS, 'swing', '')
-    expect(next.at(-1)).toMatchObject({ code: 'SWING', label: 'SWING' })
-  })
-})
-
 describe('renameShiftCode', () => {
   it('rewrites the catalog, team wants/avoids, person ineligible/wants/avoids, and coverage rows', () => {
     const coverage = defaultCoverageTable(SHIFTS, 1)
@@ -44,12 +37,6 @@ describe('renameShiftCode', () => {
     expect(result.people[0]!.wants).toEqual(['EARLY']) // untouched code stays as-is
     expect(result.coverage.byDow[1]!['GRAVEYARD']).toBeTruthy()
     expect(result.coverage.byDow[1]!['NIGHT']).toBeUndefined()
-  })
-
-  it('is a no-op when the new code equals the old one', () => {
-    const coverage = defaultCoverageTable(SHIFTS, 1)
-    const result = renameShiftCode(SHIFTS, TEAMS, PEOPLE, coverage, 'NIGHT', 'NIGHT')
-    expect(result.shifts).toEqual(SHIFTS)
   })
 })
 

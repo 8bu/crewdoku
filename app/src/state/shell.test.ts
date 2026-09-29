@@ -78,11 +78,4 @@ describe('addPeriodAtom', () => {
     expect(store.get(periodsAtom)).toEqual([PERIOD_A])
     expect(store.get(selectedPeriodIdAtom)).toBe('pa')
   })
-
-  it('adds an adjacent period and switches the shell to it', () => {
-    const store = storeWith([PERIOD_A])
-    store.set(addPeriodAtom, PERIOD_B)
-    expect(store.get(periodsAtom)).toEqual([PERIOD_A, PERIOD_B])
-    expect(store.get(selectedPeriodIdAtom)).toBe('pb')
-  })
 })

@@ -1,5 +1,6 @@
-# Public repo: standard runners are free here, and the whole pipeline is ~6s
-# after install — so this file still optimizes for *not running* and for
+# Public repo: standard runners are free here. Lint/test/build take ~6s after
+# install; the Playwright E2E run (browser install, own build, specs) is the
+# slowest step — so this file still optimizes for *not running* and for
 # failing fast, in that order.
 #
 # - push only: `pull_request` would double-run the same SHA (no forks here).
@@ -34,7 +35,7 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -46,3 +47,12 @@ jobs:
       - run: pnpm -w lint
       - run: pnpm -w test
       - run: pnpm -w build
+      # Last: the slowest step, and it only means something once the rest pass.
+      - run: pnpm --filter @crewdoku/app exec playwright install --with-deps chromium
+      - run: pnpm -w e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: app/playwright-report
+          retention-days: 7

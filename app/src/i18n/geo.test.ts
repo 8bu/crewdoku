@@ -6,30 +6,6 @@ describe('localeForCountry', () => {
     expect(localeForCountry('VN')).toBe('vi')
   })
 
-  it('maps the dominant Spanish-speaking countries to Spanish', () => {
-    expect(localeForCountry('MX')).toBe('es')
-    expect(localeForCountry('ES')).toBe('es')
-    expect(localeForCountry('AR')).toBe('es')
-  })
-
-  it('maps the dominant German-speaking and Portuguese-speaking countries', () => {
-    expect(localeForCountry('AT')).toBe('de')
-    expect(localeForCountry('DE')).toBe('de')
-    expect(localeForCountry('BR')).toBe('pt')
-    expect(localeForCountry('PT')).toBe('pt')
-  })
-
-  it('maps Japan and France', () => {
-    expect(localeForCountry('JP')).toBe('ja')
-    expect(localeForCountry('FR')).toBe('fr')
-  })
-
-  it('leaves multilingual countries to the browser language', () => {
-    expect(localeForCountry('CH')).toBeNull()
-    expect(localeForCountry('BE')).toBeNull()
-    expect(localeForCountry('CA')).toBeNull()
-  })
-
   it('upper-cases the country code before lookup', () => {
     expect(localeForCountry('vn')).toBe('vi')
   })

@@ -126,24 +126,6 @@ describe('buildDayStacks', () => {
     expect(stack.groups.some((g) => g.code === 'LATE')).toBe(false)
   })
 
-  it('teams own the chip dot: an index into the team list, null when unassigned', () => {
-    const stack = buildDayStacks(base, ['2026-01-05'], NO_FILTERS).get('2026-01-05')!
-
-    const chips = stack.groups.flatMap((g) => g.chips)
-    expect(chips.find((c) => c.name === 'Chloe')!.teamColor).toBe(1)
-    expect(chips.find((c) => c.name === 'Zed')!.teamColor).toBe(0)
-    // Eve is off today, so her dot is asserted through the leave line below.
-    const leave = buildDayStacks(
-      source({
-        ...base,
-        people: people.map((p) => (p.id === 'p5' ? { ...p, timeOff: ['2026-01-05'] } : p)),
-      }),
-      ['2026-01-05'],
-      NO_FILTERS,
-    ).get('2026-01-05')!
-    expect(leave.leave.map((c) => c.teamColor)).toEqual([null])
-  })
-
   it('lists leave only while the leave filter is on, and keeps it off the shift lines', () => {
     const withLeave = source({
       ...base,

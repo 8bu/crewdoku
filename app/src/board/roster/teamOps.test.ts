@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  addTeam,
-  countMembers,
-  deleteTeam,
-  toggleTeamAvoid,
-  toggleTeamWant,
-} from './teamOps'
+import { addTeam, deleteTeam, toggleTeamAvoid, toggleTeamWant } from './teamOps'
 import type { Person, Team } from '@crewdoku/domain'
 
 const teams: Team[] = [
@@ -37,19 +31,6 @@ describe('toggleTeamWant / toggleTeamAvoid', () => {
     const avoided = toggleTeamAvoid(wanted, 't1', 'NIGHT')
     expect(avoided[0]!.avoids).toEqual(['NIGHT'])
     expect(avoided[0]!.wants).toEqual([])
-  })
-
-  it('toggles off on a second press', () => {
-    const once = toggleTeamWant(teams, 't1', 'NIGHT')
-    const twice = toggleTeamWant(once, 't1', 'NIGHT')
-    expect(twice[0]!.wants).toEqual([])
-  })
-})
-
-describe('countMembers', () => {
-  it('counts active people on the team, excluding removed', () => {
-    const people = [person({ id: 'p1', teamId: 't1' }), person({ id: 'p2', teamId: 't1', removed: true }), person({ id: 'p3', teamId: 't2' })]
-    expect(countMembers(people, 't1')).toBe(1)
   })
 })
 

@@ -238,6 +238,7 @@ function RosterTable({ period }: { period: Period }) {
                               <button
                                 key={shift.code}
                                 type="button"
+                                aria-pressed={eligible}
                                 data-shift={shift.code}
                                 onClick={() => setPeople((prev) => toggleShiftEligibility(prev, person.id, shift.code))}
                                 className={`inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-transparent px-3 py-1 text-2xs font-semibold transition-colors duration-150 md:min-h-0 md:px-2.5 ${

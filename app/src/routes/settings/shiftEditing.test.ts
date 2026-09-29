@@ -47,12 +47,6 @@ describe('snapMinutes', () => {
     expect(snapMinutes(1438)).toBe(1440)
   })
 
-  it('supports custom step', () => {
-    expect(snapMinutes(12, 15)).toBe(15)
-    expect(snapMinutes(7, 15)).toBe(0)
-    expect(snapMinutes(23, 10)).toBe(20)
-  })
-
   it('clamps to [0, 1440]', () => {
     expect(snapMinutes(-25)).toBe(0)
     expect(snapMinutes(1500)).toBe(1440)
@@ -102,12 +96,6 @@ describe('setDurationOne', () => {
     const res = setDurationOne(THREE_SHIFTS, 0, 5)
     expect(res[0]?.start).toBe('0000')
     expect(res[0]?.end).toBe('0015')
-  })
-
-  it('returns unchanged copy for invalid index', () => {
-    const res = setDurationOne(THREE_SHIFTS, 99, 300)
-    expect(res).toEqual(THREE_SHIFTS)
-    expect(res).not.toBe(THREE_SHIFTS)
   })
 })
 

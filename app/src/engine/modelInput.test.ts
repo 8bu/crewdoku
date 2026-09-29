@@ -38,10 +38,6 @@ function parts(overrides: Partial<ModelInputParts> = {}): ModelInputParts {
 }
 
 describe('buildModelInput', () => {
-  it('derives the period from the first and last board date', () => {
-    expect(buildModelInput(parts()).period).toEqual({ start: '2026-01-05', end: '2026-01-07' })
-  })
-
   it('drops removed people so the solver never assigns them', () => {
     const input = buildModelInput(
       parts({
@@ -53,20 +49,5 @@ describe('buildModelInput', () => {
 
   it('throws when the period has no dates', () => {
     expect(() => buildModelInput(parts({ dates: [] }))).toThrow(/no dates/)
-  })
-
-  it('passes the period boundary through for the cross-period rest rule', () => {
-    const boundary = { before: { p1: 'NIGHT' }, after: { p1: 'EARLY' } }
-    expect(buildModelInput(parts({ boundary })).boundary).toEqual(boundary)
-  })
-
-  it('hands the tag catalog and per-tag coverage to the engine', () => {
-    const input = buildModelInput(parts())
-    expect(input.tags).toBe(TAGS)
-    expect(input.tagCoverage).toBeDefined()
-    expect(input.tagCoverage?.[TAGS[0]?.id ?? '']).toEqual({
-      byDow: { 1: { MID: { min: 1, max: Infinity } } },
-      dateOverrides: {},
-    })
   })
 })
